@@ -81,6 +81,7 @@ public:
 	float        lensIPDCenterOffset;
 	float        minDistortionScale;
 	bool         chromaticAberrationCorrection;
+	bool         useOvrDeviceSettings;
 	
 	//user settings
 	float        PlayerIPD;

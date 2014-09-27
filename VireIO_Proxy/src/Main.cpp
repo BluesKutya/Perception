@@ -210,6 +210,7 @@ BOOL APIENTRY DllMain( HINSTANCE dll , DWORD fdwReason, LPVOID ){
 	printf( "lensIPDCenterOffset           = %f\n" , config.lensIPDCenterOffset );
 	printf( "minDistortionScale            = %f\n" , config.minDistortionScale );
 	printf( "chromaticAberrationCorrection = %d\n" , config.chromaticAberrationCorrection );
+	printf( "useOvrDeviceSettings          = %d\n" , config.useOvrDeviceSettings );
 	printf( "PlayerIPD                     = %f\n" , config.PlayerIPD );
 	printf( "screenAspectRatio             = %f\n" , config.screenAspectRatio );
 	printf( "scaleToFillHorizontal         = %f\n" , config.scaleToFillHorizontal );

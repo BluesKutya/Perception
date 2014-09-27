@@ -60,6 +60,8 @@ bool cConfig::load( const QString& file ){
 	props.get( &lensIPDCenterOffset           , "lensIPDCenterOffset"           );
 	props.get( &minDistortionScale            , "minDistortionScale"            );
 	props.get( &chromaticAberrationCorrection , "chromaticAberrationCorrection" );
+	props.get( &useOvrDeviceSettings          , "useOvrDeviceSettings"          );
+	
 
 	//game settings
 	props.get( &exeName                       , "exeName"                       );
@@ -225,8 +227,6 @@ QStringList cConfig::getAvailableProfiles( ){
 
 QStringList cConfig::getAvailableDevices( ){
 	QStringList ret;
-	ret += "Oculus Rift (auto)";
-
 	for( QFileInfo& info : QDir(config.vireioDir+"/modes").entryInfoList(QDir::Files) ){
 		ret += info.baseName();
 	}
@@ -260,9 +260,13 @@ bool cConfig::saveProfile( ){
 
 
 bool cConfig::loadDevice ( ){
-	if( stereoDevice == "Oculus Rift (auto)" ){
-		return loadOculusSdk();
-	}else{
-		return load( vireioDir + "/modes/" + stereoDevice + ".ini" );
+	if( !load( vireioDir + "/modes/" + stereoDevice + ".ini" ) ){
+		return false;
 	}
+
+	if( useOvrDeviceSettings ){
+		return loadOculusSdk();
+	}
+
+	return true;
 }
