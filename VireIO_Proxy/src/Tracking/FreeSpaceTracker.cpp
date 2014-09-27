@@ -3,12 +3,6 @@
 #include <cTracker.h>
 
 
-/**
-* Freespace tracker class.
-* Today, Freespace is widely known as the gold standard for motion control in consumer electronics. 
-* Freespace has been featured in successful motion products around the globe released by some of the 
-* biggest names in consumer electronics. <http://hillcrestlabs.com/industries/>
-*/
 class cTracker_freespace : public cTracker{
 public:
 	FreespaceDeviceId   DeviceID;

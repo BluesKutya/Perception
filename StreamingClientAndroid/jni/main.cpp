@@ -215,11 +215,11 @@ static void on_app_cmd( android_app* , int32_t cmd ){
 		break;
 
 	case APP_CMD_GAINED_FOCUS:
-		sensor_init( );
+		//sensor_init( );
 		break;
 
 	case APP_CMD_LOST_FOCUS:
-		sensor_free( );
+		//sensor_free( );
 		break;
 	}
 }

@@ -2282,6 +2282,15 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 
 
 		if( tracker ){
+			if( !tracker->open() ){
+				printf( "tracker: open failed\n" );
+				tracker->close();
+				delete tracker;
+				tracker =0 ;
+			}
+		}
+
+		if( tracker ){
 
 			OutputDebugStringA("Tracker Got\n");
  			OutputDebugStringA("Setting Multipliers\n");
@@ -2310,8 +2319,11 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 	long prevYaw   = RADIANS_TO_DEGREES( tracker->currentYaw   );
 	long prevPitch = RADIANS_TO_DEGREES( tracker->currentPitch );
 
+	printf("tracke update...\n");
 	if( tracker->update() ){
-	
+
+		printf("%12.8f %12.8f %12.8f\n" , tracker->currentYaw , tracker->currentPitch , tracker->currentRoll );
+
 		if( trackerMouseEmulation ){
 			// Convert yaw, pitch to positive degrees, multiply by multiplier.
 			// (-180.0f...0.0f -> 180.0f....360.0f)
