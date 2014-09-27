@@ -18,6 +18,7 @@ void cProfileSelectDialog::on_ok_clicked(){
 	if( selectedProfileName.isEmpty() ){
 		reject();
 	}else{
+		//TODO: add check if profile is compatible
 		accept();
 	}
 }

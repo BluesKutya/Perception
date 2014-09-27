@@ -103,9 +103,10 @@ void cMainWindow::on_games_customContextMenuRequested( const QPoint& pos ){
 		d.setFileMode  ( QFileDialog::ExistingFile );
 		if( d.exec() ){
 			cProfileSelectDialog pd(this);
+			pd.exeName = d.selectedFiles()[0];
 			if( pd.exec() ){
 				cConfig cfg;
-				cfg.exePath     = d.selectedFiles()[0];
+				cfg.exePath     = pd.exeName;
 				cfg.profileName = pd.selectedProfileName;
 				cfg.save( config.getGameConfigFile(cfg.exePath) , config.SAVE_GAME );
 				LoadGames( );

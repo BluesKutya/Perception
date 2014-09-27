@@ -4,6 +4,7 @@ class cProfileSelectDialog : public QDialog {
 Q_OBJECT
 public:
 	QString selectedProfileName;
+	QString exeName;
 
 	cProfileSelectDialog( QWidget* parent );
 
