@@ -109,6 +109,9 @@ public:
 		if( ts.StatusFlags & ovrStatus_OrientationTracked ){
 			Quatf hmdOrient=ts.HeadPose.ThePose.Orientation;
 			hmdOrient.GetEulerAngles<Axis_Y,Axis_X,Axis_Z>(&currentYaw, &currentPitch, &currentRoll);
+			currentYaw   -= offsetYaw;
+			currentPitch -= offsetPitch;
+			currentRoll  -= offsetRoll;
 		}
 
 		if( ts.StatusFlags & ovrStatus_PositionConnected ){

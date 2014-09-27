@@ -74,9 +74,17 @@ public:
 		if( !buf ){
 			return false;
 		}
-		currentYaw   = -buf->Yaw;
-		currentPitch = -buf->Pitch;
-		currentRoll  =  buf->Roll;
+		currentYaw   = -(buf->Yaw   - offsetYaw);
+		currentPitch = -(buf->Pitch - offsetPitch);
+		currentRoll  =  (buf->Roll  - offsetRoll);
+		return true;
+	}
+
+
+	bool reset( ) override{
+		offsetYaw   = buf->Yaw;
+		offsetPitch = buf->Pitch;
+		offsetRoll  = buf->Roll;
 		return true;
 	}
 };

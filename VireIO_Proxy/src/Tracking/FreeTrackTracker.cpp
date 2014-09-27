@@ -33,6 +33,7 @@ public:
 
 	HINSTANCE      dll;
 	FARPROC        getDataFunc;
+	FreeTrackData  data;
 	
 
 	cTracker_freetrack( ){
@@ -71,16 +72,28 @@ public:
 
 
 	bool update( ){
-		FreeTrackData  data;
-
 		if( ((bool(WINAPI*)(FreeTrackData*))getDataFunc)( &data ) ){
-			currentYaw   = -data.yaw;
-			currentPitch = -data.pitch;
-			currentRoll  = -data.roll;
+			currentYaw   =   data.yaw   - offsetYaw;
+			currentPitch =   data.pitch - offsetPitch;
+			currentRoll  =   data.roll  - offsetRoll;
+			currentX     = -(data.x     - offsetX);
+			currentY     =   data.y     - offsetY;
+			currentZ     =   data.z     - offsetZ;
 			return true;
 		}else{
 			return false;
 		}
+	}
+
+
+	bool reset( ) override{
+		offsetYaw   = data.yaw;
+		offsetPitch = data.pitch;
+		offsetRoll  = data.roll;
+		offsetX     = data.x;
+		offsetY     = data.y;
+		offsetZ     = data.z;
+		return true;
 	}
 };
 

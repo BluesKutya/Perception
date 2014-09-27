@@ -105,12 +105,16 @@ BOOL APIENTRY DllMain( HINSTANCE dll , DWORD fdwReason, LPVOID ){
 	AllocConsole();
 	freopen("CONOUT$", "w", stdout);
 
-	char exe_path[MAX_PATH];
-	char dll_path[MAX_PATH];
+	static char exe_path[MAX_PATH];
+	static char dll_path[MAX_PATH];
 
 	GetModuleFileNameA( 0   , exe_path , MAX_PATH );
 	GetModuleFileNameA( dll , dll_path , MAX_PATH );
-	
+
+	printf( "VireIO: loading...\n" );
+
+	HijackHookInstall();
+
 	config.vireioDir = QFileInfo(dll_path).absolutePath() + "/../";
 
 	if( !config.load( config.getMainConfigFile() ) ){
@@ -142,6 +146,7 @@ BOOL APIENTRY DllMain( HINSTANCE dll , DWORD fdwReason, LPVOID ){
 	printf( "trackerMode                   = %d\n" , config.trackerMode );
 	printf( "logToConsole                  = %d\n" , config.logToConsole );
 	printf( "logToFile                     = %d\n" , config.logToFile );
+	printf( "logHijack                     = %d\n" , config.logHijack );
 	printf( "pauseOnLaunch                 = %d\n" , config.pauseOnLaunch );
 	printf( "streamingEnable               = %d\n" , config.streamingEnable );
 	printf( "streamingAddress              = %s\n" , config.streamingAddress.toLocal8Bit().data() );
@@ -212,13 +217,12 @@ BOOL APIENTRY DllMain( HINSTANCE dll , DWORD fdwReason, LPVOID ){
 	printf( "lensXCenterOffset             = %f\n" , config.lensXCenterOffset );
 
 
-	HijackHookInstall();
-
 	HijackHookAdd( "d3d9.dll" , "Direct3DCreate9"        , (void**)&ORIG_Direct3DCreate9    , (void*)NEW_Direct3DCreate9   );
 	HijackHookAdd( "d3d9.dll" , "Direct3DCreate9Ex"      , (void**)&ORIG_Direct3DCreate9Ex  , (void*)NEW_Direct3DCreate9Ex );
 
 
 	if( !config.logToConsole ){
+		fclose(stdout);
 		FreeConsole();
 	}
 

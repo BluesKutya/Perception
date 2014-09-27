@@ -145,6 +145,7 @@ bool cConfig::save( const QString& file , int flags ){
 		props.set( &trackerMode       , "trackerMode"       );
 		props.set( &logToConsole      , "logToConsole"      );
 		props.set( &logToFile         , "logToFile"         );
+		props.set( &logHijack         , "logHijack"         );
 		props.set( &pauseOnLaunch     , "pauseOnLaunch"     );
 		props.set( &streamingEnable   , "streamingEnable"   );
 		props.set( &streamingAddress  , "streamingAddress"  );
@@ -200,7 +201,6 @@ QString cConfig::getGameConfigFile( const QString& gameExePath ){
 
 
 QString cConfig::findProfileFileForExe( const QString& gameExePath ){
-
 	QString exe = QFileInfo(gameExePath).fileName();
 
 	for( QFileInfo& info : QDir(vireioDir+"./profiles").entryInfoList(QDir::Files) ){
@@ -259,7 +259,7 @@ bool cConfig::saveProfile( ){
 }
 
 
-bool cConfig::loadDevice ( ){
+bool cConfig::loadDevice( ){
 	if( !load( vireioDir + "/modes/" + stereoDevice + ".ini" ) ){
 		return false;
 	}
