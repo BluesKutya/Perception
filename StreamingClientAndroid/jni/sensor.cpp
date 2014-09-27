@@ -1,6 +1,9 @@
 #include <android/sensor.h>
 #include "common.h"
 
+enum{
+	ASENSOR_TYPE_ROTATION_VECTOR = 11
+};
 
 namespace{
 	ASensorManager*    manager;
@@ -38,17 +41,19 @@ void sensor_init( ){
 		return;
 	}
 
-	toggle( ASENSOR_TYPE_ACCELEROMETER  , true );
-	toggle( ASENSOR_TYPE_GYROSCOPE      , true );
-	toggle( ASENSOR_TYPE_MAGNETIC_FIELD , true );
+	toggle( ASENSOR_TYPE_ACCELEROMETER   , true );
+	toggle( ASENSOR_TYPE_GYROSCOPE       , true );
+	toggle( ASENSOR_TYPE_MAGNETIC_FIELD  , true );
+	toggle( ASENSOR_TYPE_ROTATION_VECTOR , true );
 }
 
 
 
 void sensor_free( ){
-	toggle( ASENSOR_TYPE_ACCELEROMETER  , false );
-	toggle( ASENSOR_TYPE_GYROSCOPE      , false );
-	toggle( ASENSOR_TYPE_MAGNETIC_FIELD , false );
+	toggle( ASENSOR_TYPE_ACCELEROMETER   , false );
+	toggle( ASENSOR_TYPE_GYROSCOPE       , false );
+	toggle( ASENSOR_TYPE_MAGNETIC_FIELD  , false );
+	toggle( ASENSOR_TYPE_ROTATION_VECTOR , false );
 
 	if( queue ){
 		ASensorManager_destroyEventQueue( manager , queue );

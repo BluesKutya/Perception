@@ -84,6 +84,18 @@ class StereoBackBuffer;
 class StereoView;
 class MotionTracker;
 class ViewAdjustment;
+class cTracker;
+
+cTracker* VireIO_Create_Tracker_FreeSpace();
+cTracker* VireIO_Create_Tracker_FreeTrack();
+cTracker* VireIO_Create_Tracker_SharedMemory();
+cTracker* VireIO_Create_Tracker_Oculus();
+
+
+
+
+
+
 
 #define EXPAND(X) X
 
@@ -167,3 +179,6 @@ class ViewAdjustment;
 	}
 
 
+
+#define M_PI                    3.141592654
+#define RADIANS_TO_DEGREES(rad) ((float) rad * (float) (180.0 / M_PI))

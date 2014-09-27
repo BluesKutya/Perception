@@ -39,7 +39,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "D3D9ProxyIndexBuffer.h"
 #include "D3D9ProxyStateBlock.h" 
 #include "D3D9ProxyQuery.h"
-#include "MotionTrackerFactory.h"
 #include "VRBoostEnums.h"
 #include "StereoShaderConstant.h"
 #include "StereoBackBuffer.h"
@@ -47,7 +46,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "ShaderRegisters.h"
 #include "ViewAdjustment.h"
 #include "StereoView.h"
-#include "MotionTracker.h"
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
@@ -57,6 +55,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <assert.h>
 #include <comdef.h>
 #include <tchar.h>
+#include <cTracker.h>
+
 #ifdef _DEBUG
 #include "DxErr.h"
 #endif
@@ -67,9 +67,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #define SMALL_FLOAT 0.001f
 #define	SLIGHTLY_LESS_THAN_ONE 0.999f
-
-#define PI 3.141592654
-#define RADIANS_TO_DEGREES(rad) ((float) rad * (float) (180.0 / PI))
 
 #define OUTPUT_HRESULT(hr) { _com_error err(hr); LPCTSTR errMsg = err.ErrorMessage(); OutputDebugStringA(errMsg); }
 
@@ -130,6 +127,9 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	show_fps(FPS_NONE),
 	calibrate_tracker(false)
 {
+
+	tracker = 0;
+	trackerMouseEmulation = false;
 
 	InitVRBoost();
 
@@ -799,8 +799,9 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetDepthStencilSurface , IDirec
 * manipulation ?
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , BeginScene )
-	if (tracker)
-		tracker->BeginFrame();
+	if (tracker){
+		tracker->beginFrame();
+	}
 
 	if (m_isFirstBeginSceneOfFrame) {
 
@@ -880,8 +881,9 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , EndScene )
 			BRASSA_AdditionalOutput();
 	}
 
-	if (tracker)
-		tracker->EndFrame();
+	if( tracker ){
+		tracker->endFrame();
+	}
 
 	return actual->EndScene();
 }
@@ -1931,8 +1933,10 @@ METHOD_IMPL( void , , D3DProxyDevice, HandleControls )
 		{
 			m_pVRboost_ReleaseAllMemoryRules();
 			m_bVRBoostToggle = !m_bVRBoostToggle;
-			if (tracker->getStatus() > MTS_OK)
-				tracker->resetOrientationAndPosition();
+
+			if( tracker ){
+				tracker->reset();
+			}
 
 			// set the indicator to be drawn
 			m_fVRBoostIndicator = 1.0f;
@@ -1981,7 +1985,10 @@ METHOD_IMPL( void , , D3DProxyDevice, HandleControls )
 			strcpy_s(popup.line3, "HMD Orientation and Position Reset");
 			ShowPopup(popup);
 		}
-		tracker->resetOrientationAndPosition();
+
+		if( tracker ){
+			tracker->reset();
+		}
 		menuVelocity.x+=2.0f;
 	}
 
@@ -2045,10 +2052,9 @@ METHOD_IMPL( void , , D3DProxyDevice, HandleControls )
 		else
 		{
 			m_bfloatingMenu = true;
-			if (tracker->getStatus() >= MTS_OK)
-			{
-				m_fFloatingPitch = tracker->primaryPitch;
-				m_fFloatingYaw = tracker->primaryYaw;			
+			if( tracker ){
+				m_fFloatingPitch = tracker->currentPitch;
+				m_fFloatingYaw   = tracker->currentYaw;	
 			}
 		}
 
@@ -2078,10 +2084,9 @@ METHOD_IMPL( void , , D3DProxyDevice, HandleControls )
 		{
 			m_bfloatingScreen = true;
 			m_bSurpressHeadtracking = true;
-			if (tracker->getStatus() >= MTS_OK)
-			{
-				m_fFloatingScreenPitch = tracker->primaryPitch;
-				m_fFloatingScreenYaw = tracker->primaryYaw;			
+			if( tracker ){
+				m_fFloatingScreenPitch = tracker->currentPitch;
+				m_fFloatingScreenYaw   = tracker->currentYaw;			
 			}
 		}
 
@@ -2098,10 +2103,9 @@ METHOD_IMPL( void , , D3DProxyDevice, HandleControls )
 	{
 		float screenFloatMultiplierY = 0.75;
 		float screenFloatMultiplierX = 0.5;
-		if (tracker->getStatus() >= MTS_OK)
-		{
-			this->stereoView->HeadYOffset = (m_fFloatingScreenPitch - tracker->primaryPitch) * screenFloatMultiplierY;
-			this->stereoView->XOffset = (m_fFloatingScreenYaw - tracker->primaryYaw) * screenFloatMultiplierX;
+		if( tracker ){
+			this->stereoView->HeadYOffset = (m_fFloatingScreenPitch - tracker->currentPitch) * screenFloatMultiplierY;
+			this->stereoView->XOffset     = (m_fFloatingScreenYaw   - tracker->currentYaw  ) * screenFloatMultiplierX;
 			this->stereoView->PostReset();
 		}
 		//m_ViewportIfSquished.X = (int)(vOut.x+centerX-(((m_fFloatingYaw - tracker->primaryYaw) * floatMultiplier) * (180 / PI)));
@@ -2244,134 +2248,126 @@ METHOD_IMPL( void , , D3DProxyDevice, HandleControls )
 	}
 }
 
+
 /**
 * Updates selected motion tracker orientation.
 ***/
 METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
-	if(!tracker)
-	{
-		InitTracker();
-	}
+	if( !tracker ){
+ 		// VRboost rules present ?
+ 		m_VRboostRulesPresent = !config.VRboostRule.isEmpty();
 
-	if(!tracker || tracker->getStatus() < MTS_OK)
-	{
-		if (tracker)
-		{
-			//Populate with popups about the following
-			switch (tracker->getStatus())
-			{
-				case MTS_NOTINIT:
-					{
-						VireioPopup popup(VPT_NO_HMD_DETECTED, VPS_ERROR, 10000);
-						strcpy_s(popup.line3, "HMD NOT INITIALISED");
-						ShowPopup(popup);
-					}
-					break;
-				case MTS_INITIALISING:
-					{
-						VireioPopup popup(VPT_NO_HMD_DETECTED);
-						strcpy_s(popup.line3, "HMD INITIALISING");
-						ShowPopup(popup);
-					}
-					break;
-				case MTS_NOHMDDETECTED:
-					{
-						VireioPopup popup(VPT_NO_HMD_DETECTED, VPS_ERROR, 10000);
-						strcpy_s(popup.line3, (std::string(10, ' ') + "HMD NOT DETECTED").c_str());
-						ShowPopup(popup);
-					}
-					break;
-				case MTS_INITFAIL:
-					{
-						VireioPopup popup(VPT_NO_HMD_DETECTED, VPS_ERROR, 10000);
-						strcpy_s(popup.line3, "HMD INITIALISATION FAILED");
-						ShowPopup(popup);
-					}
-					break;
-				case MTS_DRIVERFAIL:
-					{
-						VireioPopup popup(VPT_NO_HMD_DETECTED, VPS_ERROR, 10000);
-						strcpy_s(popup.line3, "TRACKER DRIVER FAILED TO INITIALISE");
-						ShowPopup(popup);
-					}
-					break;
-				default:
-					break;
-			}
+
+		switch(config.trackerMode){
+		case 10:
+			tracker = VireIO_Create_Tracker_FreeSpace();
+			break;
+
+		case 20:
+			tracker = VireIO_Create_Tracker_FreeTrack();
+			break;
+
+		case 30:
+			tracker = VireIO_Create_Tracker_SharedMemory();
+			break;
+
+		case 40:
+			tracker = VireIO_Create_Tracker_Oculus();
+			break;
+
+		//case 50:
+		//	tracker = VireIO_Create_Tracker_FreeSpace();
+		//	break;
 		}
 
-		tracker->currentRoll = 0;
+
+		if( tracker ){
+
+			OutputDebugStringA("Tracker Got\n");
+ 			OutputDebugStringA("Setting Multipliers\n");
+			trackerMultiplierYaw   = config.yaw_multiplier;
+			trackerMultiplierPitch = config.pitch_multiplier;
+			trackerMultiplierRoll  = config.roll_multiplier;
+
+ 			OutputDebugStringA("Setting Mouse EMu\n");
+			trackerMouseEmulation = ((!m_VRboostRulesPresent) || (hmVRboost==NULL));
+
+			//Only advise calibration for positional tracking on DK2
+			//if (tracker->SupportsPositionTracking()){
+			//	calibrate_tracker = true;
+				//TODO: add new tracker interface
+			//}
+ 		}
+	}
+
+	if( !tracker ){
+		VireioPopup popup(VPT_NO_HMD_DETECTED, VPS_ERROR, 10000);
+		strcpy_s(popup.line3, "TRACKER ERROR");
+		ShowPopup(popup);
 		return;
 	}
+	
+	long prevYaw   = RADIANS_TO_DEGREES( tracker->currentYaw   );
+	long prevPitch = RADIANS_TO_DEGREES( tracker->currentPitch );
 
-	float xPos=0, yPos=0, zPos=0;
-	float yaw=0, pitch=0, roll=0;
+	if( tracker->update() ){
+	
+		if( trackerMouseEmulation ){
+			// Convert yaw, pitch to positive degrees, multiply by multiplier.
+			// (-180.0f...0.0f -> 180.0f....360.0f)
+			// (0.0f...180.0f -> 0.0f...180.0f)
+			long currentYaw   =  fmodf( RADIANS_TO_DEGREES(tracker->currentYaw  ) + 360.0f, 360.0f) * trackerMultiplierYaw;
+			long currentPitch = -fmodf( RADIANS_TO_DEGREES(tracker->currentPitch) + 360.0f, 360.0f) * trackerMultiplierPitch;
 
-	if(tracker->getStatus() >= MTS_OK)
-	{
-		tracker->updateOrientationAndPosition();
+			long deltaYaw   = prevYaw   - currentYaw;
+			long deltaPitch = prevPitch - currentPitch;
 
-		switch (tracker->getStatus())
-		{
-		case MTS_OK:
-			{
-				//Dismiss popups related to issues
-				DismissPopup(VPT_POSITION_TRACKING_LOST);
-				DismissPopup(VPT_NO_HMD_DETECTED);
-				DismissPopup(VPT_NO_ORIENTATION);
-				if (calibrate_tracker)
-				{
-					VireioPopup popup(VPT_CALIBRATE_TRACKER, VPS_INFO, 30000);
-					strcpy_s(popup.line2, "Please Calibrate HMD/Tracker:");
-					strcpy_s(popup.line3, "     -  Sit comfortably with your head facing forwards");
-					strcpy_s(popup.line4, "     -  Press any of the following:");
-					strcpy_s(popup.line5, "        F12 / CTRL+R / L-SHIFT + R");
-					ShowPopup(popup);
-				}
+			if( abs(deltaYaw) > 100 ){
+				deltaYaw = 0;
 			}
-			break;
-		case MTS_NOORIENTATION:
-			{
-				VireioPopup popup(VPT_NO_ORIENTATION, VPS_ERROR);
-				strcpy_s(popup.line3, "HMD ORIENTATION NOT BEING REPORTED");
-				ShowPopup(popup);
+
+			if( abs(deltaPitch) > 100 ){
+				deltaPitch = 0;
 			}
-			break;
-		case MTS_CAMERAMALFUNCTION:
-			{
-				VireioPopup popup(VPT_NO_HMD_DETECTED, VPS_ERROR);
-				strcpy_s(popup.line3, "CAMERA MALFUNCTION - PLEASE WAIT WHILST CAMERA INITIALISES");
-				ShowPopup(popup);
-			}
-			break;
-		case MTS_LOSTPOSITIONAL:
-			{
-				//Show popup regarding lost positional tracking
-				VireioPopup popup(VPT_POSITION_TRACKING_LOST);
-				strcpy_s(popup.line5, "HMD POSITIONAL TRACKING LOST");
-				ShowPopup(popup);
-			}
-			break;
+
+			INPUT i;
+			i.type           = INPUT_MOUSE;
+			i.mi.dx          = deltaYaw;
+			i.mi.dy          = deltaPitch;
+			i.mi.mouseData   = 0;
+			i.mi.dwFlags     = MOUSEEVENTF_MOVE;
+			i.mi.time        = 0;
+			i.mi.dwExtraInfo = 0;
+
+			SendInput( 1 , &i , sizeof(i) );
 		}
+	}
+	
 
-		// update view adjustment class
-		if (tracker->getStatus() >= MTS_OK)
-		{
-			if (m_spShaderViewAdjustment->RollEnabled()) {
-				m_spShaderViewAdjustment->UpdateRoll(tracker->currentRoll);
-			}
+	if( calibrate_tracker ){
+		VireioPopup popup(VPT_CALIBRATE_TRACKER, VPS_INFO, 30000);
+		strcpy_s(popup.line2, "Please Calibrate HMD/Tracker:");
+		strcpy_s(popup.line3, "     -  Sit comfortably with your head facing forwards");
+		strcpy_s(popup.line4, "     -  Press any of the following:");
+		strcpy_s(popup.line5, "        F12 / CTRL+R / L-SHIFT + R");
+		ShowPopup(popup);
+	}
 
-			m_spShaderViewAdjustment->UpdatePitchYaw(tracker->primaryPitch, tracker->primaryYaw);
+	if (m_spShaderViewAdjustment->RollEnabled()) {
+		m_spShaderViewAdjustment->UpdateRoll(tracker->currentRoll);
+	}
 
-			if (m_bPosTrackingToggle && tracker->getStatus() != MTS_LOSTPOSITIONAL)
-			{
-				m_spShaderViewAdjustment->UpdatePosition(tracker->primaryYaw, tracker->primaryPitch, tracker->primaryRoll,
-					(VRBoostValue[VRboostAxis::CameraTranslateX] / 20.0f) + tracker->primaryX, 
-					(VRBoostValue[VRboostAxis::CameraTranslateY] / 20.0f) + tracker->primaryY,
-					(VRBoostValue[VRboostAxis::CameraTranslateZ] / 20.0f) + tracker->primaryZ,
-					config.position_multiplier);
-			}
-		}
+	m_spShaderViewAdjustment->UpdatePitchYaw( tracker->currentPitch , tracker->currentYaw );
+
+	if( m_bPosTrackingToggle ){
+		m_spShaderViewAdjustment->UpdatePosition(
+			tracker->currentYaw,
+			tracker->currentPitch,
+			tracker->currentRoll,
+			(VRBoostValue[VRboostAxis::CameraTranslateX] / 20.0f) + tracker->currentX, 
+			(VRBoostValue[VRboostAxis::CameraTranslateY] / 20.0f) + tracker->currentY,
+			(VRBoostValue[VRboostAxis::CameraTranslateZ] / 20.0f) + tracker->currentZ,
+			config.position_multiplier);
 	}
 		
 	m_spShaderViewAdjustment->ComputeViewTransforms();
@@ -2380,7 +2376,7 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 
 	// update vrboost, if present, tracker available and shader count higher than the minimum
 	if ((!m_bSurpressHeadtracking) && (!m_bForceMouseEmulation) && (hmVRboost) && (m_VRboostRulesPresent) 
-		&& (tracker->getStatus() >= MTS_OK) && (m_bVRBoostToggle)
+		&& (m_bVRBoostToggle)
 		&& (m_VertexShaderCountLastFrame>(UINT)config.VRboostMinShaderCount)
 		&& (m_VertexShaderCountLastFrame<(UINT)config.VRboostMaxShaderCount) )
 	{
@@ -2389,9 +2385,10 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 		bool createNSave = false;
 
 		// apply VRboost memory rules if present
-		VRBoostValue[VRboostAxis::TrackerYaw] = tracker->primaryYaw;
-		VRBoostValue[VRboostAxis::TrackerPitch] = tracker->primaryPitch;
-		VRBoostValue[VRboostAxis::TrackerRoll] = tracker->primaryRoll;
+		VRBoostValue[VRboostAxis::TrackerYaw]   = tracker->currentYaw;
+		VRBoostValue[VRboostAxis::TrackerPitch] = tracker->currentPitch;
+		VRBoostValue[VRboostAxis::TrackerRoll]  = tracker->currentRoll;
+
 		if (m_pVRboost_ApplyMemoryRules(MAX_VRBOOST_VALUES, (float**)&VRBoostValue) != S_OK)
 		{
 			VRBoostStatus.VRBoost_ApplyRules = false;
@@ -4151,9 +4148,9 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_Settings )
 			// reset multipliers
 			if (entryID == RESET_MULT)
 			{
-				tracker->multiplierYaw = 25.0f;
-				tracker->multiplierPitch = 25.0f;
-				tracker->multiplierRoll = 1.0f;
+				trackerMultiplierYaw   = 25.0f;
+				trackerMultiplierPitch = 25.0f;
+				trackerMultiplierRoll  = 1.0f;
 				menuVelocity.x += 4.0f;
 			}
 
@@ -4170,11 +4167,13 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_Settings )
 			{
 				m_bForceMouseEmulation = !m_bForceMouseEmulation;
 
-				if ((m_bForceMouseEmulation) && (tracker->getStatus() >= MTS_OK) && (!m_bSurpressHeadtracking))
-					tracker->setMouseEmulation(true);
+				if( tracker && m_bForceMouseEmulation && !m_bSurpressHeadtracking ){
+					trackerMouseEmulation = true;
+				}
 
-				if ((!m_bForceMouseEmulation) && (hmVRboost) && (m_VRboostRulesPresent)  && (tracker->getStatus() >= MTS_OK))
-					tracker->setMouseEmulation(false);
+				if( tracker && !m_bForceMouseEmulation && hmVRboost && m_VRboostRulesPresent ){
+					trackerMouseEmulation = false;
+				}
 
 				menuVelocity.x += 4.0f;
 			}
@@ -4185,8 +4184,9 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_Settings )
 				{
 					m_pVRboost_ReleaseAllMemoryRules();
 					m_bVRBoostToggle = !m_bVRBoostToggle;
-					if (tracker->getStatus() >= MTS_OK)
-						tracker->resetOrientationAndPosition();
+					if( tracker ){
+						tracker->reset();
+					}
 					menuVelocity.x+=2.0f;
 				}
 			}
@@ -4307,27 +4307,27 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_Settings )
 			if (entryID == YAW_MULT)
 			{
 				if (controls.xInputState.Gamepad.sThumbLX != 0 && !controls.Key_Down(VK_LEFT) && !controls.Key_Down(0x4A))
-					tracker->multiplierYaw += 0.5f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
+					trackerMultiplierYaw += 0.5f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
 				else
-					tracker->multiplierYaw -= 0.5f;
+					trackerMultiplierYaw -= 0.5f;
 				menuVelocity.x -= 0.7f;
 			}
 			// pitch multiplier
 			if (entryID == PITCH_MULT)
 			{
 				if (controls.xInputState.Gamepad.sThumbLX != 0 && !controls.Key_Down(VK_LEFT) && !controls.Key_Down(0x4A))
-					tracker->multiplierPitch += 0.5f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
+					trackerMultiplierPitch += 0.5f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
 				else
-					tracker->multiplierPitch -= 0.5f;
+					trackerMultiplierPitch -= 0.5f;
 				menuVelocity.x -= 0.7f;
 			}
 			// roll multiplier
 			if (entryID == ROLL_MULT)
 			{
 				if (controls.xInputState.Gamepad.sThumbLX != 0 && !controls.Key_Down(VK_LEFT) && !controls.Key_Down(0x4A))
-					tracker->multiplierRoll += 0.05f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
+					trackerMultiplierRoll += 0.05f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
 				else
-					tracker->multiplierRoll -= 0.05f;
+					trackerMultiplierRoll -= 0.05f;
 				menuVelocity.x -= 0.7f;
 			}
 
@@ -4336,8 +4336,9 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_Settings )
 			{
 				m_bForceMouseEmulation = false;
 
-				if ((hmVRboost) && (m_VRboostRulesPresent) && (tracker->getStatus() >= MTS_OK))
-					tracker->setMouseEmulation(false);
+				if( tracker && hmVRboost && m_VRboostRulesPresent ){
+					trackerMouseEmulation = true;
+				}
 
 				menuVelocity.x-=2.0f;
 			}
@@ -4396,35 +4397,34 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_Settings )
 			if (entryID == YAW_MULT)
 			{
 				if (controls.xInputState.Gamepad.sThumbLX != 0  && !controls.Key_Down(VK_RIGHT) && !controls.Key_Down(0x4C))
-					tracker->multiplierYaw += 0.5f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
+					trackerMultiplierYaw += 0.5f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
 				else
-					tracker->multiplierYaw += 0.5f;
+					trackerMultiplierYaw += 0.5f;
 				menuVelocity.x += 0.7f;
 			}
 			// pitch multiplier
 			if (entryID == PITCH_MULT)
 			{
 				if (controls.xInputState.Gamepad.sThumbLX != 0  && !controls.Key_Down(VK_RIGHT) && !controls.Key_Down(0x4C))
-					tracker->multiplierPitch += 0.5f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
+					trackerMultiplierPitch += 0.5f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
 				else
-					tracker->multiplierPitch += 0.5f;
+					trackerMultiplierPitch += 0.5f;
 				menuVelocity.x += 0.7f;
 			}
 			// roll multiplier
 			if (entryID == ROLL_MULT)
 			{
 				if (controls.xInputState.Gamepad.sThumbLX != 0  && !controls.Key_Down(VK_RIGHT) && !controls.Key_Down(0x4C))
-					tracker->multiplierRoll += 0.05f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
+					trackerMultiplierRoll += 0.05f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
 				else
-					tracker->multiplierRoll += 0.05f;
+					trackerMultiplierRoll += 0.05f;
 				menuVelocity.x += 0.7f;
 			}
 			// mouse emulation
 			if (entryID == FORCE_MOUSE_EMU)
 			{
-				if(tracker->getStatus() >= MTS_OK)
-				{
-					tracker->setMouseEmulation(true);
+				if( tracker ){
+					trackerMouseEmulation = true;
 					m_bForceMouseEmulation = true;
 				}
 
@@ -4481,13 +4481,13 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_Settings )
 		menuHelperRect.top += MENU_ITEM_SEPARATION;
 		DrawTextShadowed(hudFont, hudMainMenu, "Stereo Screenshots", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
 		menuHelperRect.top += MENU_ITEM_SEPARATION;
-		sprintf_s(vcString,"Yaw multiplier : %g", RoundBrassaValue(tracker->multiplierYaw));
+		sprintf_s(vcString,"Yaw multiplier : %g", RoundBrassaValue(trackerMultiplierYaw));
 		DrawTextShadowed(hudFont, hudMainMenu, vcString, -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
 		menuHelperRect.top += MENU_ITEM_SEPARATION;
-		sprintf_s(vcString,"Pitch multiplier : %g", RoundBrassaValue(tracker->multiplierPitch));
+		sprintf_s(vcString,"Pitch multiplier : %g", RoundBrassaValue(trackerMultiplierPitch));
 		DrawTextShadowed(hudFont, hudMainMenu, vcString, -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
 		menuHelperRect.top += MENU_ITEM_SEPARATION;
-		sprintf_s(vcString,"Roll multiplier : %g", RoundBrassaValue(tracker->multiplierRoll));
+		sprintf_s(vcString,"Roll multiplier : %g", RoundBrassaValue(trackerMultiplierRoll));
 		DrawTextShadowed(hudFont, hudMainMenu, vcString, -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
 		menuHelperRect.top += MENU_ITEM_SEPARATION;
 		DrawTextShadowed(hudFont, hudMainMenu, "Reset Multipliers", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
@@ -4594,7 +4594,9 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_PosTracking )
 		// reset orientation
 		if (entryID == RESET_HMD)
 		{
-			tracker->resetOrientationAndPosition();
+			if( tracker ){
+				tracker->reset();
+			}
 			menuVelocity.x += 4.0f;
 		}
 
@@ -4919,9 +4921,9 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_UpdateBorder )
 * Updates the current config based on the current device settings.
 ***/
 METHOD_IMPL( void , , D3DProxyDevice , BRASSA_UpdateConfigSettings )
-	config.roll_multiplier = tracker->multiplierRoll;
-	config.yaw_multiplier = tracker->multiplierYaw;
-	config.pitch_multiplier = tracker->multiplierPitch;
+	config.roll_multiplier = trackerMultiplierRoll;
+	config.yaw_multiplier = trackerMultiplierYaw;
+	config.pitch_multiplier = trackerMultiplierPitch;
 	config.YOffset = stereoView->YOffset;
 	config.IPDOffset = stereoView->IPDOffset;
 	config.swap_eyes = stereoView->swapEyes;
@@ -5154,9 +5156,9 @@ METHOD_IMPL( void , , D3DProxyDevice , DisplayCurrentPopup )
 
 		if (activePopup.popupType == VPT_STATS && config.isHmd )
 		{
-			sprintf_s(activePopup.line1, "HMD Description: %s", tracker->GetTrackerDescription()); 
-			sprintf_s(activePopup.line2, "Yaw: %.3f Pitch: %.3f Roll: %.3f", tracker->primaryYaw, tracker->primaryPitch, tracker->primaryRoll); 
-			sprintf_s(activePopup.line3, "X: %.3f Y: %.3f Z: %.3f", tracker->primaryX, tracker->primaryY, tracker->primaryZ); 
+			sprintf_s(activePopup.line1, "HMD Description: %s", tracker->name.toLocal8Bit().data() ); 
+			sprintf_s(activePopup.line2, "Yaw: %.3f Pitch: %.3f Roll: %.3f", tracker->currentYaw, tracker->currentPitch, tracker->currentRoll); 
+			sprintf_s(activePopup.line3, "X: %.3f Y: %.3f Z: %.3f", tracker->currentX, tracker->currentY, tracker->currentZ); 
 			sprintf_s(activePopup.line4, "VRBoost Active: %s     Rules Loaded: %s   Applied: %s", 
 				(VRBoostStatus.VRBoost_Active ? "TRUE" : "FALSE"), 
 				(VRBoostStatus.VRBoost_LoadRules ? "TRUE" : "FALSE"), 
@@ -5484,14 +5486,14 @@ METHOD_IMPL( void , , D3DProxyDevice , SetGUIViewport )
 	float floatMultiplier = 4;
 	int originalX = (int)(vOut.x+centerX);
 	int originalY = (int)(vOut.y+centerY);
-	if(m_bfloatingMenu && (tracker->getStatus() >= MTS_OK))
+	if(m_bfloatingMenu && tracker )
 	{
 		/*char buf[64];
 		LPCSTR psz = NULL;
 		sprintf_s(buf, "yaw: %f, pitch: %f\n", tracker->primaryYaw, tracker->primaryPitch);
 		psz = buf;*/		
-		m_ViewportIfSquished.X = (int)(vOut.x+centerX-(((m_fFloatingYaw - tracker->primaryYaw) * floatMultiplier) * (180 / PI)));
-		m_ViewportIfSquished.Y = (int)(vOut.y+centerY-(((m_fFloatingPitch - tracker->primaryPitch) * floatMultiplier) * (180 / PI)));
+		m_ViewportIfSquished.X = (int)(vOut.x+centerX-(((m_fFloatingYaw - tracker->currentYaw) * floatMultiplier) * (180 / M_PI)));
+		m_ViewportIfSquished.Y = (int)(vOut.y+centerY-(((m_fFloatingPitch - tracker->currentPitch) * floatMultiplier) * (180 / M_PI)));
 	}
 	else
 	{
@@ -5629,35 +5631,7 @@ METHOD_IMPL( bool , , D3DProxyDevice , InitBrassa )
 	return true;
 }
 
-/*
-  * Initializes the tracker, setting the tracker initialized status.
-  * @return true if tracker was initialized, false otherwise
-  */
-METHOD_IMPL( bool , , D3DProxyDevice , InitTracker )
- 	// VRboost rules present ?
- 	if (config.VRboostRule != "") m_VRboostRulesPresent = true; else m_VRboostRulesPresent = false;
- 
- 	OutputDebugStringA("GB - Try to init Tracker\n");
-	tracker.reset(MotionTrackerFactory::Get(config));
-	if (tracker && tracker->getStatus() >= MTS_OK)
- 	{
-		OutputDebugStringA("Tracker Got\n");
- 		OutputDebugStringA("Setting Multipliers\n");
-		tracker->setMultipliers(config.yaw_multiplier, config.pitch_multiplier, config.roll_multiplier);
- 		OutputDebugStringA("Setting Mouse EMu\n");
-		tracker->setMouseEmulation((!m_VRboostRulesPresent) || (hmVRboost==NULL));
 
-		//Only advise calibration for positional tracking on DK2
-		if (tracker->SupportsPositionTracking()){
-			calibrate_tracker = true;
-			//TODO: add new tracker interface
-		}
-
-		return true;
- 	}
-
- 	return false;
- }
 
 
 

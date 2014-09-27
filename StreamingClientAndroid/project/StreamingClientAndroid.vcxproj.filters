@@ -4,9 +4,6 @@
     <ClCompile Include="..\jni\decoder.cpp">
       <Filter>jni</Filter>
     </ClCompile>
-    <ClCompile Include="..\jni\main - Copy.cpp">
-      <Filter>jni</Filter>
-    </ClCompile>
     <ClCompile Include="..\jni\main.cpp">
       <Filter>jni</Filter>
     </ClCompile>

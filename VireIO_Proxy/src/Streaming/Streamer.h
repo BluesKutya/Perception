@@ -13,7 +13,7 @@ public:
 	Streamer ( cConfig& c );
 	~Streamer( );
 
-	void send ( IDirect3DDevice9*  device  );
+	void send             ( IDirect3DDevice9*  device  );
 
 private:
 	IDirect3DSurface9* surf;

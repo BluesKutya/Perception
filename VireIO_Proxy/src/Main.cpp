@@ -102,41 +102,36 @@ BOOL APIENTRY DllMain( HINSTANCE dll , DWORD fdwReason, LPVOID ){
 		return TRUE;
 	}
 
-
-
 	AllocConsole();
 	freopen("CONOUT$", "w", stdout);
-
 
 	char exe_path[MAX_PATH];
 	char dll_path[MAX_PATH];
 
 	GetModuleFileNameA( 0   , exe_path , MAX_PATH );
 	GetModuleFileNameA( dll , dll_path , MAX_PATH );
-
 	
 	config.vireioDir = QFileInfo(dll_path).absolutePath() + "/../";
 
 	if( !config.load( config.getMainConfigFile() ) ){
 		printf( "virieo: load general settings failed\n" );
-		return FALSE;
+		return TRUE;
 	}
 
 	if( !config.load( config.getGameConfigFile(exe_path) ) ){
 		printf( "virieo: load game settings failed\n" );
-		return FALSE;
+		return TRUE;
 	}
 
 	if( !config.loadDevice( ) ){
 		printf( "virieo: load device settings failed \n" );
-		return FALSE;
+		return TRUE;
 	}
 
 	if( !config.loadProfile( ) ){
 		printf( "virieo: load profile settings failed\n" );
-		return FALSE;
+		return TRUE;
 	}
-
 
 	//load game settings again, in case if there any overrides for profile settings
 	config.load( config.getGameConfigFile(exe_path) );

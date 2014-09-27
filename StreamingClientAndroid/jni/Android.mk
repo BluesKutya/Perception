@@ -23,14 +23,18 @@ LOCAL_SRC_FILES        += network.cpp
 LOCAL_SRC_FILES        += sensor.cpp
 LOCAL_LDLIBS           := -llog -landroid -lEGL -lGLESv1_CM
 LOCAL_STATIC_LIBRARIES := android_native_app_glue
-LOCAL_C_INCLUDES       += D:/Dev/android/source/platform/platform/frameworks/base/include
-LOCAL_C_INCLUDES       += D:/Dev/android/source/platform/platform/frameworks/base/include/media
-LOCAL_C_INCLUDES       += D:/Dev/android/source/platform/platform/frameworks/base/include/media/stagefright
-LOCAL_C_INCLUDES       += D:/Dev/android/source/platform/platform/frameworks/base/include/media/stagefright/openmax
-LOCAL_C_INCLUDES       += D:/Dev/android/source/platform/platform/system/core/include
-LOCAL_C_INCLUDES       += D:/Dev/android/source/platform/platform/hardware/libhardware/include
+
+LOCAL_C_INCLUDES       += D:/Dev/android/src/system/frameworks/av/include
+LOCAL_C_INCLUDES       += D:/Dev/android/src/system/frameworks/av/media/libstagefright/include
+LOCAL_C_INCLUDES       += D:/Dev/android/src/system/system/core/include
+LOCAL_C_INCLUDES       += D:/Dev/android/src/system/frameworks/native/include
+LOCAL_C_INCLUDES       += D:/Dev/android/src/system/hardware/libhardware/include
+LOCAL_C_INCLUDES       += D:/Dev/android/src/system/frameworks/native/include/media/openmax
+
 LOCAL_CFLAGS           += -Wno-multichar
-LOCAL_LDLIBS           += -LC:/Dev/android/lib -lstagefright -lutils -lui -lcutils
+
+LOCAL_LDLIBS           += -LD:/Dev/android/src/system/lib -LD:/Dev/android/src/system/lib/hw -lstagefright -lutils -lui -lcutils
+
 
 include $(BUILD_SHARED_LIBRARY)
 

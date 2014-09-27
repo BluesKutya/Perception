@@ -25,6 +25,7 @@ cMainWindow::cMainWindow( ){
 	ui.trackerMode->addItem( "FreeTrack"             , 20 );
 	ui.trackerMode->addItem( "Shared Memory Tracker" , 30 );
 	ui.trackerMode->addItem( "OculusTrack"           , 40 );
+	ui.trackerMode->addItem( "UDP android tracker"   , 50 );
 
 
 

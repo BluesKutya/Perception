@@ -1,7 +1,6 @@
 #include <binder/ProcessState.h>
 #include <media/stagefright/MetaData.h>
 #include <media/stagefright/MediaBufferGroup.h>
-#include <media/stagefright/MediaDebug.h>
 #include <media/stagefright/MediaDefs.h>
 #include <media/stagefright/OMXClient.h>
 #include <media/stagefright/OMXCodec.h>
@@ -134,7 +133,7 @@ void decoder_decode( ){
 			//buffer->meta_data()->findInt64( kKeyTime , &timeUs );
 			//native_window_set_buffers_timestamp( app->window , timeUs * 1000 );
 
-			r = app->window->queueBuffer( app->window , buffer->graphicBuffer()->getNativeBuffer() );
+			r = app->window->queueBuffer( app->window , buffer->graphicBuffer()->getNativeBuffer() , -1 );
 			if( r ){
 				log("queueBuffer failed %d" , r );
 				return;

@@ -346,7 +346,12 @@ public:
 	* The chosen motion tracker.
 	* @see MotionTracker
 	**/
-	std::unique_ptr<MotionTracker> tracker;
+	cTracker* tracker;
+	bool      trackerMouseEmulation;
+	float     trackerMultiplierYaw;
+	float     trackerMultiplierPitch;
+	float     trackerMultiplierRoll;
+
 	/**
 	* Schneider-Hicks Optical Calibration Tool GUI mode.
 	**/
@@ -692,7 +697,6 @@ private:
 	float   RoundBrassaValue(float val);
 	bool	InitBrassa();
 	bool	InitVRBoost();
-	bool	InitTracker();
 
 	//Calculate FPS, called every Present
 	float fps;

@@ -12,9 +12,9 @@ void decoder_decode( );
 
 void drawer_render_yuv420( int width , int height , MediaBuffer* buffer );
 
-void sensor_init( );
-void sensor_free( );
-void sensor_poll( );
+void sensor_init  ( );
+void sensor_free  ( );
+void sensor_poll  ( );
 
 void network_init( );
 void network_free( );

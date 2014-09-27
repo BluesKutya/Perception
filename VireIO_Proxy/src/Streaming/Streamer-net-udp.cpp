@@ -43,13 +43,13 @@ void Streamer::net_send( void* buffer , int size ){
 		return;
 	}
 
-	/*if( !connected ){
+	if( !connected ){
 		if( connect( sock , (sockaddr*)&addr , sizeof(addr) ) == 0 ){
 			connected = true;
 		}else{
 			return;
 		}
-	}*/
+	}
 
 
 	int pos = 0;
@@ -66,8 +66,8 @@ void Streamer::net_send( void* buffer , int size ){
 			}
 		}
 
-		int ret = sendto( sock , ((char*)buffer)+pos , len , 0 , (sockaddr*)&addr , sizeof(addr) );
-		//int ret = ::send( sock , ((char*)buffer)+pos , len , 0 );
+		//int ret = sendto( sock , ((char*)buffer)+pos , len , 0 , (sockaddr*)&addr , sizeof(addr) );
+		int ret = ::send( sock , ((char*)buffer)+pos , len , 0 );
 
 		if( ret < 0 ){
 			return;
