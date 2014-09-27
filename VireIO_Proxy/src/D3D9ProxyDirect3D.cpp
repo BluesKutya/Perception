@@ -169,7 +169,7 @@ METHOD_IMPL( HRESULT  , WINAPI , D3D9ProxyDirect3D , ProxyCreateDevice , UINT , 
 	if( config.game_type == D3DProxyDevice::DEBUG_LOG_FILE ){
 		newDev = new D3DProxyDeviceDebug(dev, devEx , this , config );
 	}else
-	if( config.game_type > 10000 ){
+	if( config.shaderAnalyzer ){
 		newDev = new DataGatherer(dev, devEx , this , config );
 	}else{
 		newDev = new D3DProxyDevice(dev, devEx , this , config );

@@ -36,8 +36,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 * Almost empty constructor.
 ***/
 GameHandler::GameHandler() :
-	m_ShaderModificationRepository(nullptr),
-	m_gameType(0)
+	m_ShaderModificationRepository(nullptr)
 {
 
 }
@@ -80,8 +79,6 @@ bool GameHandler::Load( cConfig& cfg, std::shared_ptr<ViewAdjustment> spShaderVi
 		// We call this success as we have successfully loaded nothing. We assume 'no rules' is intentional
 	}
 
-	// set the internal game type
-	m_gameType = cfg.game_type;
 
 	return true;
 }
@@ -115,7 +112,7 @@ bool GameHandler::Save(cConfig& cfg, std::shared_ptr<ViewAdjustment> spShaderVie
 ***/
 bool GameHandler::ShouldDuplicateRenderTarget(UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality,BOOL Lockable, bool isSwapChainBackBuffer)
 {
-	switch(m_gameType)
+	switch(config.game_type)
 	{
 	case D3DProxyDevice::ProxyTypes::SOURCE:
 		if (isSwapChainBackBuffer) {
@@ -213,7 +210,7 @@ bool GameHandler::ShouldDuplicateRenderTarget(UINT Width, UINT Height, D3DFORMAT
 ***/
 bool GameHandler::ShouldDuplicateDepthStencilSurface(UINT Width,UINT Height,D3DFORMAT Format,D3DMULTISAMPLE_TYPE MultiSample,DWORD MultisampleQuality,BOOL Discard)
 {
-	switch(m_gameType)
+	switch(config.game_type)
 	{
 	case D3DProxyDevice::ProxyTypes::SOURCE:
 		return Width != Height;
@@ -290,7 +287,7 @@ bool GameHandler::ShouldDuplicateDepthStencilSurface(UINT Width,UINT Height,D3DF
 ***/
 bool GameHandler::ShouldDuplicateTexture(UINT Width,UINT Height,UINT Levels,DWORD Usage, D3DFORMAT Format,D3DPOOL Pool)
 {
-	switch(m_gameType)
+	switch(config.game_type)
 	{
 	case D3DProxyDevice::ProxyTypes::SOURCE:
 		if ((Usage & D3DUSAGE_DEPTHSTENCIL) == D3DUSAGE_DEPTHSTENCIL)
@@ -405,7 +402,7 @@ bool GameHandler::ShouldDuplicateTexture(UINT Width,UINT Height,UINT Levels,DWOR
 ***/
 bool GameHandler::ShouldDuplicateCubeTexture(UINT EdgeLength, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool)
 {
-	switch(m_gameType)
+	switch(config.game_type)
 	{
 	case D3DProxyDevice::ProxyTypes::SOURCE:
 		return false;

@@ -83,10 +83,6 @@ public:
 	***/
 	bool initialized;
 	/**
-	* Type of the game or engine as configured in cfg file.
-	***/
-	int game_type;
-	/**
 	* Should be used by OculusRiftView and D3DProxyDevice.
 	***/
 	float DistortionScale;	

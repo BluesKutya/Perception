@@ -38,6 +38,8 @@ bool cConfig::load( const QString& file ){
 	props.get( &streamingCodec    , "streamingCodec"    );
 	props.get( &streamingBitrate  , "streamingBitrate"  );
 	props.get( &showNotifications , "showNotifications" );
+	props.get( &shaderAnalyzer    , "shaderAnalyzer"    );
+	
 
 	//device settings
 	props.get( &shader                        , "shader"                        );
@@ -153,6 +155,7 @@ bool cConfig::save( const QString& file , int flags ){
 		props.set( &streamingCodec    , "streamingCodec"    );
 		props.set( &streamingBitrate  , "streamingBitrate"  );
 		props.set( &showNotifications , "showNotifications" );
+		props.set( &shaderAnalyzer    , "shaderAnalyzer"    );	
 	}
 
 	if( flags & SAVE_GAME ){

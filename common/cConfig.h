@@ -19,6 +19,7 @@ public:
 	QString streamingCodec;
 	int     streamingBitrate;
 	bool    showNotifications;
+	bool    shaderAnalyzer;
 
 	//game/rprofile settings
 	QString exePath;

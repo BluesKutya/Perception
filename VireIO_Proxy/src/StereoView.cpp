@@ -58,7 +58,6 @@ StereoView::StereoView(cConfig& cfg ) :
 	YOffset = config.YOffset;
 	IPDOffset = config.IPDOffset;
 	XOffset = 0;
-	game_type = config.game_type;
 	swapEyes = config.swap_eyes;
 
 	// set all member pointers to NULL to prevent uninitialized objects being used
@@ -82,9 +81,8 @@ StereoView::StereoView(cConfig& cfg ) :
 	sb = NULL;
 
 	// set behavior accordingly to game type
-	int gameType = config.game_type;
-	if (gameType>10000) gameType-=10000;
-	switch(gameType)
+
+	switch(config.game_type)
 	{
 	case D3DProxyDevice::FIXED:
 		howToSaveRenderStates = HowToSaveRenderStates::STATE_BLOCK;
@@ -619,8 +617,8 @@ void StereoView::SetState()
 
 	//m_pActualDevice->SetRenderState(D3DRS_SRGBWRITEENABLE, 0);  // will cause visual errors in HL2
 
-	if(game_type == D3DProxyDevice::SOURCE_L4D ||
-		game_type == D3DProxyDevice::SOURCE_ESTER)
+	if( config.game_type == D3DProxyDevice::SOURCE_L4D ||
+		config.game_type == D3DProxyDevice::SOURCE_ESTER)
 	{
 		m_pActualDevice->SetSamplerState(0, D3DSAMP_SRGBTEXTURE, ssSrgb);
 		m_pActualDevice->SetSamplerState(1, D3DSAMP_SRGBTEXTURE, ssSrgb);

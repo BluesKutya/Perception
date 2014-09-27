@@ -2321,6 +2321,7 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 
 	printf("tracke update...\n");
 	if( tracker->update() ){
+		tracker->currentRoll *= trackerMultiplierRoll;
 
 		printf("%12.8f %12.8f %12.8f\n" , tracker->currentYaw , tracker->currentPitch , tracker->currentRoll );
 
@@ -2957,7 +2958,7 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA )
 ***/
 METHOD_IMPL( void , , D3DProxyDevice , BRASSA_MainMenu )
 	UINT menuEntryCount = 11;
-	if (config.game_type > 10000) menuEntryCount++;
+	if (config.shaderAnalyzer ) menuEntryCount++;
 
 	menuHelperRect.left = 0;
 	menuHelperRect.top = 0;
@@ -2965,7 +2966,7 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_MainMenu )
 	UINT entryID;
 	BRASSA_NewFrame(entryID, menuEntryCount);
 	UINT borderSelection = entryID;
-	if (config.game_type <= 10000)
+	if (!config.shaderAnalyzer)
 		entryID++;
 
 	/**
@@ -3119,7 +3120,7 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_MainMenu )
 		Clear(1, &rect, D3DCLEAR_TARGET, D3DCOLOR_ARGB(255,255,128,128), 0, 0);
 
 		menuHelperRect.top += 50;  menuHelperRect.left += 250;
-		if (config.game_type > 10000)
+		if (config.shaderAnalyzer)
 		{
 			DrawTextShadowed(hudFont, hudMainMenu, "Activate BRASSA (Shader Analyzer)\n", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
 			menuHelperRect.top += MENU_ITEM_SEPARATION;
@@ -5018,9 +5019,7 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_UpdateDeviceSettings )
 	VRBoostValue[VRboostAxis::ConstantValue3] = config.ConstantValue3;
 
 	// set behavior accordingly to game type
-	int gameType = config.game_type;
-	if (gameType>10000) gameType-=10000;
-	switch(gameType)
+	switch(config.game_type)
 	{
 	case D3DProxyDevice::FIXED:
 		m_deviceBehavior.whenToHandleHeadTracking = DeviceBehavior::WhenToDo::BEGIN_SCENE;

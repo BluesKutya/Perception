@@ -31,18 +31,16 @@ cMainWindow::cMainWindow( ){
 
 	ui.stereoMode      ->setCurrentIndex( ui.stereoMode ->findText(config.stereoDevice)  );
 	ui.trackerMode     ->setCurrentIndex( ui.trackerMode->findData(config.trackerMode) );
-
 	ui.logToConsole    ->setChecked     ( config.logToConsole      );
 	ui.logToFile       ->setChecked     ( config.logToFile         );
 	ui.logHijack       ->setChecked     ( config.logHijack         );
-	
 	ui.pauseOnLaunch   ->setChecked     ( config.pauseOnLaunch     );
-
 	ui.streamingEnable ->setChecked     ( config.streamingEnable   );
 	ui.streamingAddress->setText        ( config.streamingAddress  );
 	ui.streamingPort   ->setValue       ( config.streamingPort     );
 	ui.streamingCodec  ->setCurrentText ( config.streamingCodec    );
 	ui.streamingBitrate->setValue       ( config.streamingBitrate  );
+	ui.shaderAnalyzer  ->setChecked     ( config.shaderAnalyzer    );
 
 	LoadGames();
 }
@@ -76,6 +74,7 @@ void cMainWindow::on_saveSettings_clicked(){
 	config.streamingPort     = ui.streamingPort    ->value();
 	config.streamingCodec    = ui.streamingCodec   ->currentText();
 	config.streamingBitrate  = ui.streamingBitrate ->value();
+	config.shaderAnalyzer    = ui.shaderAnalyzer     ->isChecked();
 
 	config.save( config.getMainConfigFile() , config.SAVE_GENERAL );
 }
