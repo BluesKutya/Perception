@@ -129,7 +129,6 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 {
 
 	tracker = 0;
-	trackerMouseEmulation = false;
 
 	InitVRBoost();
 
@@ -219,6 +218,86 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 
 	BRASSA_UpdateDeviceSettings();
 	OnCreateOrRestore();
+
+	//credits will go to world-scale menu, or maybe to startup screen!
+	//"Brown Reischl and Schneider Settings Analyzer (B.R.A.S.S.A.)."
+
+
+	oldMenu = false;
+
+	cMenuItem* i;
+	mainMenu.root.addCheckbox( "old menu" , &oldMenu                );
+	mainMenu.root.addSubmenu( "Shader analyzer"                 );
+	mainMenu.root.addSubmenu( "World-scale calibration"         );
+	mainMenu.root.addSubmenu( "Convergence adjustment"          );
+
+
+	i = mainMenu.root.addSubmenu( "Image settings" );
+	i->addCheckbox( "Swap eyes"         , &stereoView->swapEyes  );
+
+	i->addSpinner ( "IPD offset"        , &stereoView->IPDOffset        , 0.001 );
+	//add stereoView->PostReset();
+
+	i->addSpinner ( "Distortion scale"  , &stereoView->DistortionScale  , 0.01 );
+	//add stereoView->PostReset();
+	
+	i->addCheckbox( "VRboost"        , &m_bVRBoostToggle );
+	//				if (hmVRboost!=NULL)
+	//			{
+	//				m_pVRboost_ReleaseAllMemoryRules();
+	//				m_bVRBoostToggle = !m_bVRBoostToggle;
+	//				if( tracker ){
+	//					tracker->reset();
+	//				}
+	//				menuVelocity.x+=2.0f;
+	//			}
+
+	i->addAction ( "Screenshot" );
+
+
+
+	i = mainMenu.root.addSubmenu( "VRBoost values" );
+	//call BRASSA_UpdateConfigSettings(); on return
+	i->addSpinner( "World FOV"                 , VRBoostValue + 24 , 0.01);
+	i->addSpinner( "Player FOV"                , VRBoostValue + 25 , 0.01);
+	i->addSpinner( "Far plane FOV"             , VRBoostValue + 26 , 0.01);
+	i->addSpinner( "Camera translate X"        , VRBoostValue + 27 , 0.01);
+	i->addSpinner( "Camera translate Y"        , VRBoostValue + 28 , 0.01);
+	i->addSpinner( "Camera tanslate Z"        , VRBoostValue + 29 , 0.01);
+	i->addSpinner( "Camera distance"           , VRBoostValue + 30 , 0.01);
+	i->addSpinner( "Camera zoom"               , VRBoostValue + 31 , 0.01);
+	i->addSpinner( "Camera horizon adjustment" , VRBoostValue + 32 , 0.01);
+	i->addSpinner( "Constant value 1"          , VRBoostValue + 33 , 0.01);
+	i->addSpinner( "Constant value 2"          , VRBoostValue + 34 , 0.01);
+	i->addSpinner( "Constant value 2"          , VRBoostValue + 35 , 0.01);
+
+
+	i = mainMenu.root.addSubmenu( "Tracker Configuration" );
+	i->addSpinner ( "Yaw   multiplier" , &config.trackerYawMultiplier   , 0.05 );
+	i->addSpinner ( "Pitch multiplier" , &config.trackerPitchMultiplier , 0.05 );
+	i->addSpinner ( "Roll  multiplier" , &config.trackerRollMultiplier  , 0.05 );
+	i->addCheckbox( "Roll  thing..."   , &config.rollEnabled  );
+	//add m_spShaderViewAdjustment->SetRollEnabled(config.rollEnabled);
+
+	i->addCheckbox( "Mouse emulation"        , &config.trackerMouseEmulation );
+	i->addSpinner ( "Mouse yaw   multiplier" , &config.trackerMouseYawMultiplier   , 0.05 );
+	i->addSpinner ( "Mouse pitch multiplier" , &config.trackerMousePitchMultiplier , 0.05 );
+
+	i->addCheckbox( "Positional tracking (CTRL+P)"    , &m_bPosTrackingToggle );
+	//	if (!m_bPosTrackingToggle)
+	//	m_spShaderViewAdjustment->UpdatePosition(0.0f, 0.0f, 0.0f);
+	i->addAction( "Positional tracking reset (CTRL+R)"   );
+	//if( tracker ){
+	//	tracker->reset();
+	//		}
+
+	i->addSpinner( "Positional tracking multiplier" , &config.trackerPositionMultiplier , 0.001 );
+	//BRASSA_UpdateConfigSettings();
+
+
+
+	mainMenu.root.addAction ( "Restore configuration"           );
+
 }
 
 /**
@@ -2291,16 +2370,6 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 		}
 
 		if( tracker ){
-
-			OutputDebugStringA("Tracker Got\n");
- 			OutputDebugStringA("Setting Multipliers\n");
-			trackerMultiplierYaw   = config.yaw_multiplier;
-			trackerMultiplierPitch = config.pitch_multiplier;
-			trackerMultiplierRoll  = config.roll_multiplier;
-
- 			OutputDebugStringA("Setting Mouse EMu\n");
-			trackerMouseEmulation = ((!m_VRboostRulesPresent) || (hmVRboost==NULL));
-
 			//Only advise calibration for positional tracking on DK2
 			//if (tracker->SupportsPositionTracking()){
 			//	calibrate_tracker = true;
@@ -2316,24 +2385,28 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 		return;
 	}
 	
-	long prevYaw   = RADIANS_TO_DEGREES( tracker->currentYaw   );
-	long prevPitch = RADIANS_TO_DEGREES( tracker->currentPitch );
+	long prevYaw   = RADIANS_TO_DEGREES( tracker->currentYaw   ) * config.trackerMouseYawMultiplier;
+	long prevPitch = RADIANS_TO_DEGREES( tracker->currentPitch ) * config.trackerMousePitchMultiplier;
 
-	printf("tracke update...\n");
 	if( tracker->update() ){
-		tracker->currentRoll *= trackerMultiplierRoll;
+		tracker->currentYaw   *= config.trackerYawMultiplier;
+		tracker->currentPitch *= config.trackerPitchMultiplier;
+		tracker->currentRoll  *= config.trackerRollMultiplier;
 
-		printf("%12.8f %12.8f %12.8f\n" , tracker->currentYaw , tracker->currentPitch , tracker->currentRoll );
+		//multiplied in m_spShaderViewAdjustment->UpdatePosition
+		//tracker->currentX     *= config.trackerPositionMultiplier;
+		//tracker->currentY     *= config.trackerPositionMultiplier;
+		//tracker->currentZ     *= config.trackerPositionMultiplier;
 
-		if( trackerMouseEmulation ){
-			// Convert yaw, pitch to positive degrees, multiply by multiplier.
-			// (-180.0f...0.0f -> 180.0f....360.0f)
-			// (0.0f...180.0f -> 0.0f...180.0f)
-			long currentYaw   =  fmodf( RADIANS_TO_DEGREES(tracker->currentYaw  ) + 360.0f, 360.0f) * trackerMultiplierYaw;
-			long currentPitch = -fmodf( RADIANS_TO_DEGREES(tracker->currentPitch) + 360.0f, 360.0f) * trackerMultiplierPitch;
+		if( config.trackerMouseEmulation ){
+			long currentYaw   = RADIANS_TO_DEGREES(tracker->currentYaw  ) * config.trackerMouseYawMultiplier;
+			long currentPitch = RADIANS_TO_DEGREES(tracker->currentPitch) * config.trackerMousePitchMultiplier;
 
-			long deltaYaw   = prevYaw   - currentYaw;
-			long deltaPitch = prevPitch - currentPitch;
+			long deltaYaw   = currentYaw   - prevYaw;
+			long deltaPitch = currentPitch - prevPitch;
+
+			deltaYaw   = ((deltaYaw   + 180) % 360) - 180;
+			deltaPitch = ((deltaPitch + 180) % 360) - 180;
 
 			if( abs(deltaYaw) > 100 ){
 				deltaYaw = 0;
@@ -2342,7 +2415,7 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 			if( abs(deltaPitch) > 100 ){
 				deltaPitch = 0;
 			}
-
+			
 			INPUT i;
 			i.type           = INPUT_MOUSE;
 			i.mi.dx          = deltaYaw;
@@ -2356,7 +2429,6 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 		}
 	}
 	
-
 	if( calibrate_tracker ){
 		VireioPopup popup(VPT_CALIBRATE_TRACKER, VPS_INFO, 30000);
 		strcpy_s(popup.line2, "Please Calibrate HMD/Tracker:");
@@ -2370,6 +2442,10 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 		m_spShaderViewAdjustment->UpdateRoll(tracker->currentRoll);
 	}
 
+	if( config.trackerMouseEmulation ){
+		return;
+	}
+
 	m_spShaderViewAdjustment->UpdatePitchYaw( tracker->currentPitch , tracker->currentYaw );
 
 	if( m_bPosTrackingToggle ){
@@ -2380,7 +2456,8 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 			(VRBoostValue[VRboostAxis::CameraTranslateX] / 20.0f) + tracker->currentX, 
 			(VRBoostValue[VRboostAxis::CameraTranslateY] / 20.0f) + tracker->currentY,
 			(VRBoostValue[VRboostAxis::CameraTranslateZ] / 20.0f) + tracker->currentZ,
-			config.position_multiplier);
+			config.trackerPositionMultiplier
+		);
 	}
 		
 	m_spShaderViewAdjustment->ComputeViewTransforms();
@@ -2388,7 +2465,7 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 	m_isFirstBeginSceneOfFrame = false;
 
 	// update vrboost, if present, tracker available and shader count higher than the minimum
-	if ((!m_bSurpressHeadtracking) && (!m_bForceMouseEmulation) && (hmVRboost) && (m_VRboostRulesPresent) 
+	if ((!m_bSurpressHeadtracking) && (!config.trackerMouseEmulation) && (hmVRboost) && (m_VRboostRulesPresent) 
 		&& (m_bVRBoostToggle)
 		&& (m_VertexShaderCountLastFrame>(UINT)config.VRboostMinShaderCount)
 		&& (m_VertexShaderCountLastFrame<(UINT)config.VRboostMaxShaderCount) )
@@ -2428,7 +2505,7 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 		VRBoostStatus.VRBoost_Active = false;
 	}
 
-	if (!m_bForceMouseEmulation && VRBoostStatus.VRBoost_Active)
+	if ( VRBoostStatus.VRBoost_Active)
 	{
 		if (!VRBoostStatus.VRBoost_LoadRules)
 		{
@@ -2957,6 +3034,16 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA )
 * BRASSA Main Menu method.
 ***/
 METHOD_IMPL( void , , D3DProxyDevice , BRASSA_MainMenu )
+	if( !oldMenu ){
+		mainMenu.viewportWidth  = viewportWidth;
+		mainMenu.viewportHeight = viewportHeight;
+		mainMenu.device         = this;
+		mainMenu.font           = hudFont;
+		mainMenu.sprite         = hudMainMenu;
+		mainMenu.render();
+		return;
+	}
+	
 	UINT menuEntryCount = 11;
 	if (config.shaderAnalyzer ) menuEntryCount++;
 
@@ -3103,7 +3190,10 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_MainMenu )
 
 		// draw border - total width due to shift correction
 		D3DRECT rect;
-		rect.x1 = (int)0; rect.x2 = (int)viewportWidth; rect.y1 = (int)borderTopHeight; rect.y2 = (int)(borderTopHeight+viewportHeight*0.04f);
+		rect.x1 = (int)0;
+		rect.x2 = (int)viewportWidth;
+		rect.y1 = (int)borderTopHeight;
+		rect.y2 = (int)(borderTopHeight+viewportHeight*0.04f);
 		ClearEmptyRect(vireio::RenderPosition::Left, rect, D3DCOLOR_ARGB(255,255,128,128), 2);
 		ClearEmptyRect(vireio::RenderPosition::Right, rect, D3DCOLOR_ARGB(255,255,128,128), 2);
 
@@ -4104,6 +4194,8 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_Settings )
 		YAW_MULT,
 		PITCH_MULT,
 		ROLL_MULT,
+		MOUSE_YAW_MULT,
+		MOUSE_PITCH_MULT,
 		RESET_MULT,
 		ROLL_ENABLED,
 		FORCE_MOUSE_EMU,
@@ -4161,35 +4253,28 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_Settings )
 			// reset multipliers
 			if (entryID == RESET_MULT)
 			{
-				trackerMultiplierYaw   = 25.0f;
-				trackerMultiplierPitch = 25.0f;
-				trackerMultiplierRoll  = 1.0f;
+				config.trackerYawMultiplier        = m_configBackup.trackerMouseYawMultiplier;
+				config.trackerPitchMultiplier      = m_configBackup.trackerPitchMultiplier;
+				config.trackerRollMultiplier       = m_configBackup.trackerRollMultiplier;
+				config.trackerPositionMultiplier   = m_configBackup.trackerPositionMultiplier;
+				config.trackerMouseYawMultiplier   = m_configBackup.trackerMouseYawMultiplier;
+				config.trackerMousePitchMultiplier = m_configBackup.trackerMousePitchMultiplier;
 				menuVelocity.x += 4.0f;
 			}
 
-			// force mouse emulation
 			if (entryID == ROLL_ENABLED)
 			{
 				config.rollEnabled = !config.rollEnabled;
-				m_spShaderViewAdjustment->SetRollEnabled(config.rollEnabled);
+				
 				menuVelocity.x += 4.0f;
 			}
 
-			// force mouse emulation
 			if (entryID == FORCE_MOUSE_EMU)
 			{
-				m_bForceMouseEmulation = !m_bForceMouseEmulation;
-
-				if( tracker && m_bForceMouseEmulation && !m_bSurpressHeadtracking ){
-					trackerMouseEmulation = true;
-				}
-
-				if( tracker && !m_bForceMouseEmulation && hmVRboost && m_VRboostRulesPresent ){
-					trackerMouseEmulation = false;
-				}
-
+				config.trackerMouseEmulation = !config.trackerMouseEmulation;
 				menuVelocity.x += 4.0f;
 			}
+
 			// Toggle VRBoost
 			if (entryID == TOGGLE_VRBOOST)
 			{
@@ -4320,40 +4405,48 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_Settings )
 			if (entryID == YAW_MULT)
 			{
 				if (controls.xInputState.Gamepad.sThumbLX != 0 && !controls.Key_Down(VK_LEFT) && !controls.Key_Down(0x4A))
-					trackerMultiplierYaw += 0.5f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
+					config.trackerYawMultiplier += 0.5f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
 				else
-					trackerMultiplierYaw -= 0.5f;
+					config.trackerYawMultiplier -= 0.5f;
 				menuVelocity.x -= 0.7f;
 			}
 			// pitch multiplier
 			if (entryID == PITCH_MULT)
 			{
 				if (controls.xInputState.Gamepad.sThumbLX != 0 && !controls.Key_Down(VK_LEFT) && !controls.Key_Down(0x4A))
-					trackerMultiplierPitch += 0.5f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
+					config.trackerPitchMultiplier += 0.5f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
 				else
-					trackerMultiplierPitch -= 0.5f;
+					config.trackerPitchMultiplier -= 0.5f;
 				menuVelocity.x -= 0.7f;
 			}
 			// roll multiplier
 			if (entryID == ROLL_MULT)
 			{
 				if (controls.xInputState.Gamepad.sThumbLX != 0 && !controls.Key_Down(VK_LEFT) && !controls.Key_Down(0x4A))
-					trackerMultiplierRoll += 0.05f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
+					config.trackerRollMultiplier += 0.05f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
 				else
-					trackerMultiplierRoll -= 0.05f;
+					config.trackerRollMultiplier -= 0.05f;
 				menuVelocity.x -= 0.7f;
 			}
 
-			// mouse emulation
-			if (entryID == FORCE_MOUSE_EMU)
+			// mouse yaw multiplier
+			if (entryID == MOUSE_YAW_MULT)
 			{
-				m_bForceMouseEmulation = false;
+				if (controls.xInputState.Gamepad.sThumbLX != 0 && !controls.Key_Down(VK_LEFT) && !controls.Key_Down(0x4A))
+					config.trackerMouseYawMultiplier += 0.05f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
+				else
+					config.trackerMouseYawMultiplier -= 0.05f;
+				menuVelocity.x -= 0.7f;
+			}
 
-				if( tracker && hmVRboost && m_VRboostRulesPresent ){
-					trackerMouseEmulation = true;
-				}
-
-				menuVelocity.x-=2.0f;
+			// mouse pitch multiplier
+			if (entryID == MOUSE_PITCH_MULT)
+			{
+				if (controls.xInputState.Gamepad.sThumbLX != 0 && !controls.Key_Down(VK_LEFT) && !controls.Key_Down(0x4A))
+					config.trackerMousePitchMultiplier += 0.05f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
+				else
+					config.trackerMousePitchMultiplier -= 0.05f;
+				menuVelocity.x -= 0.7f;
 			}
 		}
 
@@ -4410,38 +4503,48 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_Settings )
 			if (entryID == YAW_MULT)
 			{
 				if (controls.xInputState.Gamepad.sThumbLX != 0  && !controls.Key_Down(VK_RIGHT) && !controls.Key_Down(0x4C))
-					trackerMultiplierYaw += 0.5f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
+					config.trackerYawMultiplier += 0.5f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
 				else
-					trackerMultiplierYaw += 0.5f;
+					config.trackerYawMultiplier += 0.5f;
 				menuVelocity.x += 0.7f;
 			}
 			// pitch multiplier
 			if (entryID == PITCH_MULT)
 			{
 				if (controls.xInputState.Gamepad.sThumbLX != 0  && !controls.Key_Down(VK_RIGHT) && !controls.Key_Down(0x4C))
-					trackerMultiplierPitch += 0.5f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
+					config.trackerPitchMultiplier += 0.5f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
 				else
-					trackerMultiplierPitch += 0.5f;
+					config.trackerPitchMultiplier += 0.5f;
 				menuVelocity.x += 0.7f;
 			}
 			// roll multiplier
 			if (entryID == ROLL_MULT)
 			{
 				if (controls.xInputState.Gamepad.sThumbLX != 0  && !controls.Key_Down(VK_RIGHT) && !controls.Key_Down(0x4C))
-					trackerMultiplierRoll += 0.05f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
+					config.trackerRollMultiplier += 0.05f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
 				else
-					trackerMultiplierRoll += 0.05f;
+					config.trackerRollMultiplier += 0.05f;
 				menuVelocity.x += 0.7f;
 			}
-			// mouse emulation
-			if (entryID == FORCE_MOUSE_EMU)
-			{
-				if( tracker ){
-					trackerMouseEmulation = true;
-					m_bForceMouseEmulation = true;
-				}
 
-				menuVelocity.x-=2.0f;
+			// mouse yaw multiplier
+			if (entryID == ROLL_MULT)
+			{
+				if (controls.xInputState.Gamepad.sThumbLX != 0  && !controls.Key_Down(VK_RIGHT) && !controls.Key_Down(0x4C))
+					config.trackerMouseYawMultiplier += 0.05f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
+				else
+					config.trackerMouseYawMultiplier -= 0.05f;
+				menuVelocity.x += 0.7f;
+			}
+
+			// mouse pitch multiplier
+			if (entryID == ROLL_MULT)
+			{
+				if (controls.xInputState.Gamepad.sThumbLX != 0  && !controls.Key_Down(VK_RIGHT) && !controls.Key_Down(0x4C))
+					config.trackerMousePitchMultiplier += 0.05f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
+				else
+					config.trackerMousePitchMultiplier -= 0.05f;
+				menuVelocity.x += 0.7f;
 			}
 		}
 	}
@@ -4494,34 +4597,43 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_Settings )
 		menuHelperRect.top += MENU_ITEM_SEPARATION;
 		DrawTextShadowed(hudFont, hudMainMenu, "Stereo Screenshots", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
 		menuHelperRect.top += MENU_ITEM_SEPARATION;
-		sprintf_s(vcString,"Yaw multiplier : %g", RoundBrassaValue(trackerMultiplierYaw));
+		sprintf_s(vcString,"Yaw multiplier : %g", RoundBrassaValue(config.trackerYawMultiplier));
 		DrawTextShadowed(hudFont, hudMainMenu, vcString, -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
 		menuHelperRect.top += MENU_ITEM_SEPARATION;
-		sprintf_s(vcString,"Pitch multiplier : %g", RoundBrassaValue(trackerMultiplierPitch));
+		sprintf_s(vcString,"Pitch multiplier : %g", RoundBrassaValue(config.trackerPitchMultiplier));
 		DrawTextShadowed(hudFont, hudMainMenu, vcString, -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
 		menuHelperRect.top += MENU_ITEM_SEPARATION;
-		sprintf_s(vcString,"Roll multiplier : %g", RoundBrassaValue(trackerMultiplierRoll));
+		sprintf_s(vcString,"Roll multiplier : %g", RoundBrassaValue(config.trackerRollMultiplier));
 		DrawTextShadowed(hudFont, hudMainMenu, vcString, -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
 		menuHelperRect.top += MENU_ITEM_SEPARATION;
+
+		sprintf_s(vcString,"Mouse emulation yaw multiplier : %g", RoundBrassaValue(config.trackerMouseYawMultiplier));
+		DrawTextShadowed(hudFont, hudMainMenu, vcString, -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
+		menuHelperRect.top += MENU_ITEM_SEPARATION;
+
+		sprintf_s(vcString,"Mouse emulation pitch multiplier : %g", RoundBrassaValue(config.trackerMousePitchMultiplier));
+		DrawTextShadowed(hudFont, hudMainMenu, vcString, -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
+		menuHelperRect.top += MENU_ITEM_SEPARATION;
+
 		DrawTextShadowed(hudFont, hudMainMenu, "Reset Multipliers", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
 		menuHelperRect.top += MENU_ITEM_SEPARATION;
 		switch (m_spShaderViewAdjustment->RollEnabled())
 		{
 		case true:
-			DrawTextShadowed(hudFont, hudMainMenu, "Force Mouse Emulation HT : True", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
+			DrawTextShadowed(hudFont, hudMainMenu, "Tracker roll mode: 1", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
 			break;
 		case false:
-			DrawTextShadowed(hudFont, hudMainMenu, "Force Mouse Emulation HT : False", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
+			DrawTextShadowed(hudFont, hudMainMenu, "Tracker roll mode: 2", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
 			break;
 		}
 		menuHelperRect.top += MENU_ITEM_SEPARATION;
-		switch (m_bForceMouseEmulation)
+		switch (config.trackerMouseEmulation)
 		{
 		case true:
-			DrawTextShadowed(hudFont, hudMainMenu, "Force Mouse Emulation HT : true", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
+			DrawTextShadowed(hudFont, hudMainMenu, "Tracker mouse emulation: true", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
 			break;
 		case false:
-			DrawTextShadowed(hudFont, hudMainMenu, "Force Mouse Emulation HT : false", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
+			DrawTextShadowed(hudFont, hudMainMenu, "Tracker mouse emulation: false", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
 			break;
 		}
 		menuHelperRect.top += MENU_ITEM_SEPARATION;
@@ -4634,7 +4746,7 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_PosTracking )
 	{
 		if ((entryID == TRACKING_MULT) && (menuVelocity == D3DXVECTOR2(0.0f, 0.0f)))
 		{
-			config.position_multiplier = 1.0f;
+			config.trackerPositionMultiplier = 1.0f;
 			menuVelocity.x+=2.0f;
 		}
 	}
@@ -4645,9 +4757,9 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_PosTracking )
 		if (entryID == TRACKING_MULT)
 		{
 			if (controls.xInputState.Gamepad.sThumbLX != 0 && !controls.Key_Down(VK_LEFT) && !controls.Key_Down(0x4A))
-				config.position_multiplier += 0.01f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
+				config.trackerPositionMultiplier += 0.001f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
 			else
-				config.position_multiplier -= 0.01f;
+				config.trackerPositionMultiplier -= 0.001f;
 			menuVelocity.x -= 1.0f;
 		}
 	}
@@ -4658,9 +4770,9 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_PosTracking )
 		if (entryID == TRACKING_MULT)
 		{
 			if (controls.xInputState.Gamepad.sThumbLX != 0  && !controls.Key_Down(VK_RIGHT) && !controls.Key_Down(0x4C))
-				config.position_multiplier += 0.01f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
+				config.trackerPositionMultiplier += 0.001f * (((float)controls.xInputState.Gamepad.sThumbLX)/32768.0f);
 			else
-				config.position_multiplier += 0.01f;
+				config.trackerPositionMultiplier += 0.001f;
 			menuVelocity.x += 1.0f;
 		}
 	}
@@ -4704,7 +4816,7 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_PosTracking )
 			break;
 		}
 		menuHelperRect.top += MENU_ITEM_SEPARATION;
-		sprintf_s(vcString,"Position Tracking multiplier : %g", RoundBrassaValue(config.position_multiplier));
+		sprintf_s(vcString,"Position Tracking multiplier : %g", RoundBrassaValue(config.trackerPositionMultiplier));
 		DrawTextShadowed(hudFont, hudMainMenu, vcString, -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
 		menuHelperRect.top += MENU_ITEM_SEPARATION;
 		DrawTextShadowed(hudFont, hudMainMenu, "Reset HMD Orientation (CTRL + R)", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
@@ -4934,9 +5046,6 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_UpdateBorder )
 * Updates the current config based on the current device settings.
 ***/
 METHOD_IMPL( void , , D3DProxyDevice , BRASSA_UpdateConfigSettings )
-	config.roll_multiplier = trackerMultiplierRoll;
-	config.yaw_multiplier = trackerMultiplierYaw;
-	config.pitch_multiplier = trackerMultiplierPitch;
 	config.YOffset = stereoView->YOffset;
 	config.IPDOffset = stereoView->IPDOffset;
 	config.swap_eyes = stereoView->swapEyes;
@@ -5561,13 +5670,11 @@ METHOD_IMPL( bool , , D3DProxyDevice , InitVRBoost )
 			(!m_pVRboost_ApplyMemoryRules))
 		{
 			hmVRboost = NULL;
-			m_bForceMouseEmulation = false;
 			FreeLibrary(hmVRboost);
 		}
 		else
 		{
 			initSuccess = true;
-			m_bForceMouseEmulation = true;
 			VRBoostStatus.VRBoost_Active = true;
 			OutputDebugStringA("Success loading VRboost methods.");
 		}
@@ -5588,6 +5695,7 @@ METHOD_IMPL( bool , , D3DProxyDevice , InitVRBoost )
 	{
 		initSuccess = false;
 	}
+
 	return initSuccess;
 }
 
@@ -5595,7 +5703,6 @@ METHOD_IMPL( bool , , D3DProxyDevice , InitBrassa )
 	hudFont = NULL;
 	menuTime = (float)GetTickCount()/1000.0f;
 	screenshot = (int)false;
-	m_bForceMouseEmulation = false;
 	m_bVRBoostToggle = true;
 	m_bPosTrackingToggle = true;
 	m_bShowVRMouse = false;

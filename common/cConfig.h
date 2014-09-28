@@ -36,10 +36,14 @@ public:
 	float   worldScaleFactor;           // Value the eye seperation is to be multiplied with. (mm * worldScaleFactor = mm in game units)
 	float   convergence;                // Convergence or Neutral Point distance, in meters
 	bool    swap_eyes;                  // Option to swap the eye output for different 3D systems
-	float   yaw_multiplier;             // Game-specific tracking multiplier (yaw)
-	float   pitch_multiplier;           // Game-specific tracking multiplier (pitch)
-	float   roll_multiplier;            // Game-specific tracking multiplier (roll)
-	float   position_multiplier;        // Game-specific position multiplier (for X, Y and Z)
+	float   trackerYawMultiplier;
+	float   trackerPitchMultiplier;
+	float   trackerRollMultiplier;
+	float   trackerPositionMultiplier;
+	float   trackerMouseYawMultiplier;
+	float   trackerMousePitchMultiplier;
+	bool    trackerMouseEmulation;
+
 	float   DistortionScale;            // The scale to apply distortion
 	float   YOffset;                    // The Y offset from the centre of the screen on the Y-axis *
 	float   IPDOffset;                  // The IPD offset from the centre of the screen on the X-axis *

@@ -13,7 +13,15 @@ cConfig::cConfig(){
 	CameraTranslateX = 0.0f;
 	CameraTranslateY = 0.0f;
 	CameraTranslateZ = 0.0f;
-	PlayerIPD    = 0.0638;
+	PlayerIPD        = 0.0638;
+
+	trackerYawMultiplier		= 1;
+	trackerPitchMultiplier		= 1;
+	trackerRollMultiplier		= 1;
+	trackerPositionMultiplier	= 1;
+	trackerMouseYawMultiplier	= 1;
+	trackerMousePitchMultiplier	= 1;
+	trackerMouseEmulation		= false;
 }
 
 
@@ -77,10 +85,14 @@ bool cConfig::load( const QString& file ){
 	props.get( &VRboostMaxShaderCount         , "maxVRboostShaderCount"         );
 	props.get( &convergence                   , "convergence"                   );
 	props.get( &swap_eyes                     , "swap_eyes"                     );
-	props.get( &yaw_multiplier                , "yaw_multiplier"                );
-	props.get( &pitch_multiplier              , "pitch_multiplier"              );
-	props.get( &roll_multiplier               , "roll_multiplier"               );
-	props.get( &position_multiplier           , "position_multiplier"           );
+	props.get( &trackerYawMultiplier          , "trackerYawMultiplier"          );
+	props.get( &trackerPitchMultiplier        , "trackerPitchMultiplier"        );
+	props.get( &trackerRollMultiplier         , "trackerRollMultiplier"         );
+	props.get( &trackerPositionMultiplier     , "trackerViewPositionMultiplier" );
+	props.get( &trackerMouseYawMultiplier     , "trackerMouseYawMultiplier"     );
+	props.get( &trackerMousePitchMultiplier   , "trackerMousePitchMultiplier"   );
+	props.get( &trackerMouseEmulation         , "trackerMouseEmulation"         );
+	
 	props.get( &DistortionScale               , "distortion_scale"              );
 	props.get( &YOffset                       , "y_offset"                      );
 	props.get( &IPDOffset                     , "ipd_offset"                    );

@@ -166,10 +166,13 @@ BOOL APIENTRY DllMain( HINSTANCE dll , DWORD fdwReason, LPVOID ){
 	printf( "worldScaleFactor              = %f\n" , config.worldScaleFactor );          
 	printf( "convergence                   = %f\n" , config.convergence );               
 	printf( "swap_eyes                     = %d\n" , config.swap_eyes );                 
-	printf( "yaw_multiplier                = %f\n" , config.yaw_multiplier );            
-	printf( "pitch_multiplier              = %f\n" , config.pitch_multiplier );          
-	printf( "roll_multiplier               = %f\n" , config.roll_multiplier );           
-	printf( "position_multiplier           = %f\n" , config.position_multiplier );       
+	printf( "trackerYawMultiplier          = %f\n" , config.trackerYawMultiplier );            
+	printf( "trackerPitchMultiplier        = %f\n" , config.trackerPitchMultiplier );          
+	printf( "trackerRollMultiplier         = %f\n" , config.trackerRollMultiplier );           
+	printf( "trackerPositionMultiplier     = %f\n" , config.trackerPositionMultiplier ); 
+	printf( "trackerMouseYawMultiplier     = %f\n" , config.trackerMouseYawMultiplier );            
+	printf( "trackerMousePitchMultiplier   = %f\n" , config.trackerMousePitchMultiplier );          
+	printf( "trackerMouseEmulation         = %d\n" , config.trackerMouseEmulation );           
 	printf( "DistortionScale               = %f\n" , config.DistortionScale );           
 	printf( "YOffset                       = %f\n" , config.YOffset );                   
 	printf( "IPDOffset                     = %f\n" , config.IPDOffset );                 

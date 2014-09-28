@@ -43,6 +43,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "InputControls.h"
 #include "DirectInput.h"
 #include <cConfig.h>
+#include "cMenu.h"
 
 #define _SAFE_RELEASE(x) if(x) { x->Release(); x = NULL; } 
 // Define SHOW_CALLS to have each method output a debug string when it is invoked
@@ -347,10 +348,6 @@ public:
 	* @see MotionTracker
 	**/
 	cTracker* tracker;
-	bool      trackerMouseEmulation;
-	float     trackerMultiplierYaw;
-	float     trackerMultiplierPitch;
-	float     trackerMultiplierRoll;
 
 	/**
 	* Schneider-Hicks Optical Calibration Tool GUI mode.
@@ -401,7 +398,7 @@ public:
 	InputControls controls;
 	DirectInput dinput;
 
-protected:
+
 	/*** D3DProxyDevice protected methods ***/
 	virtual void OnCreateOrRestore();	
 	virtual bool setDrawingSide(vireio::RenderPosition side);
@@ -608,10 +605,6 @@ protected:
 	**/
 	bool m_isFirstBeginSceneOfFrame;
 	/**
-	* True if mouse emulation head tracking forced.
-	**/
-	bool m_bForceMouseEmulation;
-	/**
 	* Toggle VR Mouse
 	**/
 	bool m_bShowVRMouse;
@@ -674,7 +667,7 @@ protected:
 
 	} m_deviceBehavior;
 
-private:
+
 	/*** D3DProxyDevice private methods ***/
 	void    BRASSA();
 	void    BRASSA_MainMenu();
@@ -910,9 +903,9 @@ private:
 	***/
 	int screenshot;
 
+	cMenu mainMenu;
+	bool  oldMenu;
 
-
-private:
 	/**
 	* Actual Direct3D Device pointer embedded. 
 	* Private to force you to think about whether you really need direct 
