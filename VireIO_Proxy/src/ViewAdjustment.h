@@ -91,9 +91,6 @@ public:
 	D3DXMATRIX    GatheredMatrixLeft();
 	D3DXMATRIX    GatheredMatrixRight();
 	void          GatherMatrix(D3DXMATRIX& matrixLeft, D3DXMATRIX& matrixRight);
-	float         WorldScale();
-	float         ChangeWorldScale(float toAdd);
-	float         ChangeConvergence(float toAdd);
 	void          ChangeGUISquash(float newSquash);
 	void          ChangeGUI3DDepth(float newGui3DDepth);
 	void          ChangeHUDDistance(float newHudDistance);
@@ -103,14 +100,11 @@ public:
 	bool          BulletLabyrinthMode();
 	void          ResetWorldScale();
 	void          ResetConvergence();	
-	float         Convergence();
 	float         ConvergenceInWorldUnits();
 	float         SeparationInWorldUnits();
 	float         SeparationIPDAdjustment();
-	bool          RollEnabled();
-	void          SetRollEnabled(bool rollEnabled);
 
-private:
+
 	cConfig& config;
 
 	/*** Projection Matrix variables ***/
@@ -123,14 +117,6 @@ private:
 
 	D3DXVECTOR3 positionTransformVec;
 
-	/**
-	* Constant minimum convergence.
-	***/
-	float minConvergence;
-	/**
-	* Constant maximum convergence.
-	***/
-	float maxConvergence;
 	/**
 	* Positional translation matrix
 	**/

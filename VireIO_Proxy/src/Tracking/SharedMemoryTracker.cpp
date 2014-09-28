@@ -1,4 +1,4 @@
-#include <VireIO.h>
+#include <Vireio.h>
 #include <cTracker.h>
 #include <Windows.h>
 #include <string>
@@ -90,6 +90,6 @@ public:
 };
 
 
-cTracker* VireIO_Create_Tracker_SharedMemory(){
+cTracker* Vireio_Create_Tracker_SharedMemory(){
 	return new cTracker_smt;
 }

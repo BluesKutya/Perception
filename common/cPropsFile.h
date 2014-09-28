@@ -1,5 +1,5 @@
 #pragma once
-#include "VireIO.h"
+#include "Vireio.h"
 
 class cPropsFile{
 public:

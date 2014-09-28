@@ -1,6 +1,6 @@
 #pragma  once
 #include <cTracker.h>
-#include <VireIO.h>
+#include <Vireio.h>
 #include <OVR.h>
 
 using namespace OVR;
@@ -153,7 +153,7 @@ public:
 };
 
 
-cTracker* VireIO_Create_Tracker_Oculus(){
+cTracker* Vireio_Create_Tracker_Oculus(){
 	return new cTracker_ovr;
 }
 

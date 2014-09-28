@@ -29,7 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <windows.h>
 #include <d3d9.h>
 #include "D3D9ProxyDirect3D.h"
-#include <VireIO.h>
+#include <Vireio.h>
 #include <qcoreapplication.h>
 #include <qdebug.h>
 #include <cConfig.h>
@@ -111,7 +111,7 @@ BOOL APIENTRY DllMain( HINSTANCE dll , DWORD fdwReason, LPVOID ){
 	GetModuleFileNameA( 0   , exe_path , MAX_PATH );
 	GetModuleFileNameA( dll , dll_path , MAX_PATH );
 
-	printf( "VireIO: loading...\n" );
+	printf( "Vireio: loading...\n" );
 
 	HijackHookInstall();
 

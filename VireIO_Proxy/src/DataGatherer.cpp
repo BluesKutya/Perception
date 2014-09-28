@@ -87,12 +87,6 @@ DataGatherer::DataGatherer(IDirect3DDevice9* pDevice, IDirect3DDevice9Ex* pDevic
 	m_recordedVShaders(),
 	m_recordedPShaders(),
 	m_recordedSetVShaders(),
-	m_activeVShaders(),
-	m_activePShaders(),
-	m_activeVShadersLastFrame(),
-	m_activePShadersLastFrame(),
-	m_excludedVShaders(),
-	m_excludedPShaders(),
 	m_bAvoidDraw(false),
 	m_bAvoidDrawPS(false),
 	m_startAnalyzingTool(false),
@@ -189,6 +183,37 @@ DataGatherer::DataGatherer(IDirect3DDevice9* pDevice, IDirect3DDevice9Ex* pDevic
 	// create shader dump file
 	m_shaderDumpFile.open("shaderDump.csv", std::ios::out);
 	m_shaderDumpFile << "Shader Hash,Constant Name,ConstantType,Start Register,Register Count,Vertex/Pixel Shader" << std::endl;
+
+
+	cMenuItem* m;
+	cMenuItem* i;
+
+	m = menu.root.addSubmenu( "Shader analyzer" );
+
+	i = m->addAction( "Create new shader rule" );
+	i->callbackOpenSubmenu = [this](){
+		GetCurrentShaderRules(true);
+		menu.show = false;
+	};
+
+	i = m->addSubmenu( "Change current shader rules" );
+	i->callbackOpenSubmenu = [this](){
+		GetCurrentShaderRules(false);
+	};
+
+
+	shadersMenu = m->addSubmenu( "Show shaders" );
+
+
+	i = m->addSubmenu( "Save rules shaders" );
+	i->callbackOpenSubmenu = [this](){
+		saveShaderRules();
+		menu.show = false;
+	};
+
+
+
+	
 }
 
 /**
@@ -238,14 +263,10 @@ HRESULT WINAPI DataGatherer::Present(CONST RECT* pSourceRect,CONST RECT* pDestRe
 ***/
 HRESULT WINAPI DataGatherer::BeginScene()
 {
-	if (m_isFirstBeginSceneOfFrame) {
-		// create last frame active shader vectors, delete current frame ones
-		m_activeVShadersLastFrame.clear();
-		m_activePShadersLastFrame.clear();
-		m_activeVShadersLastFrame = std::vector<uint32_t>(m_activeVShaders);
-		m_activePShadersLastFrame = std::vector<uint32_t>(m_activePShaders);
-		m_activeVShaders.clear();
-		m_activePShaders.clear();
+	if( m_isFirstBeginSceneOfFrame ){
+		for( Shader& s : shaders ){
+			s.used = false;
+		}
 	}
 
 	return D3DProxyDevice::BeginScene();
@@ -408,33 +429,57 @@ HRESULT WINAPI DataGatherer::CreateVertexShader(CONST DWORD* pFunction,IDirect3D
 	return creationResult;
 }
 
+
+void DataGatherer::MarkShaderAsUsed( int hash , bool isVertex ){
+	Shader* s = 0;
+
+	for( Shader& c : shaders ){
+		if( c.hash == m_currentVertexShaderHash ){
+			s = &c;
+			break;
+		}
+	}
+
+	if( !s ){
+		shaders.append( Shader() );
+		s = &shaders.last();
+		s->excluded = false;
+		s->hash     = hash;
+		s->isVertex = isVertex;
+
+		char buf[256];
+		sprintf( buf , "%s %u" , isVertex?"VS":"PS" , hash );
+
+		s->item = shadersMenu->addCheckbox( buf , &s->excluded , "exclude/blink" , "active" );
+	}
+
+	if( isVertex ){
+		m_bAvoidDraw = false;
+	}else{
+		m_bAvoidDrawPS = false;
+	}
+
+	if( s->excluded && ((GetTickCount()%300)>150) ){
+		if( isVertex ){
+			m_bAvoidDraw = true;
+		}else{
+			m_bAvoidDrawPS = true;
+		}
+	}
+}
+
 /**
 * Sets the shader and the current shader hash.
 ***/
 HRESULT WINAPI DataGatherer::SetVertexShader(IDirect3DVertexShader9* pShader)
 {
 	// set the current vertex shader hash code for the call counter
-	if (pShader)
-	{
+	if( pShader ){
 		m_currentVertexShaderHash = ShaderHash(pShader);
-
-		// add to vector of active shaders if not present
-		if (std::find(m_activeVShaders.begin(), m_activeVShaders.end(), m_currentVertexShaderHash) == m_activeVShaders.end()) {
-			m_activeVShaders.push_back(m_currentVertexShaderHash);
-		}
-
-		// avoid draw if shader present in excluded vector
-		if (std::find(m_excludedVShaders.begin(), m_excludedVShaders.end(), m_currentVertexShaderHash) == m_excludedVShaders.end()) {
-			m_bAvoidDraw = false;
-		}
-		else
-		{
-			if ((GetTickCount()%300)>150)
-				m_bAvoidDraw = true;
-			else m_bAvoidDraw = false;
-		}
+		MarkShaderAsUsed( m_currentVertexShaderHash , true );
+	}else{
+		m_currentVertexShaderHash = 0;
 	}
-	else m_currentVertexShaderHash = 0;
 
 #ifdef _DEBUG
 	D3D9ProxyVertexShader* pWrappedVShaderData = static_cast<D3D9ProxyVertexShader*>(pShader);
@@ -634,26 +679,10 @@ HRESULT WINAPI DataGatherer::CreatePixelShader(CONST DWORD* pFunction,IDirect3DP
 ***/
 HRESULT WINAPI DataGatherer::SetPixelShader(IDirect3DPixelShader9* pShader)
 {
-	uint32_t currentPixelShaderHash = 0;
-	if (pShader)
-	{
-		currentPixelShaderHash = ShaderHash(pShader);
-
-		// add to vector of active shaders if not present
-		if (std::find(m_activePShaders.begin(), m_activePShaders.end(), currentPixelShaderHash) == m_activePShaders.end()) {
-			m_activePShaders.push_back(currentPixelShaderHash);
-		}
-
-		// avoid draw if shader present in excluded vector
-		if (std::find(m_excludedPShaders.begin(), m_excludedPShaders.end(), currentPixelShaderHash) == m_excludedPShaders.end()) {
-			m_bAvoidDrawPS = false;
-		}
-		else
-		{
-			if ((GetTickCount()%300)>150)
-				m_bAvoidDrawPS = true;
-			else m_bAvoidDrawPS = false;
-		}
+	uint32_t hash = 0;
+	if( pShader ){
+		hash = ShaderHash(pShader);
+		MarkShaderAsUsed( hash , false );
 	}
 
 #ifdef _DEBUG
@@ -669,132 +698,9 @@ HRESULT WINAPI DataGatherer::SetPixelShader(IDirect3DPixelShader9* pShader)
 
 
 
-/**
-* Shader Analyzer sub menu.
-***/
-void DataGatherer::BRASSA_ShaderSubMenu()
-{
-	UINT menuEntryCount = 6;
 
-	menuHelperRect.left = 0;
-	menuHelperRect.top = 0;
-	
-	UINT entryID;
-	BRASSA_NewFrame(entryID, menuEntryCount);
 
-	/**
-	* ESCAPE : Set BRASSA inactive and save the configuration.
-	***/
-	if (controls.Key_Down(VK_ESCAPE))
-	{
-		BRASSA_mode = BRASSA_Modes::INACTIVE;
-	}
-
-	if ((controls.Key_Down(VK_RETURN) || controls.Key_Down(VK_RSHIFT) || (controls.xButtonsStatus[0x0c])) && (menuVelocity == D3DXVECTOR2(0.0f, 0.0f)))
-	{
-		// 
-		if (entryID == 0)
-		{
-			// create relevant shader constant table
-			GetCurrentShaderRules(true);
-			BRASSA_mode = BRASSA_Modes::INACTIVE;
-			menuVelocity.x+=2.0f;
-			Analyze();
-		}
-		// 
-		if (entryID == 1)
-		{
-			// create menu names new
-			GetCurrentShaderRules(false);
-			BRASSA_mode = BRASSA_Modes::CHANGE_RULES_SCREEN;
-			menuVelocity.x+=2.0f;
-		}
-		//// pick rules
-		//if (entryID == 2)
-		//{
-		//	BRASSA_mode = BRASSA_Modes::PICK_RULES_SCREEN;
-		//	menuVelocity.x+=2.0f;
-		//}
-		// show shaders
-		if (entryID == 2)
-		{
-			BRASSA_mode = BRASSA_Modes::SHOW_SHADERS_SCREEN;
-			menuVelocity.x+=2.0f;
-		}
-		// save rules
-		if (entryID == 3)
-		{
-			BRASSA_mode = BRASSA_Modes::INACTIVE;
-			menuVelocity.x+=2.0f;
-			// save data
-			saveShaderRules();
-		}
-		// back to main menu
-		if (entryID == 4)
-		{
-			BRASSA_mode = BRASSA_Modes::MAINMENU;
-			menuVelocity.x+=2.0f;
-		}
-		// back to game
-		if (entryID == 5)
-		{
-			BRASSA_mode = BRASSA_Modes::INACTIVE;
-		}
-	}
-
-	// output menu
-	if (hudFont)
-	{
-		// adjust border
-		float borderDrawingHeight = borderTopHeight;
-		if (menuVelocity.y == 0.0f)
-			borderTopHeight = menuTop+menuEntryHeight*(float)entryID;
-
-		// draw border - total width due to shift correction
-		D3DRECT rect;
-		rect.x1 = (int)0; rect.x2 = (int)viewportWidth; rect.y1 = (int)borderTopHeight; rect.y2 = (int)(borderTopHeight+viewportHeight*0.04f);
-		ClearEmptyRect(vireio::RenderPosition::Left, rect, D3DCOLOR_ARGB(255,255,128,128), 2);
-		ClearEmptyRect(vireio::RenderPosition::Right, rect, D3DCOLOR_ARGB(255,255,128,128), 2);
-
-		hudMainMenu->Begin(D3DXSPRITE_ALPHABLEND);
-
-		D3DXMATRIX matScale;
-		D3DXMatrixScaling(&matScale, fScaleX, fScaleY, 1.0f);
-		hudMainMenu->SetTransform(&matScale);
-
-		menuHelperRect.left = 550;
-		menuHelperRect.top = 300;
-		D3DProxyDevice::DrawTextShadowed(hudFont, hudMainMenu, "Brown Reischl and Schneider Settings Analyzer (B.R.A.S.S.A.).\n", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
-		rect.x1 = 0; rect.x2 = viewportWidth; rect.y1 = (int)(335*fScaleY); rect.y2 = (int)(340*fScaleY);
-		Clear(1, &rect, D3DCLEAR_TARGET, D3DCOLOR_ARGB(255,255,128,128), 0, 0);
-
-		menuHelperRect.top += 50;  menuHelperRect.left += 250; float guiQSHeight = (float)menuHelperRect.top * fScaleY;
-		DrawTextShadowed(hudFont, hudMainMenu, "Create new Shader Rules", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
-		menuHelperRect.top += 40;
-		DrawTextShadowed(hudFont, hudMainMenu, "Change current Shader Rules", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
-		/*menuHelperRect.top += 40;
-		DrawTextShadowed(hudFont, hudMainMenu, "Pick Rules by active Shaders", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));*/
-		menuHelperRect.top += 40;
-		DrawTextShadowed(hudFont, hudMainMenu, "Show and exclude active Shaders", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
-		menuHelperRect.top += 40;
-		DrawTextShadowed(hudFont, hudMainMenu, "Save Shader Rules", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
-		menuHelperRect.top += 40;
-		DrawTextShadowed(hudFont, hudMainMenu, "Back to BRASSA Menu", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
-		menuHelperRect.top += 40;
-		DrawTextShadowed(hudFont, hudMainMenu, "Back to Game", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
-
-		menuHelperRect.left = 0;
-		menuHelperRect.top = 0;
-		
-		D3DXVECTOR3 vPos( 0.0f, 0.0f, 0.0f);
-		hudMainMenu->Draw(NULL, &menuHelperRect, NULL, &vPos, D3DCOLOR_ARGB(255, 255, 255, 255));
-		hudMainMenu->End();
-	}
-}
-
-/**
-* Change current shader rules.
-***/
+/*
 void DataGatherer::BRASSA_ChangeRules()
 {
 	menuHelperRect.left = 0;
@@ -859,17 +765,6 @@ void DataGatherer::BRASSA_ChangeRules()
 		++itShaderConstants;
 	}
 
-	UINT entryID;
-	BRASSA_NewFrame(entryID, menuEntryCount);
-	UINT borderSelection = entryID;
-
-	/**
-	* ESCAPE : Set BRASSA inactive and save the configuration.
-	***/
-	if (controls.Key_Down(VK_ESCAPE))
-	{
-		BRASSA_mode = BRASSA_Modes::INACTIVE;
-	}
 
 	if ((controls.Key_Down(VK_RETURN) || controls.Key_Down(VK_RSHIFT) || (controls.xButtonsStatus[0x0c])) && (menuVelocity == D3DXVECTOR2(0.0f, 0.0f)))
 	{
@@ -1166,192 +1061,7 @@ void DataGatherer::BRASSA_ChangeRules()
 		hudMainMenu->End();
 	}
 }
-
-/**
-* Pick shader rules out of active shaders.
-***/
-void DataGatherer::BRASSA_PickRules()
-{
-	// ERROR_CALL_NOT_IMPLEMENTED
-}
-
-/**
-* Show currently used Shaders (Hash code) and exclude from rendering, if chosen.
-***/
-void DataGatherer::BRASSA_ShowActiveShaders()
-{
-	// sort the vertex shader vector
-	std::sort (m_activeVShadersLastFrame.begin(), m_activeVShadersLastFrame.end());
-	// sort the pixel shader vector
-	std::sort (m_activePShadersLastFrame.begin(), m_activePShadersLastFrame.end());
-
-	menuHelperRect.left = 0;
-	menuHelperRect.top = 0;
-	
-	UINT menuEntryCount = 2;
-	std::vector<std::string> menuEntries;
-	std::vector<bool> menuColor;
-	std::vector<uint32_t> menuID;
-	std::string menuEntry;
-	// loop through relevant vertex shaders
-	auto itVShaderHash = m_activeVShadersLastFrame.begin();
-	while (itVShaderHash != m_activeVShadersLastFrame.end())
-	{
-		bool excluded = false;
-		// show colored if shader is drawn
-		if (std::find(m_excludedVShaders.begin(), m_excludedVShaders.end(), *itVShaderHash) == m_excludedVShaders.end()) {
-			excluded = true;
-		}
-		menuColor.push_back(excluded);
-		menuID.push_back(*itVShaderHash);
-		char buf[256];
-		sprintf_s(buf, 256, "VS : %u", *itVShaderHash);
-		menuEntry = std::string(buf);
-		menuEntries.push_back(menuEntry);
-
-		menuEntryCount++;
-		++itVShaderHash;
-	}
-	UINT endOfVertexShaderEntries = menuEntryCount-2;
-	// loop through relevant pixel shaders
-	auto itPShaderHash = m_activePShadersLastFrame.begin();
-	while (itPShaderHash != m_activePShadersLastFrame.end())
-	{
-		bool excluded = false;
-		// show colored if shader is drawn
-		if (std::find(m_excludedPShaders.begin(), m_excludedPShaders.end(), *itPShaderHash) == m_excludedPShaders.end()) {
-			excluded = true;
-		}
-		menuColor.push_back(excluded);
-		menuID.push_back(*itPShaderHash);
-		char buf[256];
-		sprintf_s(buf, 256, "PS : %u", *itPShaderHash);
-		menuEntry = std::string(buf);
-		menuEntries.push_back(menuEntry);
-
-		menuEntryCount++;
-		++itPShaderHash;
-	}
-
-	UINT entryID;
-	BRASSA_NewFrame(entryID, menuEntryCount);
-	UINT borderSelection = entryID;
-
-	/**
-	* ESCAPE : Set BRASSA inactive and save the configuration.
-	***/
-	if (controls.Key_Down(VK_ESCAPE))
-	{
-		BRASSA_mode = BRASSA_Modes::INACTIVE;
-	}
-
-	if ((controls.Key_Down(VK_RETURN) || controls.Key_Down(VK_RSHIFT) || (controls.xButtonsStatus[0x0c])) && (menuVelocity == D3DXVECTOR2(0.0f, 0.0f)))
-	{
-		// switch shader node (drawn/not-drawn)
-		if ((entryID >= 0) && (entryID < menuEntryCount-2) && (menuEntryCount>2))
-		{
-			if (entryID < endOfVertexShaderEntries)
-			{
-				// show colored if shader is drawn
-				if (std::find(m_excludedVShaders.begin(), m_excludedVShaders.end(), menuID[entryID]) == m_excludedVShaders.end()) {
-					m_excludedVShaders.push_back(menuID[entryID]);
-				}
-				else
-				{
-					// erase all entries for that hash
-					m_excludedVShaders.erase(std::remove(m_excludedVShaders.begin(), m_excludedVShaders.end(), menuID[entryID]), m_excludedVShaders.end()); 
-				}
-			}
-			else
-			{
-				// show colored if shader is drawn
-				if (std::find(m_excludedPShaders.begin(), m_excludedPShaders.end(), menuID[entryID]) == m_excludedPShaders.end()) {
-					m_excludedPShaders.push_back(menuID[entryID]);
-				}
-				else
-				{
-					// erase all entries for that hash
-					m_excludedPShaders.erase(std::remove(m_excludedPShaders.begin(), m_excludedPShaders.end(), menuID[entryID]), m_excludedPShaders.end()); 
-				}
-			}
-
-			menuVelocity.x+=2.0f;
-		}
-		// back to main menu
-		if (entryID == menuEntryCount-2)
-		{
-			BRASSA_mode = BRASSA_Modes::MAINMENU;
-			menuVelocity.x+=2.0f;
-		}
-		// back to game
-		if (entryID == menuEntryCount-1)
-		{
-			BRASSA_mode = BRASSA_Modes::INACTIVE;
-		}
-	}
-
-
-
-	// output menu
-	if (hudFont)
-	{
-		// adjust border & menu due to menu scroll
-		float borderDrawingHeight = borderTopHeight;
-		if (menuVelocity.y == 0.0f)
-			borderTopHeight = menuTop+menuEntryHeight*(float)entryID;
-		if (borderTopHeight>(menuTop+(menuEntryHeight*12.0f)))
-			borderDrawingHeight = menuTop+menuEntryHeight*12.0f;
-
-		// down scroll border/menu adjustment
-		if (menuTopHeight>=(borderDrawingHeight-borderTopHeight))
-			menuTopHeight = (borderDrawingHeight-borderTopHeight);
-		else
-			borderDrawingHeight=borderTopHeight+menuTopHeight;
-
-		// up scroll border/menu adjustment
-		if (borderDrawingHeight<menuTop)
-		{
-			menuTopHeight+=menuTop-borderDrawingHeight;
-			borderDrawingHeight = menuTop;
-		}
-
-
-		// draw border - total width due to shift correction
-		D3DRECT rect;
-		rect.x1 = (int)0; rect.x2 = (int)viewportWidth; rect.y1 = (int)borderDrawingHeight; rect.y2 = (int)(borderDrawingHeight+viewportHeight*0.04f);
-		ClearEmptyRect(vireio::RenderPosition::Left, rect, D3DCOLOR_ARGB(255,255,128,128), 2);
-		ClearEmptyRect(vireio::RenderPosition::Right, rect, D3DCOLOR_ARGB(255,255,128,128), 2);
-
-		hudMainMenu->Begin(D3DXSPRITE_ALPHABLEND);
-
-		D3DXMATRIX matScale;
-		D3DXMatrixScaling(&matScale, fScaleX, fScaleY, 1.0f);
-		hudMainMenu->SetTransform(&matScale);
-
-		float guiQSHeight = (float)menuHelperRect.top * fScaleY;
-		menuHelperRect.left = 800; menuHelperRect.top = 350;
-		menuHelperRect.top += (int)(menuTopHeight / fScaleY);
-		for (UINT i = 0; i < menuEntryCount-2; i++)
-		{
-			if (menuColor[i])
-				DrawTextShadowed(hudFont, hudMainMenu, menuEntries[i].c_str(), -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 64, 255, 64));
-			else	
-				DrawTextShadowed(hudFont, hudMainMenu, menuEntries[i].c_str(), -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
-
-			menuHelperRect.top += 40;
-		}
-		DrawTextShadowed(hudFont, hudMainMenu, "Back to BRASSA Menu", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
-		menuHelperRect.top += 40;
-		DrawTextShadowed(hudFont, hudMainMenu, "Back to Game", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
-
-		menuHelperRect.left = 0;
-		menuHelperRect.top = 0;
-		
-		D3DXVECTOR3 vPos( 0.0f, 0.0f, 0.0f);
-		hudMainMenu->Draw(NULL, &menuHelperRect, NULL, &vPos, D3DCOLOR_ARGB(255, 255, 255, 255));
-		hudMainMenu->End();
-	}
-}
+*/
 
 /**
 * Analyzes the game and outputs a shader rule xml file.

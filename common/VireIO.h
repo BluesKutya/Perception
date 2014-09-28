@@ -86,10 +86,10 @@ class MotionTracker;
 class ViewAdjustment;
 class cTracker;
 
-cTracker* VireIO_Create_Tracker_FreeSpace();
-cTracker* VireIO_Create_Tracker_FreeTrack();
-cTracker* VireIO_Create_Tracker_SharedMemory();
-cTracker* VireIO_Create_Tracker_Oculus();
+cTracker* Vireio_Create_Tracker_FreeSpace();
+cTracker* Vireio_Create_Tracker_FreeTrack();
+cTracker* Vireio_Create_Tracker_SharedMemory();
+cTracker* Vireio_Create_Tracker_Oculus();
 
 
 

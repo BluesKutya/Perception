@@ -1,6 +1,6 @@
 #include <qapplication.h>
 #include "cMainWindow.h"
-#include <VireIO.h>
+#include <Vireio.h>
 
 int main(int argc, char **argv){
 	QApplication a(argc, argv);
@@ -9,7 +9,7 @@ int main(int argc, char **argv){
 
 	config.load( config.getMainConfigFile() );
 	
-	QCoreApplication::setOrganizationName( "VireIO" );
+	QCoreApplication::setOrganizationName( "Vireio" );
 	QCoreApplication::setApplicationName ( "Perception" );
 
 	cMainWindow w;

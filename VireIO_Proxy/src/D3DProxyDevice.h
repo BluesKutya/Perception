@@ -35,7 +35,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define BRASSA_PIXEL_WIDTH 1920
 #define BRASSA_PIXEL_HEIGHT 1080
 
-#include <VireIO.h>
+#include <Vireio.h>
 #include <d3dx9.h>
 #include <XInput.h>
 #include <memory>
@@ -349,38 +349,7 @@ public:
 	**/
 	cTracker* tracker;
 
-	/**
-	* Schneider-Hicks Optical Calibration Tool GUI mode.
-	**/
-	BRASSA_Modes BRASSA_mode;
-	/**
-	* Schneider-Hicks Optical Calibration Tool center of right line.
-	**/
-	float centerlineR;
-	/**
-	* Schneider-Hicks Optical Calibration Tool center of left line.
-	**/
-	float centerlineL;
-	/**
-	* HUD font to be used for SHOCT.
-	**/
-	ID3DXFont *hudFont;
-	/**
-	* HUD font to be used for error notifications.
-	**/
-	ID3DXFont *errorFont;	
-	/**
-	* HUD font to be used for non-error notifications.
-	**/
-	ID3DXFont *popupFont;	
-	/**
-	* Timestamp used to adjust the menu velocity independent of game speed.
-	**/
-	float menuTime;
-	/**
-	* Timespan of every frame (in seconds).
-	***/
-	float menuSeconds;
+
 	/**
 	* True floating GUI mode activated + Reset Values
 	**/
@@ -544,30 +513,7 @@ public:
 	* Proxy state block to capture various states.
 	**/
 	D3D9ProxyStateBlock* m_pCapturingStateTo;
-	/**
-	* Main menu sprite.
-	***/
-	LPD3DXSPRITE hudMainMenu;
-	/**
-	* Main menu sprite.
-	***/
-	LPD3DXSPRITE hudTextBox;
-	/**
-	* Main menu velocity.
-	***/
-	D3DXVECTOR2 menuVelocity;
-	/**
-	* Main menu affection.
-	***/
-	D3DXVECTOR2 menuAttraction;
-	/**
-	* Main menu border top height.
-	***/
-	float borderTopHeight;
-	/**
-	* Main menu top height for scrolling menues.
-	***/
-	float menuTopHeight;
+
 	/**
 	* BRASSA menu value.
 	***/
@@ -576,29 +522,6 @@ public:
 	* BRASSA menu value.
 	***/
 	int viewportHeight;
-	/**
-	* BRASSA menu value.
-	***/
-	float menuTop;
-	/**
-	* BRASSA menu value.
-	* Menu entry height, in pixels.
-	***/
-	float menuEntryHeight;
-	/**
-	* BRASSA menu helper rectangle.
-	***/
-	RECT menuHelperRect;
-	/**
-	* BRASSA menu value.
-	* Scales BRASSA menu to current resolution.
-	***/
-	float fScaleX;
-	/**
-	* BRASSA menu value.
-	* Scales BRASSA menu to current resolution.
-	***/
-	float fScaleY;
 	/**
 	* True if BeginScene() is called the first time this frame.
 	* @see BeginScene()
@@ -635,11 +558,7 @@ public:
 	* Used for VRboost security.
 	***/
 	UINT m_VertexShaderCountLastFrame;
-	/**
-	* Vector contains all possible game projection x scale values.
-	* Filled only if BRASSA_mode == WorldScale and SetTransform(>projection<) called by the game.
-	***/
-	std::vector<float> m_gameXScaleUnits;
+
 	/**
 	* Struct commands device behavior.
 	***/
@@ -903,8 +822,7 @@ public:
 	***/
 	int screenshot;
 
-	cMenu mainMenu;
-	bool  oldMenu;
+	cMenu menu;
 
 	/**
 	* Actual Direct3D Device pointer embedded. 

@@ -1,5 +1,5 @@
 #include <freespace\freespace.h>
-#include <VireIO.h>
+#include <Vireio.h>
 #include <cTracker.h>
 
 
@@ -157,7 +157,7 @@ public:
 };
 
 
-cTracker* VireIO_Create_Tracker_FreeSpace(){
+cTracker* Vireio_Create_Tracker_FreeSpace(){
 	return new cTracker_freespace;
 }
 

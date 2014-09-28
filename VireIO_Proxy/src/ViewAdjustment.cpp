@@ -44,8 +44,6 @@ ViewAdjustment::ViewAdjustment( float metersToWorldUnits, bool enableRoll , cCon
 {
 	// TODO : max, min convergence; arbitrary now
 	convergence = 0.0f;
-	minConvergence = -100.0f;
-	maxConvergence = 100.0f;
 
 	ipd = IPD_DEFAULT;
 
@@ -218,7 +216,7 @@ void ViewAdjustment::UpdatePosition(float yaw, float pitch, float roll, float xP
 	D3DXVECTOR3 vec(xPosition, yPosition, zPosition);
 
 	D3DXMATRIX worldScale;
-	D3DXMatrixScaling(&worldScale, -1.0f * WorldScale() * scaler, -1.0f * WorldScale() * scaler, WorldScale() * scaler);
+	D3DXMatrixScaling(&worldScale, -1.0f * metersToWorldMultiplier * scaler, -1.0f * metersToWorldMultiplier * scaler, metersToWorldMultiplier * scaler);
 	D3DXVec3TransformNormal(&positionTransformVec, &vec, &worldScale);
 
 	D3DXMATRIX rotationMatrixPitchYaw;
@@ -549,38 +547,7 @@ void ViewAdjustment::GatherMatrix(D3DXMATRIX& matrixLeft, D3DXMATRIX& matrixRigh
 	matGatheredRight = D3DMATRIX(matrixRight);
 }
 
-/**
-* Returns the current world scale.
-***/
-float ViewAdjustment::WorldScale()
-{
-	return metersToWorldMultiplier;
-}
 
-/**
-* Modifies the world scale with its limits 0.000001f and 1,000,000 (arbitrary limit).
-* NOTE: This should not be changed during normal usage, this is here to facilitate finding a reasonable scale.
-***/
-float ViewAdjustment::ChangeWorldScale(float toAdd)
-{
-	metersToWorldMultiplier+= toAdd;
-
-	vireio::clamp(&metersToWorldMultiplier, 0.000001f, 1000000.0f);
-
-	return metersToWorldMultiplier;
-}
-
-/**
-* Changes and clamps convergence.
-***/
-float ViewAdjustment::ChangeConvergence(float toAdd)
-{
-	convergence += toAdd;
-
-	vireio::clamp(&convergence, minConvergence, maxConvergence);
-
-	return convergence;
-}
 
 /**
 * Changes GUI squash and updates matrix.
@@ -651,21 +618,9 @@ void ViewAdjustment::ResetWorldScale()
 	metersToWorldMultiplier = 3.0f;
 }
 
-/**
-* Just sets convergence to 3.0f (= 3 physical meters).
-***/
-void ViewAdjustment::ResetConvergence()
-{
-	convergence = 3.0f;
-}
 
-/**
-* Returns the current convergence adjustment, in meters.
-***/
-float ViewAdjustment::Convergence() 
-{ 
-	return convergence; 
-}
+
+
 
 /**
 * Returns the current convergence adjustment, in game units.
@@ -690,17 +645,4 @@ float ViewAdjustment::SeparationInWorldUnits()
 float ViewAdjustment::SeparationIPDAdjustment() 
 { 
 	return  ((ipd-IPD_DEFAULT) / 2.0f) * metersToWorldMultiplier; 
-}
-
-/**
-* Returns true if head roll is enabled.
-***/
-bool ViewAdjustment::RollEnabled() 
-{ 
-	return rollEnabled; 
-}
-
-void ViewAdjustment::SetRollEnabled(bool rollEnabled)
-{
-	this->rollEnabled = rollEnabled;
 }

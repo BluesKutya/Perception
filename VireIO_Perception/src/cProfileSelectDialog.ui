@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>VireIO Perception</string>
+   <string>Select profile</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="1" column="1">

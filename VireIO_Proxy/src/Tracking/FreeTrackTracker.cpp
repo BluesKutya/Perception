@@ -1,4 +1,4 @@
-#include <VireIO.h>
+#include <Vireio.h>
 #include <cTracker.h>
 
 
@@ -98,6 +98,6 @@ public:
 };
 
 
-cTracker* VireIO_Create_Tracker_FreeTrack(){
+cTracker* Vireio_Create_Tracker_FreeTrack(){
 	return new cTracker_freetrack;
 }

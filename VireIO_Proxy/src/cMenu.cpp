@@ -2,8 +2,9 @@
 #include "D3DProxyDevice.h"
 
 cMenuItem::cMenuItem(){
-	parent   = 0;
-	selected = 0;
+	parent         = 0;
+	selected       = 0;
+	showCalibrator = false;
 }
 
 cMenuItem* cMenuItem::add( const QString& n , TYPE t ){
@@ -52,6 +53,8 @@ cMenuItem* cMenuItem::addSpinner ( const QString& n , float* variable , float st
 cMenuItem* cMenuItem::addCheckbox( const QString& n , bool*  variable , const QString& on_text , const QString& off_text ){
 	cMenuItem* i = add( n , CHECKBOX );
 	i->checkVar = variable;
+	i->checkOn  = on_text;
+	i->checkOff = off_text;
 	return i;
 
 }
@@ -59,7 +62,7 @@ cMenuItem* cMenuItem::addCheckbox( const QString& n , bool*  variable , const QS
 
 
 cMenu::cMenu( ){
-	root.name   = "VireIO Main Menu";
+	root.name   = "Vireio Main Menu";
 	root.type   = cMenuItem::SUBMENU;
 	root.parent = 0;
 	prevKeyDown = false;
@@ -67,16 +70,24 @@ cMenu::cMenu( ){
 }
 
 
+
 void cMenu::render( ){
 	if( !font || !sprite ){
 		return;
 	}
 
+	bool newKeyDown = false;
+	
+	if( device->controls.Key_Down( VK_ADD ) ){
+		newKeyDown = true;
+		if( !prevKeyDown ){
+			show = !show;
+		}
+	}
+
 	if( !menu->selected && !menu->children.isEmpty() ){
 		menu->selected = menu->children.first();
 	}
-
-	bool newKeyDown = false;
 	
 	if( menu->selected ){
 		int        move_y = 0;
@@ -106,16 +117,23 @@ void cMenu::render( ){
 				switch( sel->type ){
 				case cMenuItem::SUBMENU:
 					menu = sel;
+					if( sel->callbackOpenSubmenu ){
+						sel->callbackOpenSubmenu();
+					}
 					break;
 
 				case cMenuItem::CHECKBOX:
 					*sel->checkVar = !*sel->checkVar;
+					if( sel->callbackValueChanged ){
+						sel->callbackValueChanged();
+					}
 					break;
 				}
 			}
 		}
 
 		
+		//BUG: somehow it's sticked if shift is pressed
 		if( device->controls.Key_Down( VK_NUMPAD4 ) ){
 			newKeyDown = true;
 			move_x = -1;
@@ -125,7 +143,6 @@ void cMenu::render( ){
 			newKeyDown = true;
 			move_x = +1;
 		}
-
 
 		if( move_y ){
 			int i = menu->children.indexOf( sel );
@@ -160,74 +177,133 @@ void cMenu::render( ){
 						*sel->spinVar = sel->spinMin;
 					}
 				}
+
+				if( sel->callbackValueChanged ){
+					sel->callbackValueChanged();
+				}
 			}
 		}
 	}
 
 
-	if( device->controls.Key_Down( VK_NUMPAD0 ) ){
+	if( device->controls.Key_Down( VK_SUBTRACT ) ){
 		newKeyDown = true;
 		if( !prevKeyDown ){
-			if( menu->parent ){
-				menu = menu->parent;
+			if( menu->callbackCloseSubmenu ){
+				menu->callbackCloseSubmenu();
 			}
+			menu = menu->parent;
 		}
 	}
 
 	prevKeyDown = newKeyDown;
 
-
-	for( int side = 0 ; side < 2 ; side++ ){
-	
-		device->setDrawingSide( side ? vireio::RenderPosition::Right : vireio::RenderPosition::Left );
-
-		sprite->Begin( D3DXSPRITE_ALPHABLEND );
-		
-		D3DXMATRIX matScale;
-		D3DXMatrixScaling( &matScale , viewportWidth / 1920.0 , viewportHeight / 1080.0 , 1.0 );
-		sprite->SetTransform( &matScale );
-
-		posY = 300;
-
-		drawText( menu->name , ALIGN_CENTER );
-		posY += 40;
-
-		drawRect( 0 , posY , 1920 , posY+3 , D3DCOLOR_ARGB(255,255,128,128)  );
-		posY += 3;
-
-		for( cMenuItem* i : menu->children ){
-			if( i == menu->selected ){
-				drawRect( 0 , posY+2 , 1920 , posY + 4 , D3DCOLOR_ARGB(255,128,255,128)  );
-			}
-			
-			drawText( i->name , ALIGN_LEFT_COLUMN );
-
-			if( i->type == cMenuItem::CHECKBOX ){
-				drawText( (*i->checkVar) ? "yes" : "no" , ALIGN_RIGH_COLUMN );
-			}else
-			if( i->type == cMenuItem::SPINNER ){
-				char s[256];
-
-				int decimals = -floor(log10(i->spinStep));
-				if( decimals < 0){
-					decimals = 0;
-				}
-
-				sprintf_s( s , "%.*f" , decimals , *i->spinVar );
-				
-				drawText( s , ALIGN_RIGH_COLUMN );
-			}
-
-			posY += 40;
-
-			if( i == menu->selected ){
-				drawRect( 0 , posY-2 , 1920 , posY + 2 , D3DCOLOR_ARGB(255,128,255,128)  );
-			}
-		}
-
-		sprite->End( );
+	if( !show ){
+		return;
 	}
 
+	if( menu->callbackRender ){
+		menu->callbackRender();
+	}
+
+	sprite->Begin( D3DXSPRITE_ALPHABLEND );
+
+	D3DXMATRIX matScale;
+	D3DXMatrixScaling( &matScale , viewportWidth / 1920.0 , viewportHeight / 1080.0 , 1.0 );
+	sprite->SetTransform( &matScale );
+
+	posY = 300;
+
+	drawText( menu->name , ALIGN_CENTER );
+	posY += 40;
+
+	drawRect( 0 , posY , 1920 , posY+3 , D3DCOLOR_ARGB(255,255,128,128)  );
+
+	for( cMenuItem* i : menu->children ){
+		if( i == menu->selected ){
+			drawRect( 0 , posY+2 , 1920 , posY + 4 , D3DCOLOR_ARGB(255,128,255,128)  );
+		}
+			
+		drawText( i->name , ALIGN_LEFT_COLUMN );
+
+		if( i->type == cMenuItem::CHECKBOX ){
+			drawText( (*i->checkVar) ? i->checkOn : i->checkOff , ALIGN_RIGHT_COLUMN );
+		}else
+		if( i->type == cMenuItem::SPINNER ){
+			char s[256];
+
+			int decimals = -floor(log10(i->spinStep));
+			if( decimals < 0){
+				decimals = 0;
+			}
+
+			sprintf_s( s , "%.*f" , decimals , *i->spinVar );
+				
+			drawText( s , ALIGN_RIGHT_COLUMN );
+		}
+
+		posY += 40;
+
+		if( i == menu->selected ){
+			drawRect( 0 , posY-2 , 1920 , posY + 2 , D3DCOLOR_ARGB(255,128,255,128)  );
+		}
+	}
+
+
+	if( menu->showCalibrator ){
+		D3DRECT rect;
+		rect.x1 = viewportWidth / 2 - 1;
+		rect.x2 = viewportWidth / 2 + 1;
+		rect.y1 = 0;
+		rect.y2 = viewportHeight;
+		device->Clear( 1 , &rect , D3DCLEAR_TARGET , D3DCOLOR_ARGB(255,255,255,255) , 0 , 0 );
+
+		rect.x1 = viewportWidth  / 2 - 0.06*viewportWidth;
+		rect.x2 = viewportWidth  / 2 + 0.06*viewportWidth;
+		rect.y1 = viewportHeight / 2 - 1;
+		rect.y2 = viewportHeight / 2 + 1;
+		device->Clear( 1 , &rect , D3DCLEAR_TARGET , D3DCOLOR_ARGB(255,255,255,255) , 0 , 0 );
+
+		rect.x1 = viewportWidth  / 2 - 0.06*viewportWidth - 1;
+		rect.x2 = viewportWidth  / 2 - 0.06*viewportWidth + 1;
+		rect.y1 = viewportHeight / 2 - 32;
+		rect.y2 = viewportHeight / 2 + 32;
+		device->Clear( 1 , &rect , D3DCLEAR_TARGET , D3DCOLOR_ARGB(255,255,255,255) , 0 , 0 );
+
+		rect.x1 = viewportWidth  / 2 + 0.06*viewportWidth - 1;
+		rect.x2 = viewportWidth  / 2 + 0.06*viewportWidth + 1;
+		rect.y1 = viewportHeight / 2 - 32;
+		rect.y2 = viewportHeight / 2 + 32;
+		device->Clear( 1 , &rect , D3DCLEAR_TARGET , D3DCOLOR_ARGB(255,255,255,255) , 0 , 0 );
+
+
+		drawText(
+			"1) Walk up as close as possible\n"
+			"   to a 90 degree vertical object\n"
+			"   (wall cornet, table, square post)\n"
+			"2) Close left eye\n"
+			"3) Open  right eye\n"
+			"4) Align long vertical line with edge\n"
+			"   with mouse or head tracker\n"
+			"5) Close right eye\n"
+			"6) Open  left  eye\n"
+			"7) Adjust \"Separation\" until the same\n"
+			"   edge is aligned with small vertical\n"
+			"   line in left eye view\n"
+			"8) Repeat 2..7 until edge is aligned on both\n"
+			"   long line in right eye view and short right\n"
+			"   line in left eye view. Separation now configured.\n"
+			"9) Open both eyes\n"
+			"10) Walk somewhere where there are objects nearby\n"
+			"    and far away on screen on same time.\n"
+			"11) Adjust \"Covergence\" to a comfort level.\n"
+			"    (currently no precise method available)"
+			, ALIGN_RIGHT_COLUMN
+		);
+	}
+
+
+	sprite->End( );
 
 
 		/*
@@ -262,7 +338,7 @@ void cMenu::drawText( const QString& text , int align ){
 	rect.left   = 0;
 	rect.right  = 1920;
 	rect.top    = posY;
-	rect.bottom = posY + 32;
+	rect.bottom = 1080;
 
 	int flags = 0;
 
@@ -274,7 +350,7 @@ void cMenu::drawText( const QString& text , int align ){
 		rect.left += 500;
 	}
 
-	if( align == ALIGN_RIGH_COLUMN ){
+	if( align == ALIGN_RIGHT_COLUMN ){
 		rect.left += 1200;
 	}
 

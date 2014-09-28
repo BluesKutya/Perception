@@ -6,7 +6,7 @@
 #include <qmessagebox.h>
 #include <qfiledialog.h>
 #include "cProfileSelectDialog.h"
-#include <VireIO.h>
+#include <Vireio.h>
 #include <cConfig.h>
 #include <cPropsFile.h>
 
