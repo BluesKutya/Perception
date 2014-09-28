@@ -54,11 +54,7 @@ StereoView::StereoView(cConfig& cfg ) :
 {
 	OutputDebugStringA("Created SteroView\n");
 	initialized = false;
-	DistortionScale = 0.0f;
-	YOffset = config.YOffset;
-	IPDOffset = config.IPDOffset;
 	XOffset = 0;
-	swapEyes = config.swap_eyes;
 
 	// set all member pointers to NULL to prevent uninitialized objects being used
 	m_pActualDevice = NULL;
@@ -267,7 +263,7 @@ void StereoView::Draw(D3D9ProxySurface* stereoCapableSurface)
 	m_pActualDevice->SetFVF(D3DFVF_TEXVERTEX);
 
 	// swap eyes
-	if(!swapEyes)
+	if(!config.swap_eyes)
 	{
 		m_pActualDevice->SetTexture(0, leftTexture);
 		m_pActualDevice->SetTexture(1, rightTexture);
@@ -510,10 +506,10 @@ void StereoView::SetViewEffectInitialValues() {
 void StereoView::CalculateShaderVariables() {
 	// Center of half screen is 0.25 in x (halfscreen x input in 0 to 0.5 range)
 	// Lens offset is in a -1 to 1 range. Using in shader with a 0 to 0.5 range so use 25% of the value.
-	LensCenter[0] = 0.25f + (config.lensXCenterOffset * 0.25f) - (config.lensIPDCenterOffset - IPDOffset);
+	LensCenter[0] = 0.25f + (config.lensXCenterOffset * 0.25f) - (config.lensIPDCenterOffset - config.IPDOffset);
 
 	// Center of halfscreen range is 0.5 in y (halfscreen y input in 0 to 1 range)
-	LensCenter[1] = config.lensYCenterOffset - YOffset;
+	LensCenter[1] = config.lensYCenterOffset - config.YOffset;
 
 	
 	
@@ -533,7 +529,7 @@ void StereoView::CalculateShaderVariables() {
 	// y is changed from 0 to 1 to 0 to 2 and scaled to account for aspect ratio
 	ScaleIn[1] = 2.0f / (inputTextureAspectRatio * 0.5f); // 1/2 aspect ratio for differing input ranges
 	
-	float scaleFactor = (1.0f / (config.scaleToFillHorizontal + DistortionScale));
+	float scaleFactor = (1.0f / (config.scaleToFillHorizontal + config.DistortionScale));
 
 	// Scale from 0 to 2 to 0 to 1  for x and y 
 	// Then use scaleFactor to fill horizontal space in line with the lens and adjust for aspect ratio for y.

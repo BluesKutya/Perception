@@ -106,6 +106,8 @@ UINT GetMouseScrollLines()
 	return nScrollLines;
 }
 
+
+
 /**
 * Constructor : creates game handler and sets various states.
 ***/
@@ -131,7 +133,7 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 
 	InitVRBoost();
 
-	m_spShaderViewAdjustment = std::make_shared<ViewAdjustment>( 1.0f, false , cfg );
+	m_spShaderViewAdjustment = std::make_shared<ViewAdjustment>( cfg );
 	m_pGameHandler = new GameHandler();
 
 	// Check the maximum number of supported render targets
@@ -206,14 +208,9 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	m_bSurpressHeadtracking = false;
 
 	// first time configuration
-	m_spShaderViewAdjustment->Load(config);
 	m_pGameHandler->Load(config, m_spShaderViewAdjustment);
 	stereoView                 = new StereoView( config );
-	stereoView->YOffset        = config.YOffset;
 	stereoView->HeadYOffset    = 0;
-	stereoView->IPDOffset      = config.IPDOffset;
-	stereoView->DistortionScale= config.DistortionScale;
-	m_maxDistortionScale       = config.DistortionScale;
 
 	BRASSA_UpdateDeviceSettings();
 	OnCreateOrRestore();
@@ -228,26 +225,26 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	m = menu.root.addSubmenu( "Stereoscopic 3D calibration" );
 	m->showCalibrator = true;
 	
-	i = m->addSpinner( "Separation" , &m_spShaderViewAdjustment->metersToWorldMultiplier , 0.0000001 , 100000 , 0.005 );
+	i = m->addSpinner( "Separation" , &config.stereoScale , 0.0000001 , 100000 , 0.005 );
 	i->callbackValueChanged = [this](){
 		m_spShaderViewAdjustment->UpdateProjectionMatrices((float)stereoView->viewport.Width/(float)stereoView->viewport.Height);
 	};
 
-	i = m->addSpinner( "Convergence" , &m_spShaderViewAdjustment->convergence , -100 , 100 , 0.01 );
+	i = m->addSpinner( "Convergence" , &config.stereoConvergence , -100 , 100 , 0.01 );
 	i->callbackValueChanged = [this](){
 		m_spShaderViewAdjustment->UpdateProjectionMatrices((float)stereoView->viewport.Width/(float)stereoView->viewport.Height);
 	};
 
 
 	m = menu.root.addSubmenu( "Image settings" );
-	i = m->addCheckbox( "Swap eyes"         , &stereoView->swapEyes  );
+	i = m->addCheckbox( "Swap eyes"         , &config.swap_eyes );
 
-	i = m->addSpinner ( "IPD offset" , &stereoView->IPDOffset        , 0.001 );
+	i = m->addSpinner ( "IPD offset" , &config.IPDOffset        , 0.001 );
 	i->callbackValueChanged = [this](){
 		stereoView->PostReset();
 	};
 
-	i = m->addSpinner ( "Distortion scale" , &stereoView->DistortionScale  , 0.01 );
+	i = m->addSpinner ( "Distortion scale" , &config.DistortionScale  , 0.01 );
 	i->callbackValueChanged = [this](){
 		stereoView->PostReset();
 	};
@@ -1960,9 +1957,6 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 			tracker = Vireio_Create_Tracker_Oculus();
 			break;
 
-		//case 50:
-		//	tracker = Vireio_Create_Tracker_FreeSpace();
-		//	break;
 		}
 
 
@@ -2044,13 +2038,16 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 		ShowPopup(popup);
 	}
 
-	if (m_spShaderViewAdjustment->rollEnabled) {
+	if ( config.rollEnabled ) {
 		m_spShaderViewAdjustment->UpdateRoll(tracker->currentRoll);
 	}
 
 	if( config.trackerMouseEmulation ){
 		return;
 	}
+
+		printf("tracker %f %f %f\n" , tracker->currentYaw,	tracker->currentPitch,tracker->currentRoll);
+
 
 	m_spShaderViewAdjustment->UpdatePitchYaw( tracker->currentPitch , tracker->currentYaw );
 
@@ -2519,10 +2516,10 @@ METHOD_IMPL( void , , D3DProxyDevice , ChangeHUD3DDepthMode , HUD_3D_Depth_Modes
 	if (newMode >= HUD_3D_Depth_Modes::HUD_ENUM_RANGE)
 		return;
 
-	hud3DDepthMode = newMode;
+	config.hud3DDepthMode = newMode;
 
-	m_spShaderViewAdjustment->ChangeHUDDistance(hudDistancePresets[(int)newMode]);
-	m_spShaderViewAdjustment->ChangeHUD3DDepth(hud3DDepthPresets[(int)newMode]);
+	m_spShaderViewAdjustment->ChangeHUDDistance(config.hudDistancePresets[(int)newMode]);
+	m_spShaderViewAdjustment->ChangeHUD3DDepth(config.hud3DDepthPresets[(int)newMode]);
 }
 
 /**
@@ -2532,10 +2529,10 @@ METHOD_IMPL( void , , D3DProxyDevice , ChangeGUI3DDepthMode , GUI_3D_Depth_Modes
 	if (newMode >= GUI_3D_Depth_Modes::GUI_ENUM_RANGE)
 		return;
 
-	gui3DDepthMode = newMode;
+	config.gui3DDepthMode = newMode;
 
-	m_spShaderViewAdjustment->ChangeGUISquash(guiSquishPresets[(int)newMode]);
-	m_spShaderViewAdjustment->ChangeGUI3DDepth(gui3DDepthPresets[(int)newMode]);
+	m_spShaderViewAdjustment->ChangeGUISquash(config.guiSquishPresets[(int)newMode]);
+	m_spShaderViewAdjustment->ChangeGUI3DDepth(config.gui3DDepthPresets[(int)newMode]);
 
 
 	if (newMode == GUI_3D_Depth_Modes::GUI_FULL)
@@ -2567,29 +2564,6 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_UpdateBorder )
 * Updates the current config based on the current device settings.
 ***/
 METHOD_IMPL( void , , D3DProxyDevice , BRASSA_UpdateConfigSettings )
-	config.YOffset = stereoView->YOffset;
-	config.IPDOffset = stereoView->IPDOffset;
-	config.swap_eyes = stereoView->swapEyes;
-	config.DistortionScale = stereoView->DistortionScale;
-	config.hud3DDepthMode = (int)hud3DDepthMode;
-	for (int i = 0; i < 4; i++)
-	{
-		config.hud3DDepthPresets[i] = hud3DDepthPresets[i];
-		config.hudDistancePresets[i] = hudDistancePresets[i];
-		config.hudHotkeys[i] = hudHotkeys[i];
-	}
-	config.hudHotkeys[4] = hudHotkeys[4];
-
-	config.gui3DDepthMode = (int)gui3DDepthMode;
-	for (int i = 0; i < 4; i++)
-	{
-		config.gui3DDepthPresets[i] = gui3DDepthPresets[i];
-		config.guiSquishPresets[i] = guiSquishPresets[i];
-		config.guiHotkeys[i] = guiHotkeys[i];
-	}
-	config.guiHotkeys[4] = guiHotkeys[4];
-
-	config.VRBoostResetHotkey = toggleVRBoostHotkey;
 	config.WorldFOV = VRBoostValue[VRboostAxis::WorldFOV];
 	config.PlayerFOV = VRBoostValue[VRboostAxis::PlayerFOV];
 	config.FarPlaneFOV = VRBoostValue[VRboostAxis::FarPlaneFOV];
@@ -2603,38 +2577,18 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_UpdateConfigSettings )
 	config.ConstantValue2 = VRBoostValue[VRboostAxis::ConstantValue2];
 	config.ConstantValue3 = VRBoostValue[VRboostAxis::ConstantValue3];
 
-	m_spShaderViewAdjustment->Save( config );
 }
 
 /**
 * Updates all device settings read from the current config.
 ***/
 METHOD_IMPL( void , , D3DProxyDevice , BRASSA_UpdateDeviceSettings )
-	m_spShaderViewAdjustment->Load( config );
-	stereoView->DistortionScale = config.DistortionScale;
 
-	// HUD
-	for (int i = 0; i < 4; i++)
-	{
-		hud3DDepthPresets[i] = config.hud3DDepthPresets[i];
-		hudDistancePresets[i] = config.hudDistancePresets[i];
-		hudHotkeys[i] = config.hudHotkeys[i];
-	}
-	hudHotkeys[4] = config.hudHotkeys[4];
 	ChangeHUD3DDepthMode((HUD_3D_Depth_Modes)config.hud3DDepthMode);
 
-	// GUI
-	for (int i = 0; i < 4; i++)
-	{
-		gui3DDepthPresets[i] = config.gui3DDepthPresets[i];
-		guiSquishPresets[i] = config.guiSquishPresets[i];
-		guiHotkeys[i] = config.guiHotkeys[i];
-	}
-	guiHotkeys[4] = config.guiHotkeys[4];
 	ChangeGUI3DDepthMode((GUI_3D_Depth_Modes)config.gui3DDepthMode);
 
 	// VRBoost
-	toggleVRBoostHotkey = config.VRBoostResetHotkey;
 	VRBoostValue[VRboostAxis::WorldFOV] = config.WorldFOV;
 	VRBoostValue[VRboostAxis::PlayerFOV] = config.PlayerFOV;
 	VRBoostValue[VRboostAxis::FarPlaneFOV] = config.FarPlaneFOV;
@@ -2730,9 +2684,9 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_AdditionalOutput )
 		GetCursorPos(&pt); 
 		D3DRECT rec2;	
 		//D3DRECT rec2hud;	
-		rec2.x1 = (int)-5 + ((pt.x * guiSquishPresets[(int)gui3DDepthMode]) + (((1 - guiSquishPresets[(int)gui3DDepthMode]) / 2) * viewportWidth)); 
+		rec2.x1 = (int)-5 + ((pt.x * config.guiSquishPresets[(int)config.gui3DDepthMode]) + (((1 - config.guiSquishPresets[(int)config.gui3DDepthMode]) / 2) * viewportWidth)); 
 		rec2.x2 = rec2.x1 + 10; 
-		rec2.y1 = (int)-5 + ((pt.y * guiSquishPresets[(int)gui3DDepthMode]) + (((1 - guiSquishPresets[(int)gui3DDepthMode]) / 2) * viewportHeight)); 
+		rec2.y1 = (int)-5 + ((pt.y * config.guiSquishPresets[(int)config.gui3DDepthMode]) + (((1 - config.guiSquishPresets[(int)config.gui3DDepthMode]) / 2) * viewportHeight)); 
 		rec2.y2 = rec2.y1 + 10; 	
 		
 		ClearRect(vireio::RenderPosition::Left, rec2, D3DCOLOR_ARGB(255,255,255,255));
@@ -3101,7 +3055,7 @@ METHOD_IMPL( void , , D3DProxyDevice , SetGUIViewport )
 	D3DXMATRIX mRightShift;
 
 	// set shift by current gui 3d depth
-	float shiftInPixels = gui3DDepthPresets[gui3DDepthMode];
+	float shiftInPixels = config.gui3DDepthPresets[config.gui3DDepthMode];
 	D3DXMatrixTranslation(&mLeftShift, -shiftInPixels, 0, 0);
 	D3DXMatrixTranslation(&mRightShift, shiftInPixels, 0, 0);
 
@@ -3223,36 +3177,11 @@ METHOD_IMPL( bool , , D3DProxyDevice , InitBrassa )
 	m_bPosTrackingToggle = true;
 	m_bShowVRMouse = false;
 	m_fVRBoostIndicator = 0.0f;
-	hud3DDepthMode = HUD_3D_Depth_Modes::HUD_DEFAULT;
-	gui3DDepthMode = GUI_3D_Depth_Modes::GUI_DEFAULT;
-	oldHudMode = HUD_3D_Depth_Modes::HUD_DEFAULT;
-	oldGuiMode = GUI_3D_Depth_Modes::GUI_DEFAULT;
-	hud3DDepthPresets[0] = 0.0f;
-	hud3DDepthPresets[1] = 0.0f;
-	hud3DDepthPresets[2] = 0.0f;
-	hud3DDepthPresets[3] = 0.0f;
-	hudDistancePresets[0] = 0.5f;
-	hudDistancePresets[1] = 0.9f;
-	hudDistancePresets[2] = 0.3f;
-	hudDistancePresets[3] = 0.0f;
-	gui3DDepthPresets[0] = 0.0f;
-	gui3DDepthPresets[1] = 0.0f;
-	gui3DDepthPresets[2] = 0.0f;
-	gui3DDepthPresets[3] = 0.0f;
-	guiSquishPresets[0] = 0.6f;
-	guiSquishPresets[1] = 0.5f;
-	guiSquishPresets[2] = 0.9f;
-	guiSquishPresets[3] = 1.0f;
+
 	ChangeHUD3DDepthMode(HUD_3D_Depth_Modes::HUD_DEFAULT);
 	ChangeGUI3DDepthMode(GUI_3D_Depth_Modes::GUI_DEFAULT);
 
-	hotkeyCatch = false;
-	toggleVRBoostHotkey = 0;
-	for (int i = 0; i < 5; i++)
-	{
-		guiHotkeys[i] = 0;
-		hudHotkeys[i] = 0;
-	}
+
 	for (int i = 0; i < 16; i++)
 		controls.xButtonsStatus[i] = false;
 	

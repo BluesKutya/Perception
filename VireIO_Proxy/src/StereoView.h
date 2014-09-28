@@ -74,22 +74,12 @@ public:
 	* Current Direct3D Viewport.
 	***/
 	D3DVIEWPORT9 viewport;
-	/**
-	* Option to swap the eye output for different 3D systems.
-	***/	
-	bool swapEyes;
+
 	/**
 	* True if class is initialized. Needed since initialization is not done in constructor.
 	***/
 	bool initialized;
-	/**
-	* Should be used by OculusRiftView and D3DProxyDevice.
-	***/
-	float DistortionScale;	
-	/**
-	* Offset the screen vertically
-	***/
-	float YOffset;	
+
 	/**
 	* Floaty Screen Y Offset
 	***/
@@ -98,10 +88,6 @@ public:
 	* Offset the screen horizontally
 	***/
 	float XOffset;	
-	/**
-	* Offset the IPD
-	***/
-	float IPDOffset;	
 
 
 	/**

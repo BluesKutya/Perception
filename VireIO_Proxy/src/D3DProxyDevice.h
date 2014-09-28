@@ -544,10 +544,6 @@ public:
 	* Timespan the VRBoost indicator should be drawn.
 	**/
 	float m_fVRBoostIndicator;
-	/**
- 	* Maximum Distortion Scale the Quicklinks will zoom to
- 	**/
- 	float m_maxDistortionScale;
 
 	/**
 	* Counts the current vertex shader set calls.
@@ -770,57 +766,7 @@ public:
 	* Backup of the current game profile.
 	***/
 	cConfig m_configBackup;
-	/**
-	* Current HUD 3D Depth mode.
-	***/
-	HUD_3D_Depth_Modes hud3DDepthMode;
-	/**
-	* Current GUI scale mode.
-	***/
-	GUI_3D_Depth_Modes gui3DDepthMode;
-	/**
-	* Old HUD 3D Depth mode, used to switch between 2 modes using hotkeys.
-	***/
-	HUD_3D_Depth_Modes oldHudMode;
-	/**
-	* Old GUI 3D Depth mode, used to switch between 2 modes using hotkeys.
-	***/
-	GUI_3D_Depth_Modes oldGuiMode;
-	/**
-	* Current HUD 3D Depth presets.
-	***/
-	float hud3DDepthPresets[4];
-	/**
-	* Current HUD distance presets.
-	***/
-	float hudDistancePresets[4];
-	/**
-	* Current GUI 3D Depth presets.
-	***/
-	float gui3DDepthPresets[4];
-	/**
-	* Current GUI squish presets.
-	***/
-	float guiSquishPresets[4];
-	/**
-	* Hotkey indices for the GUI.
-	***/
-	byte guiHotkeys[5];
-	/**
-	* Hotkey indices for the HUD.
-	***/
-	byte hudHotkeys[5];
-	/**
-	* Hotkey for VRBoost toggle.
-	***/
-	byte toggleVRBoostHotkey;
-	/**
-	* True if BRASSA is waiting to catch a hotkey.
-	***/
-	bool hotkeyCatch;
-	/**
-	* True if screenshot is taken next frame.
-	***/
+
 	int screenshot;
 
 	cMenu menu;

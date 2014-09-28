@@ -36,16 +36,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 * Constructor.
 * Sets class constants, identity matrices and a projection matrix.
 ***/
-ViewAdjustment::ViewAdjustment( float metersToWorldUnits, bool enableRoll , cConfig& cfg ) :
+ViewAdjustment::ViewAdjustment( cConfig& cfg ) :
 	config(cfg) ,
-	metersToWorldMultiplier(metersToWorldUnits),
-	rollEnabled(enableRoll),
 	bulletLabyrinth(false)
 {
 	// TODO : max, min convergence; arbitrary now
-	convergence = 0.0f;
-
-	ipd = IPD_DEFAULT;
 
 	n = 0.1f;					
 	f = 10.0f;
@@ -90,32 +85,6 @@ ViewAdjustment::~ViewAdjustment()
 {
 }
 
-/**
-* Loads game configuration data.
-* @param cfg Game configuration to load.
-***/
-void ViewAdjustment::Load( cConfig& cfg)
-{
-	rollEnabled = cfg.rollEnabled;
-	metersToWorldMultiplier  = cfg.worldScaleFactor;
-	convergence = cfg.convergence;
-	ipd = cfg.PlayerIPD;
-	isHmd = cfg.isHmd;
-}
-
-/**
-* Saves game configuration data.
-* @param cfg The game configuration to be saved to.
-***/
-void ViewAdjustment::Save(cConfig& cfg)
-{
-	cfg.rollEnabled = rollEnabled;
-	cfg.convergence = convergence;
-
-	//worldscale and ipd are not normally edited;
-	cfg.worldScaleFactor = metersToWorldMultiplier;
-	cfg.PlayerIPD = ipd;
-}
 
 /**
 * Updates left and right projection matrices.
@@ -156,8 +125,8 @@ void ViewAdjustment::UpdateProjectionMatrices(float aspectRatio)
 	//
 	// (near clipping plane distance = physical screen distance)
 	// (convergence = virtual screen distance)
-	if (convergence <= nearClippingPlaneDistance) convergence = nearClippingPlaneDistance + 0.001f;
-	float frustumAsymmetryInMeters = ((ipd/2) * nearClippingPlaneDistance) / convergence;
+	if ( config.stereoConvergence <= nearClippingPlaneDistance) config.stereoConvergence  = nearClippingPlaneDistance + 0.001f;
+	float frustumAsymmetryInMeters = ((config.PlayerIPD/2) * nearClippingPlaneDistance) / config.stereoConvergence ;
 
 	// divide the frustum asymmetry by the assumed physical size of the physical screen
 	float frustumAsymmetryLeftInMeters = (frustumAsymmetryInMeters * LEFT_CONSTANT) / physicalScreenSizeInMeters;
@@ -216,7 +185,7 @@ void ViewAdjustment::UpdatePosition(float yaw, float pitch, float roll, float xP
 	D3DXVECTOR3 vec(xPosition, yPosition, zPosition);
 
 	D3DXMATRIX worldScale;
-	D3DXMatrixScaling(&worldScale, -1.0f * metersToWorldMultiplier * scaler, -1.0f * metersToWorldMultiplier * scaler, metersToWorldMultiplier * scaler);
+	D3DXMatrixScaling(&worldScale, -1.0f * config.stereoScale * scaler, -1.0f * config.stereoScale * scaler, config.stereoScale * scaler);
 	D3DXVec3TransformNormal(&positionTransformVec, &vec, &worldScale);
 
 	D3DXMATRIX rotationMatrixPitchYaw;
@@ -257,7 +226,7 @@ void ViewAdjustment::ComputeViewTransforms()
 	matViewProjTransformRightNoRoll = matProjectionInv * transformRight * projectRight;
 	
 	// head roll
-	if (rollEnabled) {
+	if (config.rollEnabled) {
 		D3DXMatrixMultiply(&transformLeft, &rollMatrix, &transformLeft);
 		D3DXMatrixMultiply(&transformRight, &rollMatrix, &transformRight);
 
@@ -610,13 +579,6 @@ bool ViewAdjustment::BulletLabyrinthMode()
 	return bulletLabyrinth;
 }
 
-/**
-* Just sets world scale to 3.0f.
-***/
-void ViewAdjustment::ResetWorldScale()
-{
-	metersToWorldMultiplier = 3.0f;
-}
 
 
 
@@ -627,7 +589,7 @@ void ViewAdjustment::ResetWorldScale()
 ***/
 float ViewAdjustment::ConvergenceInWorldUnits() 
 { 
-	return convergence * metersToWorldMultiplier; 
+	return config.stereoConvergence * config.stereoScale; 
 }
 
 /**
@@ -635,7 +597,7 @@ float ViewAdjustment::ConvergenceInWorldUnits()
 ***/
 float ViewAdjustment::SeparationInWorldUnits() 
 { 
-	return  (ipd / 2.0f) * metersToWorldMultiplier; 
+	return  (config.PlayerIPD / 2.0f) * config.stereoScale; 
 }
 
 /**
@@ -644,5 +606,5 @@ float ViewAdjustment::SeparationInWorldUnits()
 ***/
 float ViewAdjustment::SeparationIPDAdjustment() 
 { 
-	return  ((ipd-IPD_DEFAULT) / 2.0f) * metersToWorldMultiplier; 
+	return  ((config.PlayerIPD-IPD_DEFAULT) / 2.0f) * config.stereoScale; 
 }

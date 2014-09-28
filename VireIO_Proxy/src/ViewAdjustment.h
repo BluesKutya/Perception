@@ -50,12 +50,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 class ViewAdjustment
 {
 public:	
-	ViewAdjustment( float metersToWorldUnits, bool enableRoll , cConfig& cfg );
+	ViewAdjustment( cConfig& cfg );
 	virtual ~ViewAdjustment();
 
 	/*** ViewAdjustment public methods ***/
-	void          Load(cConfig& cfg);
-	void          Save(cConfig& cfg);
 	void          UpdateProjectionMatrices(float aspectRatio);
 	void          UpdatePitchYaw(float pitch, float yaw);
 	void          UpdateRoll(float roll);
@@ -245,24 +243,6 @@ public:
 	* Used to scale the positional movement, seems x/y/z are not equal
 	*/
 	D3DXVECTOR3 gameScaleVec;
-	/**
-	* True if head roll enabled.
-	***/
-	bool rollEnabled;
-	/**
-	* World scale, used to correct eye seperation game-specific.
-	***/
-	float metersToWorldMultiplier;
-	/**
-	* Interpupillary distance.
-	* As provided from Oculus Configuration Utility (or set in the "user.xml" file).
-	***/
-	float ipd;
-	/**
-	* Convergence.
-	* Left/Rigth offset adjustment. In millimeters.
-	***/
-	float convergence;
 	/**
 	* The current way to render stereo. Matches StereoView::StereoTypes.
 	***/

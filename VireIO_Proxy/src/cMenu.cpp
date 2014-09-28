@@ -266,6 +266,9 @@ void cMenu::init( D3DProxyDevice* d ){
 	hotkeyState       = 0;
 	menu              = &root;
 	show              = false;
+
+	font   = 0;
+	sprite = 0;
 	
 }
 

@@ -689,7 +689,7 @@ HRESULT WINAPI DataGatherer::SetPixelShader(IDirect3DPixelShader9* pShader)
 	char buf[32];
 	sprintf_s(buf,"Cur Vertex Shader: %u", m_currentVertexShaderHash);
 	OutputDebugStringA(buf);
-	sprintf_s(buf,"Set Pixel Shader: %u", currentPixelShaderHash);
+	sprintf_s(buf,"Set Pixel Shader: %u", hash);
 	OutputDebugStringA(buf);
 #endif
 

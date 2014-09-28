@@ -175,6 +175,9 @@
     <ClInclude Include="..\src\Version.h" />
     <ClInclude Include="..\src\ViewAdjustment.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\common\cConfig.inc" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

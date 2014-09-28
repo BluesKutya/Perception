@@ -36,6 +36,7 @@ P( bool    , rollEnabled                , )// True if headtracking-roll is to be
 P( float   , worldScaleFactor           , )// Value the eye seperation is to be multiplied with. (mm * worldScaleFactor = mm in game units)
 P( float   , convergence                , )// Convergence or Neutral Point distance, in meters
 P( bool    , swap_eyes                  , )// Option to swap the eye output for different 3D systems
+
 P( float   , trackerYawMultiplier		, )
 P( float   , trackerPitchMultiplier	    , )
 P( float   , trackerRollMultiplier		, )
@@ -43,6 +44,11 @@ P( float   , trackerPositionMultiplier	, )
 P( float   , trackerMouseYawMultiplier	, )
 P( float   , trackerMousePitchMultiplier, )
 P( bool    , trackerMouseEmulation		, )
+
+P( float   , stereoScale       , )
+P( float   , stereoConvergence , )
+
+
 P( float   , DistortionScale            , )// The scale to apply distortion
 P( float   , YOffset                    , )// The Y offset from the centre of the screen on the Y-axis *
 P( float   , IPDOffset                  , )// The IPD offset from the centre of the screen on the X-axis *
