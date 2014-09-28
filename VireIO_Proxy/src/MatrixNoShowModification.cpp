@@ -1,3 +1,4 @@
+#include <Vireio.h>
 #include "MatrixNoShowModification.h"
 
 MatrixNoShowModification::MatrixNoShowModification(UINT modID, std::shared_ptr<ViewAdjustment> adjustmentMatrices, bool transpose)

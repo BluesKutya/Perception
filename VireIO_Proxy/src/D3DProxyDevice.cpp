@@ -127,6 +127,8 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 
 	tracker = 0;
 
+	menu.init( this );
+
 	InitVRBoost();
 
 	m_spShaderViewAdjustment = std::make_shared<ViewAdjustment>( 1.0f, false , cfg );
@@ -223,9 +225,6 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	cMenuItem* i;
 	cMenuItem* m;
 
-	menu.device         = this;
-
-
 	m = menu.root.addSubmenu( "Stereoscopic 3D calibration" );
 	m->showCalibrator = true;
 	
@@ -252,6 +251,8 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	i->callbackValueChanged = [this](){
 		stereoView->PostReset();
 	};
+
+	m->addCheckbox( "Chromatic aberration correction" , &config.chromaticAberrationCorrection );
 	
 	i = m->addCheckbox( "VRboost" , &m_bVRBoostToggle );
 	i->callbackValueChanged = [this](){
@@ -301,31 +302,43 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	m->addSpinner ( "Mouse yaw   multiplier" , &config.trackerMouseYawMultiplier   , 0.05 );
 	m->addSpinner ( "Mouse pitch multiplier" , &config.trackerMousePitchMultiplier , 0.05 );
 
-	i = m->addCheckbox( "Positional tracking (CTRL+P)"    , &m_bPosTrackingToggle );
-	m->callbackValueChanged = [this](){
+	i = m->addCheckbox( "Positional tracking"    , &m_bPosTrackingToggle );
+	i->callbackValueChanged = [this](){
 		if (!m_bPosTrackingToggle){
 			m_spShaderViewAdjustment->UpdatePosition(0.0f, 0.0f, 0.0f);
 		}
 	};
 
-	i = m->addAction( "Positional tracking reset (CTRL+R)"   );
-	m->callbackValueChanged = [this](){
+	i = m->addAction( "Positional tracking reset"   );
+	i->callbackValueChanged = [this](){
 		if( tracker ){
 			tracker->reset();
 		}
 	};
 
 	i = m->addSpinner( "Positional tracking multiplier" , &config.trackerPositionMultiplier , 0.001 );
-	m->callbackValueChanged = [this](){
+	i->callbackValueChanged = [this](){
 		BRASSA_UpdateConfigSettings();
 	};
 
 
 	i= menu.root.addAction ( "Restore configuration" );
-	m->callbackValueChanged = [this](){
+	i->callbackValueChanged = [this](){
 		config = m_configBackup;
 	};
 
+	i= menu.root.addAction ( "Save configuration" );
+	i->callbackValueChanged = [this](){
+		SaveConfiguration();
+	};
+
+}
+
+void D3DProxyDevice::SaveConfiguration(){
+	static char exe_path[MAX_PATH];
+	GetModuleFileNameA( 0   , exe_path , MAX_PATH );
+	menu.saveHotkeys( );
+	config.save( config.getGameConfigFile(exe_path) , QList<int>() << cConfig::SAVE_GAME << cConfig::SAVE_PROFILE << cConfig::SAVE_USER );
 }
 
 /**
@@ -2197,8 +2210,7 @@ METHOD_IMPL( void , , D3DProxyDevice , OnCreateOrRestore )
 		pTemp->Release();	
 	}
 
-	D3DXCreateFontA( this, 32, 0, FW_BOLD, 4, FALSE, DEFAULT_CHARSET, OUT_TT_ONLY_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, "Arial", &menu.font );
-	D3DXCreateSprite(this, &menu.sprite);
+	menu.createResources();
 
 	stereoView->Init(getActual());
 
@@ -2389,7 +2401,7 @@ METHOD_IMPL( bool , , D3DProxyDevice , deleteRule , std::string , constantName )
 METHOD_IMPL( void , , D3DProxyDevice , saveShaderRules ) 
 	m_pGameHandler->Save(config, m_spShaderViewAdjustment);
 
-	config.saveProfile( );
+	SaveConfiguration();
 }
 
 /**
@@ -2937,10 +2949,7 @@ METHOD_IMPL( void , , D3DProxyDevice , DismissPopup , VireioPopupType , popupTyp
 METHOD_IMPL( void , , D3DProxyDevice , ReleaseEverything )
 	// Fonts and any other D3DX interfaces should be released first.
 	// They frequently hold stateblocks which are holding further references to other resources.
-	if( menu.font ) {
-		menu.font->Release();
-		menu.font= NULL;
-	}
+	menu.freeResources();
 
 
 	m_spManagedShaderRegisters->ReleaseResources();

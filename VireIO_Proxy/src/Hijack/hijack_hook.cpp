@@ -1,9 +1,10 @@
+#include <Vireio.h>
 #include <Windows.h>
 #include <Psapi.h>
 #include <DbgHelp.h>
 #include <string.h>
 #include <list>
-#include <Vireio.h>
+
 
 namespace{
 	struct HookInfo{

@@ -224,6 +224,7 @@ public:
 	virtual void   HandleControls(void);
 	void           HandleTracking(void);
 	void           HandleUpdateExtern();
+	void           SaveConfiguration();
 
 	/**
 	* Game Types.

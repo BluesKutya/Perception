@@ -25,11 +25,10 @@ GNU Lesser General Public License for more details.
 You should have received a copy of the GNU Lesser General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ********************************************************************/
-
+#include <Vireio.h>
 #include <windows.h>
 #include <d3d9.h>
 #include "D3D9ProxyDirect3D.h"
-#include <Vireio.h>
 #include <qcoreapplication.h>
 #include <qdebug.h>
 #include <cConfig.h>

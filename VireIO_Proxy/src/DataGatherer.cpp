@@ -196,22 +196,19 @@ DataGatherer::DataGatherer(IDirect3DDevice9* pDevice, IDirect3DDevice9Ex* pDevic
 		menu.show = false;
 	};
 
-	i = m->addSubmenu( "Change current shader rules" );
-	i->callbackOpenSubmenu = [this](){
+	rulesMenu = m->addSubmenu( "Change current shader rules" );
+	rulesMenu->callbackOpenSubmenu = [this](){
 		GetCurrentShaderRules(false);
 	};
 
 
 	shadersMenu = m->addSubmenu( "Show shaders" );
-
-
+	
 	i = m->addSubmenu( "Save rules shaders" );
 	i->callbackOpenSubmenu = [this](){
 		saveShaderRules();
 		menu.show = false;
 	};
-
-
 
 	
 }
@@ -265,6 +262,7 @@ HRESULT WINAPI DataGatherer::BeginScene()
 {
 	if( m_isFirstBeginSceneOfFrame ){
 		for( Shader& s : shaders ){
+			s.item->visible = s.used;
 			s.used = false;
 		}
 	}
@@ -443,23 +441,25 @@ void DataGatherer::MarkShaderAsUsed( int hash , bool isVertex ){
 	if( !s ){
 		shaders.append( Shader() );
 		s = &shaders.last();
-		s->excluded = false;
 		s->hash     = hash;
+		s->exclude  = false;
 		s->isVertex = isVertex;
 
 		char buf[256];
 		sprintf( buf , "%s %u" , isVertex?"VS":"PS" , hash );
 
-		s->item = shadersMenu->addCheckbox( buf , &s->excluded , "exclude/blink" , "active" );
+		s->item = shadersMenu->addCheckbox( buf , &s->exclude , "exclude/blink" , "active" );
 	}
 
+	s->used = true;
+	
 	if( isVertex ){
 		m_bAvoidDraw = false;
 	}else{
 		m_bAvoidDrawPS = false;
 	}
 
-	if( s->excluded && ((GetTickCount()%300)>150) ){
+	if( s->exclude && ((GetTickCount()%300)>150) ){
 		if( isVertex ){
 			m_bAvoidDraw = true;
 		}else{
@@ -699,7 +699,6 @@ HRESULT WINAPI DataGatherer::SetPixelShader(IDirect3DPixelShader9* pShader)
 
 
 
-
 /*
 void DataGatherer::BRASSA_ChangeRules()
 {
@@ -789,7 +788,7 @@ void DataGatherer::BRASSA_ChangeRules()
 						{
 							// never assign "transposed" to vector
 							if (itShaderConstants->desc.Class == D3DXPARAMETER_CLASS::D3DXPC_VECTOR)
-								addRule(itShaderConstants->name, true, itShaderConstants->desc.RegisterIndex, itShaderConstants->desc.Class, 1, false);
+								
 							else
 								addRule(itShaderConstants->name, true, itShaderConstants->desc.RegisterIndex, itShaderConstants->desc.Class, 1, m_bTransposedRules);
 							itShaderConstants->hasRule = true;
@@ -1001,65 +1000,6 @@ void DataGatherer::BRASSA_ChangeRules()
 		menuVelocity.x+=2.0f;
 	}
 
-	// output menu
-	if (hudFont)
-	{
-		// adjust border & menu due to menu scroll
-		float borderDrawingHeight = borderTopHeight;
-		if (menuVelocity.y == 0.0f)
-			borderTopHeight = menuTop+menuEntryHeight*(float)entryID;
-		if (borderTopHeight>(menuTop+(menuEntryHeight*12.0f)))
-			borderDrawingHeight = menuTop+menuEntryHeight*12.0f;
-
-		// down scroll border/menu adjustment
-		if (menuTopHeight>=(borderDrawingHeight-borderTopHeight))
-			menuTopHeight = (borderDrawingHeight-borderTopHeight);
-		else
-			borderDrawingHeight=borderTopHeight+menuTopHeight;
-
-		// up scroll border/menu adjustment
-		if (borderDrawingHeight<menuTop)
-		{
-			menuTopHeight+=menuTop-borderDrawingHeight;
-			borderDrawingHeight = menuTop;
-		}
-
-
-		// draw border - total width due to shift correction
-		D3DRECT rect;
-		rect.x1 = (int)0; rect.x2 = (int)viewportWidth; rect.y1 = (int)borderDrawingHeight; rect.y2 = (int)(borderDrawingHeight+viewportHeight*0.04f);
-		ClearEmptyRect(vireio::RenderPosition::Left, rect, D3DCOLOR_ARGB(255,255,128,128), 2);
-		ClearEmptyRect(vireio::RenderPosition::Right, rect, D3DCOLOR_ARGB(255,255,128,128), 2);
-
-		hudMainMenu->Begin(D3DXSPRITE_ALPHABLEND);
-
-		D3DXMATRIX matScale;
-		D3DXMatrixScaling(&matScale, fScaleX, fScaleY, 1.0f);
-		hudMainMenu->SetTransform(&matScale);
-
-		float guiQSHeight = (float)menuHelperRect.top * fScaleY;
-		menuHelperRect.left = 800; menuHelperRect.top = 350;
-		menuHelperRect.top += (int)(menuTopHeight / fScaleY);
-		for (UINT i = 0; i < menuEntryCount-2; i++)
-		{
-			if (menuColor[i])
-				DrawTextShadowed(hudFont, hudMainMenu, menuEntries[i].c_str(), -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 64, 255, 64));
-			else	
-				DrawTextShadowed(hudFont, hudMainMenu, menuEntries[i].c_str(), -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
-
-			menuHelperRect.top += 40;
-		}
-		DrawTextShadowed(hudFont, hudMainMenu, "Back to BRASSA Menu", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
-		menuHelperRect.top += 40;
-		DrawTextShadowed(hudFont, hudMainMenu, "Back to Game", -1, &menuHelperRect, 0, D3DCOLOR_ARGB(255, 255, 255, 255));
-
-		menuHelperRect.left = 0;
-		menuHelperRect.top = 0;
-		
-		D3DXVECTOR3 vPos( 0.0f, 0.0f, 0.0f);
-		hudMainMenu->Draw(NULL, &menuHelperRect, NULL, &vPos, D3DCOLOR_ARGB(255, 255, 255, 255));
-		hudMainMenu->End();
-	}
 }
 */
 
@@ -1149,37 +1089,78 @@ void DataGatherer::GetCurrentShaderRules(bool allStartRegisters)
 	ShaderModificationRepository* pModRep = m_pGameHandler->GetShaderModificationRepository();
 
 	// clear name vector, loop through constants
+	for( ShaderConstant& c : m_relevantVSConstantNames ){
+		delete c.item;
+	}
 	m_relevantVSConstantNames.clear();
-	auto itShaderConstants = m_relevantVSConstants.begin();
-	while (itShaderConstants != m_relevantVSConstants.end())
-	{
-		bool namePresent = false;
+
+
+	for( ShaderConstant& constant : m_relevantVSConstants ){
+
+		bool namePresent     = false;
 		bool registerPresent = !allStartRegisters;
-		auto itShaderConstants1 = m_relevantVSConstantNames.begin();
-		while (itShaderConstants1 != m_relevantVSConstantNames.end())
-		{
-			// constant name in menu entries already present
-			if (itShaderConstants->name.compare(itShaderConstants1->name) == 0)
-			{
+
+		for( ShaderConstant& c : m_relevantVSConstantNames ){
+			if( constant.name.compare(c.name) == 0 ){
 				namePresent = true;
-				if (itShaderConstants->desc.RegisterIndex==itShaderConstants1->desc.RegisterIndex)
+				if( constant.desc.RegisterIndex == c.desc.RegisterIndex ){
 					registerPresent = true;
+				}
 			}
-			++itShaderConstants1;
 		}
 
-		if ((!namePresent) || (!registerPresent))
-		{
-			// is a rule already applied to that constant name ?
-			itShaderConstants->nodeOpen = false;
+		if( !namePresent || !registerPresent ){
 			UINT operation = 0;
-			if (pModRep)
-				itShaderConstants->hasRule = pModRep->ConstantHasRule(itShaderConstants->name, itShaderConstants->ruleName, operation, itShaderConstants->isTransposed);
-			else
-				itShaderConstants->hasRule = false;
-			m_relevantVSConstantNames.push_back(*itShaderConstants);
+
+			if( pModRep ){
+				constant.hasRule = pModRep->ConstantHasRule( constant.name , constant.ruleName , operation , constant.isTransposed );
+			}else{
+				constant.hasRule = false;
+			}
+
+			QString name = QString::fromStdString(constant.name);
+
+			switch( constant.desc.Class ){
+			case D3DXPC_VECTOR:
+				name += " (D3DXPC_VECTOR)";
+				break;
+
+			case D3DXPC_MATRIX_ROWS:
+				name += " (D3DXPC_MATRIX_ROWS)";
+				break;
+
+			case D3DXPC_MATRIX_COLUMNS:
+				name += " (D3DXPC_MATRIX_COLUMNS)";
+				break;
+			}
+
+			constant.applyRule    = false;
+			constant.isTransposed = false;
+			constant.item         = rulesMenu->addSubmenu( name );
+			
+
+			cMenuItem* i;
+
+			if( constant.hasRule && constant.desc.Class != D3DXPARAMETER_CLASS::D3DXPC_VECTOR ){
+				i = constant.item->addCheckbox( "Transposed" , &constant.isTransposed );
+				i->callbackValueChanged = [&](){
+					//UINT operation;
+					//m_pGameHandler->GetShaderModificationRepository()->ConstantHasRule( constant.name, constant.ruleName , operation , constant.isTransposed );
+					//modifyRule( constant.name, operation, constant.isTransposed );
+				};
+			}
+
+			i = constant.item->addCheckbox( "Apply rule" , &constant.applyRule );
+			i->callbackValueChanged = [&](){
+				if( constant.applyRule ){
+					addRule( constant.name , true , constant.desc.RegisterIndex , constant.desc.Class , 1 , constant.isTransposed );
+				}else{
+					deleteRule( constant.name );
+				}
+			};
+
+			m_relevantVSConstantNames.push_back( constant );
 		}
 
-		++itShaderConstants;
 	}
 }

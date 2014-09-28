@@ -82,7 +82,23 @@ QString cPropsFile::getString( const QString& name , bool* ok ){
 	return "";
 }
 
-
+void cPropsFile::get( QStringList& list , const QString& name ){
+	QString start = name+"_";
+	for( Item& i : items ){
+		if( i.id.startsWith(start) ){
+			bool ok;
+			int index = i.id.mid(start.count()).toInt( &ok );
+			if( !ok || index < 0 ){
+				printf( "invalid index: %s\n" , i.id.toLocal8Bit().data() );
+			}else{
+				while( list.count() <= index ){
+					list.append("");
+				}
+				list[index] = i.value;
+			}
+		}
+	}
+}
 
 
 void cPropsFile::setString( const QString& name , const QString& value ){
@@ -102,7 +118,7 @@ void cPropsFile::setString( const QString& name , const QString& value ){
 
 
 
-void cPropsFile::get( bool* value , const QString& name ){
+void cPropsFile::get( bool& value , const QString& name ){
 	bool ok;
 	QString v = getString(name,&ok).toLower();
 
@@ -111,12 +127,12 @@ void cPropsFile::get( bool* value , const QString& name ){
 	}
 
 	if( v=="1" || v=="true"  || v=="t" || v=="y" || v=="yes" ){
-		*value = true;
+		value = true;
 		return;
 	}
 
 	if( v=="0" || v=="false" || v=="f" || v=="n" || v=="no" ){
-		*value = false;
+		value = false;
 		return;
 	}
 
@@ -124,29 +140,29 @@ void cPropsFile::get( bool* value , const QString& name ){
 }
 
 
-void cPropsFile::get( int* value , const QString& name ){
+void cPropsFile::get( int& value , const QString& name ){
 	bool ok;
 	int n = getString(name,&ok).toInt( &ok );
 	if( ok ){
-		*value = n;
+		value = n;
 	}
 }
 
 
-void cPropsFile::get( float* value , const QString& name ){
+void cPropsFile::get( float& value , const QString& name ){
 	bool ok;
 	float n = getString(name,&ok).toFloat( &ok );
 	if( ok ){
-		*value = n;
+		value = n;
 	}
 }
 
 
-void cPropsFile::get( QString* value , const QString& name ){
+void cPropsFile::get( QString& value , const QString& name ){
 	bool ok;
 	QString n = getString(name,&ok);
 	if( ok ){
-		*value = n;
+		value = n;
 	}
 }
 
@@ -154,21 +170,31 @@ void cPropsFile::get( QString* value , const QString& name ){
 
 
 
-void cPropsFile::set( bool* value , const QString& name ){
-	setString( name , (*value) ? "true" : "false" );
+void cPropsFile::set( bool& value , const QString& name ){
+	setString( name , value ? "true" : "false" );
 }
 
 
-void cPropsFile::set( int* value , const QString& name ){
-	setString( name , QString::number(*value) );
+void cPropsFile::set( int& value , const QString& name ){
+	setString( name , QString::number(value) );
 }
 
 
-void cPropsFile::set( float* value , const QString& name ){
-	setString( name , QString::number(*value) );
+void cPropsFile::set( float& value , const QString& name ){
+	setString( name , QString::number(value) );
 }
 
 
-void cPropsFile::set( QString* value , const QString& name ){
-	setString( name , *value );
+void cPropsFile::set( QString& value , const QString& name ){
+	setString( name , value );
+}
+
+
+
+void cPropsFile::set( QStringList& list  , const QString& name ){
+	int c = 0;
+	for( QString& s : list ){
+		setString( QString("%1_%2").arg(name).arg(c) , s );
+		c++;
+	}
 }

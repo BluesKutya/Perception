@@ -32,6 +32,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #pragma once
 #include <qstringlist.h>
 #include <qstring.h>
+#include <qdatetime.h>
 #include <d3d9.h>
 #include <assert.h>
 

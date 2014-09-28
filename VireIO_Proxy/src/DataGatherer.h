@@ -73,26 +73,29 @@ private:
 	***/
 	struct ShaderConstant
 	{
-		std::string name;
-		UINT hash;              /**< The shader hash. */
-		D3DXCONSTANT_DESC desc; /**< The constant description. */
-		bool nodeOpen;          /**< True if menu node open for that constant. */
-		bool hasRule;           /**< True if shader rule present for that constant. */
-		bool isTransposed;      /**< True if shader rule present for that constant. */
-		std::string ruleName;   /**< The name of the associated rule. */
+		std::string            name;
+		UINT               hash;
+		D3DXCONSTANT_DESC  desc;
+		bool               nodeOpen;
+		bool               hasRule;
+		bool               isTransposed;
+		std::string        ruleName;
+		cMenuItem*         item;
+		bool               applyRule;
 	};
 
 
 	struct Shader{
 		int        hash;
-		bool       excluded;
+		bool       exclude;
 		bool       isVertex;
 		bool       used;
 		cMenuItem* item;
 	};
 
-	QVector<Shader> shaders;
-	cMenuItem*      shadersMenu;
+	QList<Shader> shaders;
+	cMenuItem*    shadersMenu;
+	cMenuItem*    rulesMenu;
 
 
 
