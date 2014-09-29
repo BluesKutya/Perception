@@ -23,25 +23,11 @@ cConfig::cConfig(){
 	trackerMousePitchMultiplier	= 1;
 	trackerMouseEmulation		= false;
 
-	hud3DDepthPresets[0] = 0.0f;
-	hud3DDepthPresets[1] = 0.0f;
-	hud3DDepthPresets[2] = 0.0f;
-	hud3DDepthPresets[3] = 0.0f;
-	hudDistancePresets[0] = 0.5f;
-	hudDistancePresets[1] = 0.9f;
-	hudDistancePresets[2] = 0.3f;
-	hudDistancePresets[3] = 0.0f;
-	gui3DDepthPresets[0] = 0.0f;
-	gui3DDepthPresets[1] = 0.0f;
-	gui3DDepthPresets[2] = 0.0f;
-	gui3DDepthPresets[3] = 0.0f;
-	guiSquishPresets[0] = 0.6f;
-	guiSquishPresets[1] = 0.5f;
-	guiSquishPresets[2] = 0.9f;
-	guiSquishPresets[3] = 1.0f;
-
-	hud3DDepthMode = 0;
-	gui3DDepthMode = 0;
+	guiBulletLabyrinth = false;
+	guiSquash    	   = 1;
+	guiDepth    	   = 0;
+	hudDistance 	   = 0;
+	hudDepth           = 0;
 
 	showVRMouse = true;
 

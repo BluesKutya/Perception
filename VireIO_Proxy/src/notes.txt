@@ -1,0 +1,8 @@
+	// if not HMD, set HUD/GUI to fullscreen
+	if ( !config.isHmd )   //stereo type > 100 reserved specifically for HMDs
+	{
+		squash = 1.0f;
+		gui3DDepth = 0.0f;
+		hudDistance = 0.0f;
+		hud3DDepth = 0.0f;
+	}

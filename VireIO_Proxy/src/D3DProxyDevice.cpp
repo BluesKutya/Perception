@@ -91,7 +91,6 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	m_activeSwapChains(),
 	controls(),
 	dinput(),
-	activePopup(VPT_NONE),
 	show_fps(FPS_NONE),
 	calibrate_tracker(false)
 {
@@ -141,10 +140,7 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	m_bInBeginEndStateBlock = false;
 	m_pCapturingStateTo = NULL;
 	m_isFirstBeginSceneOfFrame = true;
-	yaw_mode = 0;
-	pitch_mode = 0;
-	translation_mode = 0;
-	trackingOn = true;
+
 	InitBrassa();
 	//Create Direct Input Mouse Device
 	bool directInputActivated = dinput.Init(GetModuleHandle(NULL), ::GetActiveWindow());
@@ -153,19 +149,13 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 		dinput.Activate();		
 	}	
 
-	std::string date(__DATE__);
-	std::string buildDate = date.substr(4, 2) + "-" + date.substr(0, 3) + "-" + date.substr(7, 4);
-
-	//Show a splash screen on startup
-	VireioPopup splashPopup(VPT_SPLASH, VPS_TOAST, 10000);
-	strcpy_s(splashPopup.line1, "Vireio Perception: Stereoscopic 3D Driver");
-	strcpy_s(splashPopup.line2, (std::string("Version: ") + APP_VERSION + "   Build Date: " + buildDate).c_str());
-	strcpy_s(splashPopup.line3, "This program is distributed in the hope that it will be useful,"); 
-	strcpy_s(splashPopup.line4, "but WITHOUT ANY WARRANTY; without even the implied warranty of "); 
-	strcpy_s(splashPopup.line5, "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.");
-	strcpy_s(splashPopup.line6, "See the GNU LGPL: http://www.gnu.org/licenses/ for more details. ");
-	ShowPopup(splashPopup);
-
+	menu.showMessage( 
+		"Vireio Perception: Stereoscopic 3D Driver\n"
+		"This program is distributed in the hope that it will be useful,\n" 
+		"but WITHOUT ANY WARRANTY; without even the implied warranty of \n" 
+		"MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n"
+		"See the GNU LGPL: http://www.gnu.org/licenses/ for more details. "
+	);
 
 	eyeShutter = 1;
 	m_bfloatingMenu = false;
@@ -175,8 +165,9 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	m_pGameHandler->Load(config, m_spShaderViewAdjustment);
 	stereoView                 = new StereoView();
 	stereoView->HeadYOffset    = 0;
-
-
+	
+	BRASSA_UpdateDeviceSettings();
+	OnCreateOrRestore();
 
 	//credits will go to world-scale menu, or maybe to startup screen!
 	//"Brown Reischl and Schneider Settings Analyzer (B.R.A.S.S.A.)."
@@ -193,11 +184,13 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	i = m->addSpinner( "Separation" , &config.stereoScale , 0.0000001 , 100000 , 0.005 );
 	i->callbackValueChanged = [this](){
 		m_spShaderViewAdjustment->UpdateProjectionMatrices((float)stereoView->viewport.Width/(float)stereoView->viewport.Height);
+		m_spShaderViewAdjustment->ComputeViewTransforms();
 	};
 
 	i = m->addSpinner( "Convergence" , &config.stereoConvergence , -100 , 100 , 0.01 );
 	i->callbackValueChanged = [this](){
 		m_spShaderViewAdjustment->UpdateProjectionMatrices((float)stereoView->viewport.Width/(float)stereoView->viewport.Height);
+		m_spShaderViewAdjustment->ComputeViewTransforms();
 	};
 
 
@@ -240,8 +233,28 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 
 
 	m = menu.root.addSubmenu( "OSD and GUI settings" );
-	m->addCheckbox( "Show VR mouse" , &config.showVRMouse );
+	m->addCheckbox( "Show VR mouse"            , &config.showVRMouse );
+	m->addCheckbox( "Gui \"bullet labyrinth\"" , &config.guiBulletLabyrinth  );
+	
+	i = m->addSpinner ( "GUI squash"             , &config.guiSquash  , 0.01 );
+	i->callbackValueChanged = [this](){
+		m_spShaderViewAdjustment->UpdateGui();
+	};
 
+	i = m->addSpinner ( "GUI depth"                , &config.guiDepth     , 0.01 );
+	i->callbackValueChanged = [this](){
+		m_spShaderViewAdjustment->UpdateGui();
+	};
+
+	i = m->addSpinner ( "HUD distance"             , &config.hudDistance  , 0.01 );
+	i->callbackValueChanged = [this](){
+		m_spShaderViewAdjustment->UpdateGui();
+	};
+
+	i = m->addSpinner ( "HUD depth"                , &config.hudDepth     , 0.01 );
+	i->callbackValueChanged = [this](){
+		m_spShaderViewAdjustment->UpdateGui();
+	};
 
 
 
@@ -332,10 +345,6 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 		SaveConfiguration();
 	};
 
-
-
-	BRASSA_UpdateDeviceSettings();
-	OnCreateOrRestore();
 
 }
 
@@ -1970,6 +1979,7 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 
 		if( tracker ){
 			if( !tracker->open() ){
+				menu.showMessage("Tracker error: unable to open device");
 				printf( "tracker: open failed\n" );
 				tracker->close();
 				delete tracker;
@@ -1987,12 +1997,10 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 	}
 
 	if( !tracker ){
-		VireioPopup popup(VPT_NO_HMD_DETECTED, VPS_ERROR, 10000);
-		strcpy_s(popup.line3, "TRACKER ERROR");
-		ShowPopup(popup);
 		return;
 	}
-	
+
+
 	long prevYaw   = RADIANS_TO_DEGREES( tracker->currentYaw   ) * config.trackerMouseYawMultiplier;
 	long prevPitch = RADIANS_TO_DEGREES( tracker->currentPitch ) * config.trackerMousePitchMultiplier;
 
@@ -2038,12 +2046,13 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 	}
 	
 	if( calibrate_tracker ){
-		VireioPopup popup(VPT_CALIBRATE_TRACKER, VPS_INFO, 30000);
-		strcpy_s(popup.line2, "Please Calibrate HMD/Tracker:");
-		strcpy_s(popup.line3, "     -  Sit comfortably with your head facing forwards");
-		strcpy_s(popup.line4, "     -  Press any of the following:");
-		strcpy_s(popup.line5, "        F12 / CTRL+R / L-SHIFT + R");
-		ShowPopup(popup);
+		menu.showMessage(
+			"Please Calibrate HMD/Tracker:\n"
+			"     -  Sit comfortably with your head facing forwards\n"
+			"     -  Go to tracker configuration in main menu\n"
+			"     -  Reset view \n"
+			"     -  Adjust multipliers to comfortable values\n"
+		);
 	}
 
 	if ( config.rollEnabled ) {
@@ -2080,7 +2089,6 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 		&& (m_VertexShaderCountLastFrame>(UINT)config.VRboostMinShaderCount)
 		&& (m_VertexShaderCountLastFrame<(UINT)config.VRboostMaxShaderCount) )
 	{
-	printf("vrbu\n");
 		VRBoostStatus.VRBoost_Active = true;
 		// development bool
 		bool createNSave = false;
@@ -2116,29 +2124,20 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 		VRBoostStatus.VRBoost_Active = false;
 	}
 
-	if ( VRBoostStatus.VRBoost_Active)
-	{
-		if (!VRBoostStatus.VRBoost_LoadRules)
-		{
-			VireioPopup popup(VPT_VRBOOST_FAILURE, VPS_ERROR);
-			strcpy_s(popup.line3, "VRBoost LoadRules Failed");
-			strcpy_s(popup.line4, "To Enable head tracking, turn on Force Mouse Emulation");
-			strcpy_s(popup.line5, "in BRASSA Settings");
-			ShowPopup(popup);
-		}
-		else if (!VRBoostStatus.VRBoost_ApplyRules)
-		{
-			VireioPopup popup(VPT_VRBOOST_FAILURE, VPS_ERROR);
-			strcpy_s(popup.line2, "VRBoost rules loaded but could not be applied");
-			strcpy_s(popup.line3, "Mouse Emulation is not Enabled,");
-			strcpy_s(popup.line4, "To Enable head tracking, turn on Force Mouse Emulation");
-			strcpy_s(popup.line5, "in BRASSA Settings");
-			ShowPopup(popup);
-		}
-		else
-		{
-			//All is well
-			DismissPopup(VPT_VRBOOST_FAILURE);
+	if( VRBoostStatus.VRBoost_Active ){
+		if( !VRBoostStatus.VRBoost_LoadRules ){
+			menu.showMessage(
+				"VRBoost LoadRules Failed!\n"
+				"To Enable head tracking, turn on tracker mouse emulation\n"
+				"in tracker configuration menu"
+			);
+		}else
+		if( !VRBoostStatus.VRBoost_ApplyRules ){
+			menu.showMessage(
+				"VRBoost rules loaded but could not be applied\n"
+				"To Enable head tracking, turn on tracker mouse emulation\n"
+				"in tracker configuration menu"
+			);
 		}
 	}
 }
@@ -2517,37 +2516,6 @@ METHOD_IMPL( void , , D3DProxyDevice , DrawTextShadowed , ID3DXFont* , font , LP
 	font->DrawTextA(sprite, lpchText, -1, lprc, format, color);
 }
 
-/**
-* Changes the HUD scale mode - also changes new scale in view adjustment class.
-***/
-METHOD_IMPL( void , , D3DProxyDevice , ChangeHUD3DDepthMode , HUD_3D_Depth_Modes , newMode )
-	if (newMode >= HUD_3D_Depth_Modes::HUD_ENUM_RANGE)
-		return;
-
-	config.hud3DDepthMode = newMode;
-
-	m_spShaderViewAdjustment->ChangeHUDDistance(config.hudDistancePresets[(int)newMode]);
-	m_spShaderViewAdjustment->ChangeHUD3DDepth(config.hud3DDepthPresets[(int)newMode]);
-}
-
-/**
-* Changes the GUI scale mode - also changes new scale in view adjustment class.
-***/
-METHOD_IMPL( void , , D3DProxyDevice , ChangeGUI3DDepthMode , GUI_3D_Depth_Modes , newMode )
-	if (newMode >= GUI_3D_Depth_Modes::GUI_ENUM_RANGE)
-		return;
-
-	config.gui3DDepthMode = newMode;
-
-	m_spShaderViewAdjustment->ChangeGUISquash(config.guiSquishPresets[(int)newMode]);
-	m_spShaderViewAdjustment->ChangeGUI3DDepth(config.gui3DDepthPresets[(int)newMode]);
-
-
-	if (newMode == GUI_3D_Depth_Modes::GUI_FULL)
-		m_spShaderViewAdjustment->SetBulletLabyrinthMode(true);
-	else
-		m_spShaderViewAdjustment->SetBulletLabyrinthMode(false);
-}
 
 
 
@@ -2592,9 +2560,7 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_UpdateConfigSettings )
 ***/
 METHOD_IMPL( void , , D3DProxyDevice , BRASSA_UpdateDeviceSettings )
 
-	ChangeHUD3DDepthMode((HUD_3D_Depth_Modes)config.hud3DDepthMode);
-
-	ChangeGUI3DDepthMode((GUI_3D_Depth_Modes)config.gui3DDepthMode);
+	m_spShaderViewAdjustment->ComputeViewTransforms();
 
 	// VRBoost
 	VRBoostValue[VRboostAxis::WorldFOV] = config.WorldFOV;
@@ -2666,130 +2632,6 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_UpdateDeviceSettings )
 	}
 }
 
-/**
-* Additional output when menu is not drawn.
-***/
-METHOD_IMPL( void , , D3DProxyDevice , BRASSA_AdditionalOutput )
-	// draw vrboost toggle indicator
-	if (m_fVRBoostIndicator>0.0f)
-	{
-		D3DRECT rec;
-		rec.x1 = (int)(viewportWidth*(0.5f-(m_fVRBoostIndicator*0.05f))); rec.x2 = (int)(viewportWidth*(0.5f+(m_fVRBoostIndicator*0.05f))); 
-		rec.y1 = (int)(viewportHeight*(0.4f-(m_fVRBoostIndicator*0.05f))); rec.y2 = (int)(viewportHeight*(0.4f+(m_fVRBoostIndicator*0.05f)));
-		if (m_bVRBoostToggle)
-			ClearRect(vireio::RenderPosition::Left, rec, D3DCOLOR_ARGB(255,64,255,64));
-		else
-			ClearRect(vireio::RenderPosition::Left, rec, D3DCOLOR_ARGB(255,255,128,128));
-
-		// update the indicator float
-		//m_fVRBoostIndicator-=menuSeconds;
-	}
-
-
-	//Finally, draw any popups if required
-	DisplayCurrentPopup();
-}
-
-METHOD_IMPL( void , , D3DProxyDevice , DisplayCurrentPopup )
-	/*if ((activePopup.popupType == VPT_NONE && show_fps == FPS_NONE) || 
-		BRASSA_mode != BRASSA_Modes::INACTIVE ||
-		!config.showNotifications)
-		return;
-	
-	// output menu
-	if (hudFont)
-	{
-		hudMainMenu->Begin(D3DXSPRITE_ALPHABLEND);
-
-		D3DXMATRIX matScale;
-		D3DXMatrixScaling(&matScale, fScaleX, fScaleY, 1.0f);
-		hudMainMenu->SetTransform(&matScale);
-
-		if (activePopup.popupType == VPT_STATS && config.isHmd )
-		{
-			sprintf_s(activePopup.line1, "HMD Description: %s", tracker->name.toLocal8Bit().data() ); 
-			sprintf_s(activePopup.line2, "Yaw: %.3f Pitch: %.3f Roll: %.3f", tracker->currentYaw, tracker->currentPitch, tracker->currentRoll); 
-			sprintf_s(activePopup.line3, "X: %.3f Y: %.3f Z: %.3f", tracker->currentX, tracker->currentY, tracker->currentZ); 
-			sprintf_s(activePopup.line4, "VRBoost Active: %s     Rules Loaded: %s   Applied: %s", 
-				(VRBoostStatus.VRBoost_Active ? "TRUE" : "FALSE"), 
-				(VRBoostStatus.VRBoost_LoadRules ? "TRUE" : "FALSE"), 
-				(VRBoostStatus.VRBoost_ApplyRules ? "TRUE" : "FALSE"));
-			if (m_bPosTrackingToggle)
-				strcpy_s(activePopup.line5, "HMD Positional Tracking Enabled");
-			else
-				strcpy_s(activePopup.line5, "HMD Positional Tracking Disabled");
-		}
-
-		if (activePopup.expired())
-		{
-			//Ensure we stop showing this popup
-			activePopup.popupType = VPT_NONE;
-			activePopup.reset();
-		}
-
-		D3DCOLOR popupColour;
-		ID3DXFont *pFont;
-		switch (activePopup.severity)
-		{
-			case VPS_TOAST:
-				{
-					popupColour = D3DCOLOR_ARGB(255, 255, 255, 255);
-					pFont = popupFont;
-				}
-				break;
-			case VPS_INFO:
-				{
-					popupColour = D3DCOLOR_ARGB(255, 128, 255, 128);
-					pFont = popupFont;
-				}
-				break;
-			case VPS_ERROR:
-				{
-					popupColour = D3DCOLOR_ARGB(255, 255, 0, 0);
-					pFont = errorFont;
-				}
-				break;
-		}
-
-		menuHelperRect.left = 640;
-		menuHelperRect.top = 480;
-		DrawTextShadowed(pFont, hudMainMenu, activePopup.line1, -1, &menuHelperRect, 0, popupColour);
-		menuHelperRect.top += MENU_ITEM_SEPARATION;
-		DrawTextShadowed(pFont, hudMainMenu, activePopup.line2, -1, &menuHelperRect, 0, popupColour);
-		menuHelperRect.top += MENU_ITEM_SEPARATION;
-		DrawTextShadowed(pFont, hudMainMenu, activePopup.line3, -1, &menuHelperRect, 0, popupColour);
-		menuHelperRect.top += MENU_ITEM_SEPARATION;
-		DrawTextShadowed(pFont, hudMainMenu, activePopup.line4, -1, &menuHelperRect, 0, popupColour);
-		menuHelperRect.top += MENU_ITEM_SEPARATION;
-		DrawTextShadowed(pFont, hudMainMenu, activePopup.line5, -1, &menuHelperRect, 0, popupColour);
-		menuHelperRect.top += MENU_ITEM_SEPARATION;
-		DrawTextShadowed(pFont, hudMainMenu, activePopup.line6, -1, &menuHelperRect, 0, popupColour);
- 
-
-		if (show_fps != FPS_NONE)
-		{
-			char buffer[256];
-			if (show_fps == FPS_COUNT)
-				sprintf_s(buffer, "       FPS: %.1f", fps);
-			else if (show_fps == FPS_TIME)
-				sprintf_s(buffer, "Frame Time: %.2f ms", 1000.0f / fps);
-
-			D3DCOLOR colour = (fps <= 40) ? D3DCOLOR_ARGB(255, 255, 0, 0) : D3DCOLOR_ARGB(255, 255, 255, 255);;
-			menuHelperRect.left = 850;
-			menuHelperRect.top = 800;
-			DrawTextShadowed(hudFont, hudMainMenu, buffer, -1, &menuHelperRect, 0, colour);
-		}
-
-		menuHelperRect.left = 0;
-		menuHelperRect.top = 0;
-
-		D3DXVECTOR3 vPos( 0.0f, 0.0f, 0.0f);
-		hudMainMenu->Draw(NULL, &menuHelperRect, NULL, &vPos, D3DCOLOR_ARGB(255, 255, 255, 255));
-		hudMainMenu->End();
-	}
-	*/
-}
-
 
 //FPS Calculator
 
@@ -2829,29 +2671,7 @@ float D3DProxyDevice::CalcFPS(){
     return FPS;
 }
 
-//Logic for popup, need some priority logic here
-METHOD_IMPL( void , , D3DProxyDevice , ShowPopup , VireioPopup& , popup )
-	//Nothing to do if we are already showing this popup, or splash screen is currently displayed
-	if (activePopup.popupType == popup.popupType ||
-		activePopup.popupType == VPT_SPLASH)
-		return;
 
-//	if (popup.popupType == VPT_FPS || popup.popupType == VPT_STATS)
-	{
-		activePopup = popup;
-		return;
-	}
-
-	if ( !config.isHmd )   //stereo type > 100 reserved specifically for HMDs
-	{
-	}
-}
-
-//DIsmiss popup if the popup type matches current displayed popup
-METHOD_IMPL( void , , D3DProxyDevice , DismissPopup , VireioPopupType , popupType )
-	if (activePopup.popupType == popupType)
-		activePopup.reset();
-}
 
 /**
 * Releases HUD font, shader registers, render targets, texture stages, vertex buffers, depth stencils, indices, shaders, declarations.
@@ -3011,7 +2831,7 @@ METHOD_IMPL( void , , D3DProxyDevice , SetGUIViewport )
 	D3DXMATRIX mRightShift;
 
 	// set shift by current gui 3d depth
-	float shiftInPixels = config.gui3DDepthPresets[config.gui3DDepthMode];
+	float shiftInPixels = config.guiDepth;
 	D3DXMatrixTranslation(&mLeftShift, -shiftInPixels, 0, 0);
 	D3DXMatrixTranslation(&mRightShift, shiftInPixels, 0, 0);
 
@@ -3132,9 +2952,7 @@ METHOD_IMPL( bool , , D3DProxyDevice , InitBrassa )
 	m_bVRBoostToggle = true;
 	m_fVRBoostIndicator = 0.0f;
 
-	ChangeHUD3DDepthMode(HUD_3D_Depth_Modes::HUD_DEFAULT);
-	ChangeGUI3DDepthMode(GUI_3D_Depth_Modes::GUI_DEFAULT);
-
+	m_spShaderViewAdjustment->ComputeViewTransforms();
 
 	for (int i = 0; i < 16; i++)
 		controls.xButtonsStatus[i] = false;

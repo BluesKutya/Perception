@@ -45,6 +45,7 @@ public:
 	cMenuItem* addSpinner ( const QString& name , float* variable , float step );
 	cMenuItem* addCheckbox( const QString& name , bool*  variable , const QString& on_text="true" , const QString& off_text="false" );
 	cMenuItem* addSelect  ( const QString& name , int*   variable , const QStringList& variants );
+
 	~cMenuItem();
 
 private:
@@ -73,6 +74,7 @@ private:
 	QString               checkOff;
 	cHotkey               hotkey;
 
+
 	cMenuItem();
 
 	cMenuItem* add        ( const QString& name , TYPE type );
@@ -95,6 +97,7 @@ public:
 	void freeResources  ( );
 	void render         ( );
 	void saveHotkeys    ( cMenuItem* item=0 );
+	void showMessage    ( const QString& text );
 
 private:
 	enum{
@@ -115,6 +118,8 @@ private:
 	int             hotkeyState;
 	cHotkey         hotkeyNew;
 	QTime           hotkeyTimeout;
+	QString         messageText;
+	QTime           messageTimeout;
 
 	void drawText( const QString& text , int align );
 	void drawRect( int x1 , int y1 , int x2 , int y2 , int color );

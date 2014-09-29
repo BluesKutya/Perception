@@ -324,10 +324,6 @@ public:
 	**/
 	int translation_mode;	
 	/**
-	* True if head tracking is enabled.
-	**/
-	bool trackingOn;
-	/**
 	* Currently not used, eye shutter side from old code.
 	**/
 	int eyeShutter;
@@ -377,96 +373,12 @@ public:
 	void         DrawSelection(vireio::RenderPosition renderPosition, D3DRECT rect, D3DCOLOR color, int selectionIndex, int selectionRange);
 	void         DrawScrollbar(vireio::RenderPosition renderPosition, D3DRECT rect, D3DCOLOR color, float scroll, int scrollbarSize);
 	void         DrawTextShadowed(ID3DXFont* font, LPD3DXSPRITE sprite, LPCSTR lpchText, int cchText, LPRECT lprc, UINT format, D3DCOLOR color);
-	void         ChangeHUD3DDepthMode(HUD_3D_Depth_Modes newMode);
-	void         ChangeGUI3DDepthMode(GUI_3D_Depth_Modes newMode);
+
 	void         BRASSA_NewFrame(UINT &entryID, UINT menuEntryCount);
 	virtual void BRASSA_ShaderSubMenu(){}
 	virtual void BRASSA_ChangeRules(){}
 	virtual void BRASSA_PickRules(){}
 	virtual void BRASSA_ShowActiveShaders(){}
-
-	enum VireioPopupType
-	{
-		VPT_NONE,
-		//"splash screen" - shown when Vireio is first injected
-		VPT_SPLASH,
-		VPT_NO_HMD_DETECTED,
-		VPY_HMDINITFAIL,
-		VPT_VRBOOST_FAILURE,
-		VPT_POSITION_TRACKING_LOST,
-		VPT_NO_ORIENTATION,
-		//Notification that is only dismissed once user has "calibrated HMD/Tracker"
-		VPT_CALIBRATE_TRACKER,
-		VPT_STATS,
-		//Short notification, such as hot key toggles
-		VPT_NOTIFICATION
-	};
-
-	enum VireioPopupSeverity
-	{
-		//A toast is a notification that is only shown for a short time, triggered by a toggle for exmample
-		VPS_TOAST,
-		//Information
-		VPS_INFO,
-		//An issue has occurred
-		VPS_ERROR
-	};
-
-	struct VireioPopup
-	{
-		VireioPopup(VireioPopupType type, VireioPopupSeverity sev = VPS_INFO, long duration = -1) :
-			popupType(type),
-			severity(sev),
-			popupDuration(duration)
-		{
-			if (duration != -1)
-				setDuration(duration);
-
-			memset(line1, 0, 256);
-			memset(line2, 0, 256);
-			memset(line3, 0, 256);
-			memset(line4, 0, 256);
-			memset(line5, 0, 256);
-			memset(line6, 0, 256);
-		}
-
-		void setDuration(long duration_ms)
-		{
-			popupDuration = (long)GetTickCount() + duration_ms;
-		}
-
-		bool expired()
-		{
-			if (popupDuration != -1 && 
-				((long)GetTickCount()) > popupDuration)
-				return true;
-			return false;
-		}
-
-		void reset()
-		{
-			popupType = VPT_NONE;
-			popupDuration = -1;
-			memset(line1, 0, 256);
-			memset(line2, 0, 256);
-			memset(line3, 0, 256);
-			memset(line4, 0, 256);
-			memset(line5, 0, 256);
-			memset(line6, 0, 256);
-		}
-
-		VireioPopupType popupType;
-		VireioPopupSeverity severity;
-		long popupDuration;
-		char line1[256];
-		char line2[256];
-		char line3[256];
-		char line4[256];
-		char line5[256];
-		char line6[256];
-	};
-
-	VireioPopup activePopup;
 
 	/** Whether the Frames Per Second counter is being shown */
 	enum FPS_TYPE {
@@ -478,11 +390,6 @@ public:
 
 	/** Whether the calibrate tracker message is to be shown */
 	bool calibrate_tracker;
-
-	/** Pop-up functionality */
-	void DisplayCurrentPopup();
-	void ShowPopup(VireioPopup &popup);
-	void DismissPopup(VireioPopupType popupType);
 
 	/**
 	* The game handler.

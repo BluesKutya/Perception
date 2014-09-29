@@ -89,15 +89,8 @@ public:
 	D3DXMATRIX    GatheredMatrixLeft();
 	D3DXMATRIX    GatheredMatrixRight();
 	void          GatherMatrix(D3DXMATRIX& matrixLeft, D3DXMATRIX& matrixRight);
-	void          ChangeGUISquash(float newSquash);
-	void          ChangeGUI3DDepth(float newGui3DDepth);
-	void          ChangeHUDDistance(float newHudDistance);
-	void          ChangeHUD3DDepth(float newHud3DDepth);
-	void          SetBulletLabyrinthMode(bool newMode);
+	void          UpdateGui();
 	void		  SetGameSpecificPositionalScaling(D3DXVECTOR3 scalingVec);
-	bool          BulletLabyrinthMode();
-	void          ResetWorldScale();
-	void          ResetConvergence();	
 	float         ConvergenceInWorldUnits();
 	float         SeparationInWorldUnits();
 	float         SeparationIPDAdjustment();
@@ -241,27 +234,7 @@ public:
 	* Used to scale the positional movement, seems x/y/z are not equal
 	*/
 	D3DXVECTOR3 gameScaleVec;
-	/**
-	* The amount of squashing GUI shader constants.
-	* 1.0 == full render
-	***/
-	float squash;
-	/**
-	* The 3d depth of the GUI.
-	***/
-	float gui3DDepth;
-	/**
-	* The distance of the HUD.
-	***/
-	float hudDistance;
-	/**
-	* The 3d depth of the HUD.
-	***/
-	float hud3DDepth;
-	/**
-	* True if "bullet-labyrinth-style" GUI/HUD rotation is active.
-	***/
-	bool bulletLabyrinth;
+
 
 };
 #endif

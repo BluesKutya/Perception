@@ -36,20 +36,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 * Constructor.
 * Sets class constants, identity matrices and a projection matrix.
 ***/
-ViewAdjustment::ViewAdjustment( ) :
-	bulletLabyrinth(false)
-{
+ViewAdjustment::ViewAdjustment( ){
 	// TODO : max, min convergence; arbitrary now
 
 	n = 0.1f;					
 	f = 10.0f;
 	l = -0.5f;
 	r = 0.5f;
-
-	squash = 1.0f;
-	gui3DDepth = 0.0f;
-	hudDistance = 0.0f;
-	hud3DDepth = 0.0f;
 
 	D3DXMatrixIdentity(&matProjection);
 	D3DXMatrixIdentity(&matPosition);
@@ -244,31 +237,7 @@ printf("%f %f %f\n",config.PlayerIPD,config.stereoScale,SeparationInWorldUnits()
 	matViewProjTransformLeft = matProjectionInv * transformLeft * projectLeft;
 	matViewProjTransformRight = matProjectionInv * transformRight * projectRight;
 
-	// now, create HUD/GUI helper matrices
-
-	// if not HMD, set HUD/GUI to fullscreen
-	if ( !config.isHmd )   //stereo type > 100 reserved specifically for HMDs
-	{
-		squash = 1.0f;
-		gui3DDepth = 0.0f;
-		hudDistance = 0.0f;
-		hud3DDepth = 0.0f;
-	}
-
-	// squash
-	D3DXMatrixScaling(&matSquash, squash, squash, 1);
-
-	// hudDistance
-	D3DXMatrixTranslation(&matHudDistance, 0, 0, hudDistance);
-
-	// hud3DDepth
-	D3DXMatrixTranslation(&matLeftHud3DDepth, hud3DDepth, 0, 0);
-	D3DXMatrixTranslation(&matRightHud3DDepth, -hud3DDepth, 0, 0);
-	float additionalSeparation = (1.5f-hudDistance)*config.lensXCenterOffset;
-	D3DXMatrixTranslation(&matLeftHud3DDepthShifted, hud3DDepth+additionalSeparation, 0, 0);
-	D3DXMatrixTranslation(&matRightHud3DDepthShifted, -hud3DDepth-additionalSeparation, 0, 0);
-	D3DXMatrixTranslation(&matLeftGui3DDepth, gui3DDepth+SeparationIPDAdjustment(), 0, 0);
-	D3DXMatrixTranslation(&matRightGui3DDepth, -(gui3DDepth+SeparationIPDAdjustment()), 0, 0);
+	UpdateGui();
 
 	// gui/hud matrices
 	matHudLeft = matProjectionInv * matLeftHud3DDepth * transformLeft * matHudDistance *  projectLeft;
@@ -517,68 +486,23 @@ void ViewAdjustment::GatherMatrix(D3DXMATRIX& matrixLeft, D3DXMATRIX& matrixRigh
 
 
 
-/**
-* Changes GUI squash and updates matrix.
-***/
-void ViewAdjustment::ChangeGUISquash(float newSquash)
-{
-	squash = newSquash;
+void ViewAdjustment::UpdateGui(){
+	float additionalSeparation = (1.5f - config.hudDistance) * config.lensXCenterOffset;
 
-	D3DXMatrixScaling(&matSquash, squash, squash, 1);
+
+	D3DXMatrixScaling    ( &matSquash                , config.guiSquash , config.guiSquash , 1 );
+											         
+	D3DXMatrixTranslation( &matLeftGui3DDepth        ,   config.guiDepth + SeparationIPDAdjustment()    , 0 , 0 );
+	D3DXMatrixTranslation( &matRightGui3DDepth       , -(config.guiDepth + SeparationIPDAdjustment()) , 0 , 0 );
+											         
+	D3DXMatrixTranslation( &matHudDistance           , 0 , 0 , config.hudDistance );
+
+	D3DXMatrixTranslation(&matLeftHud3DDepth         , -config.hudDepth  , 0 , 0 );
+	D3DXMatrixTranslation(&matRightHud3DDepth        ,  config.hudDepth  , 0 , 0 );
+
+	D3DXMatrixTranslation(&matLeftHud3DDepthShifted  ,  config.hudDepth + additionalSeparation , 0 , 0 );
+	D3DXMatrixTranslation(&matRightHud3DDepthShifted , -config.hudDepth - additionalSeparation , 0 , 0 );
 }
-
-/**
-* Changes the GUI eye separation (=GUI 3D Depth) and updates matrices.
-***/
-void ViewAdjustment::ChangeGUI3DDepth(float newGui3DDepth)
-{
-	gui3DDepth = newGui3DDepth;
-
-	D3DXMatrixTranslation(&matLeftGui3DDepth, gui3DDepth+SeparationIPDAdjustment(), 0, 0);
-	D3DXMatrixTranslation(&matRightGui3DDepth, -(gui3DDepth+SeparationIPDAdjustment()), 0, 0);
-}
-
-/**
-* Changes the distance of the HUD and updates matrix.
-***/
-void ViewAdjustment::ChangeHUDDistance(float newHudDistance)
-{
-	hudDistance = newHudDistance;
-
-	D3DXMatrixTranslation(&matHudDistance, 0, 0, hudDistance);
-}
-
-/**
-*  Changes the HUD eye separation (=HUD 3D Depth) and updates matrices.
-***/
-void ViewAdjustment::ChangeHUD3DDepth(float newHud3DDepth)
-{
-	hud3DDepth = newHud3DDepth;
-
-	D3DXMatrixTranslation(&matLeftHud3DDepth, -hud3DDepth, 0, 0);
-	D3DXMatrixTranslation(&matRightHud3DDepth, hud3DDepth, 0, 0);
-	float additionalSeparation = (1.5f-hudDistance)*config.lensXCenterOffset;
-	D3DXMatrixTranslation(&matLeftHud3DDepthShifted, hud3DDepth+additionalSeparation, 0, 0);
-	D3DXMatrixTranslation(&matRightHud3DDepthShifted, -hud3DDepth-additionalSeparation, 0, 0);
-}
-
-/**
-* Set to true if orthographical matrices should be rotated in a bullet labyrinth style.
-***/
-void ViewAdjustment::SetBulletLabyrinthMode(bool newMode)
-{
-	bulletLabyrinth = newMode;
-}
-
-/**
-* True if bullet-labyrinth mode is on.
-***/
-bool ViewAdjustment::BulletLabyrinthMode()
-{
-	return bulletLabyrinth;
-}
-
-
 
 
 

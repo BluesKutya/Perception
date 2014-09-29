@@ -52,17 +52,17 @@ P( float   , stereoScale       , )
 P( float   , stereoConvergence , )
 
 
+P( bool    , guiBulletLabyrinth , )
+P( float   , guiSquash   , )
+P( float   , guiDepth    , )
+P( float   , hudDistance , )
+P( float   , hudDepth    , )
+
+
+
 P( float   , DistortionScale            , )// The scale to apply distortion
 P( float   , YOffset                    , )// The Y offset from the centre of the screen on the Y-axis *
 P( float   , IPDOffset                  , )// The IPD offset from the centre of the screen on the X-axis *
-P( int     , hud3DDepthMode             , )// Current HUD mode
-P( float   , hud3DDepthPresets          , [4] )// HUD 3D Depth presets.
-P( float   , hudDistancePresets         , [4] )// HUD Distance presets.
-P( int     , hudHotkeys                 , [5]              )// HUD Hotkeys.
-P( int     , gui3DDepthMode             , )// Current GUI mode
-P( float   , gui3DDepthPresets          , [4] )// GUI 3D Depth													 presets.
-P( float   , guiSquishPresets			, [4] )// GUI Size presets.
-P( int     , guiHotkeys					, [5] )// GUI Hotkeys.
 P( int     , VRBoostResetHotkey         , )// Hotkey option to reset VRBoost
 P( float   , WorldFOV                   , )// Game-specific global FOV setting
 P( float   , PlayerFOV                  , )// Game-specific player surroundings FOV setting

@@ -92,7 +92,7 @@ public:
 			}
 			else // GUI
 			{
-				if (m_spAdjustmentMatrices->BulletLabyrinthMode())
+				if ( config.guiBulletLabyrinth )
 				{
 					D3DXMATRIX tempMatrix;
 					D3DXMatrixTranspose(&tempMatrix, &in);
