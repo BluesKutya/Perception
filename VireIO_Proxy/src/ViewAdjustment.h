@@ -244,10 +244,6 @@ public:
 	*/
 	D3DXVECTOR3 gameScaleVec;
 	/**
-	* The current way to render stereo. Matches StereoView::StereoTypes.
-	***/
-	bool isHmd;
-	/**
 	* The amount of squashing GUI shader constants.
 	* 1.0 == full render
 	***/

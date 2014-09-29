@@ -76,7 +76,7 @@ void cMainWindow::on_saveSettings_clicked(){
 	config.streamingBitrate  = ui.streamingBitrate ->value();
 	config.shaderAnalyzer    = ui.shaderAnalyzer     ->isChecked();
 
-	config.save( config.getMainConfigFile() , config.SAVE_GENERAL );
+	config.save( config.getMainConfigFile() , QList<int>()<<config.SAVE_GENERAL );
 }
 
 
@@ -107,7 +107,7 @@ void cMainWindow::on_games_customContextMenuRequested( const QPoint& pos ){
 				cConfig cfg;
 				cfg.exePath     = pd.exeName;
 				cfg.profileName = pd.selectedProfileName;
-				cfg.save( config.getGameConfigFile(cfg.exePath) , config.SAVE_GAME );
+				cfg.save( config.getGameConfigFile(cfg.exePath) , QList<int>()<<config.SAVE_GAME );
 				LoadGames( );
 			}
 		}
@@ -167,7 +167,7 @@ void cMainWindow::ScanGames(){
 			cConfig cfg;
 			cfg.exePath     = file;
 			cfg.profileName = profile;
-			cfg.save( config.getGameConfigFile(file) , config.SAVE_GAME );
+			cfg.save( config.getGameConfigFile(file) , QList<int>()<<config.SAVE_GAME );
 		}
 	}
 

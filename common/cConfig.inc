@@ -33,14 +33,16 @@ P( int     , VRboostMinShaderCount      , )// Minimum Vertex Shader Count to app
 P( int     , VRboostMaxShaderCount      , )// Maximum Vertex Shader Count to apply VRboost (security)
 P( int     , game_type                  , )// Game type enumeration. Matching D3DProxyDevice::ProxyTypes
 P( bool    , rollEnabled                , )// True if headtracking-roll is to be enabled
-P( float   , worldScaleFactor           , )// Value the eye seperation is to be multiplied with. (mm * worldScaleFactor = mm in game units)
-P( float   , convergence                , )// Convergence or Neutral Point distance, in meters
 P( bool    , swap_eyes                  , )// Option to swap the eye output for different 3D systems
 
 P( float   , trackerYawMultiplier		, )
 P( float   , trackerPitchMultiplier	    , )
 P( float   , trackerRollMultiplier		, )
-P( float   , trackerPositionMultiplier	, )
+P( float   , trackerXMultiplier	        , )
+P( float   , trackerYMultiplier	        , )
+P( float   , trackerZMultiplier	        , )
+P( bool    , trackerPositionEnable      , )
+P( bool    , trackerRotationEnable      , )
 P( float   , trackerMouseYawMultiplier	, )
 P( float   , trackerMousePitchMultiplier, )
 P( bool    , trackerMouseEmulation		, )

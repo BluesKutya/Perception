@@ -364,7 +364,6 @@ public:
 	bool m_bfloatingScreen;
 	float m_fFloatingScreenPitch;
 	float m_fFloatingScreenYaw;
-	bool m_bSurpressHeadtracking;
 	InputControls controls;
 	DirectInput dinput;
 
@@ -536,10 +535,6 @@ public:
 	* True if VRBoost is on.
 	**/
 	bool m_bVRBoostToggle;
-	/**
-	* True if positional tracking should be used
-	*/
-	bool m_bPosTrackingToggle;
 	/**
 	* Timespan the VRBoost indicator should be drawn.
 	**/

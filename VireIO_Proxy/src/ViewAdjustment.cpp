@@ -107,7 +107,7 @@ void ViewAdjustment::UpdateProjectionMatrices(float aspectRatio)
 	float physicalScreenSizeInMeters = config.physicalWidth / 2;
 
 	// if not HMD, set values to fullscreen defaults
-	if ( !isHmd )   //stereo type > 100 reserved specifically for HMDs
+	if ( !config.isHmd )   //stereo type > 100 reserved specifically for HMDs
 	{
 		// assumption here :
 		// end user is placed 1 meter away from screen
@@ -216,7 +216,7 @@ void ViewAdjustment::UpdatePosition(float yaw, float pitch, float roll, float xP
 void ViewAdjustment::ComputeViewTransforms()
 {
 
-
+printf("%f %f %f\n",config.PlayerIPD,config.stereoScale,SeparationInWorldUnits());
 	// separation settings are overall (HMD and desktop), since they are based on physical IPD
 	D3DXMatrixTranslation(&transformLeft, SeparationInWorldUnits() * LEFT_CONSTANT, 0, 0);
 	D3DXMatrixTranslation(&transformRight, SeparationInWorldUnits() * RIGHT_CONSTANT, 0, 0);
@@ -248,7 +248,7 @@ void ViewAdjustment::ComputeViewTransforms()
 	// now, create HUD/GUI helper matrices
 
 	// if not HMD, set HUD/GUI to fullscreen
-	if ( !isHmd )   //stereo type > 100 reserved specifically for HMDs
+	if ( !config.isHmd )   //stereo type > 100 reserved specifically for HMDs
 	{
 		squash = 1.0f;
 		gui3DDepth = 0.0f;

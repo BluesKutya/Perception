@@ -13,7 +13,11 @@ cConfig::cConfig(){
 	trackerYawMultiplier		= 1;
 	trackerPitchMultiplier		= 1;
 	trackerRollMultiplier		= 1;
-	trackerPositionMultiplier	= 1;
+	trackerXMultiplier	        = 0.001;
+	trackerYMultiplier	        = 0.001;
+	trackerZMultiplier	        = 0.001;
+	trackerPositionEnable       = false;
+	trackerRotationEnable       = true;
 	trackerMouseYawMultiplier	= 1;
 	trackerMousePitchMultiplier	= 1;
 	trackerMouseEmulation		= false;

@@ -76,37 +76,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using namespace VRBoost;
 
-/**
-* Returns the mouse wheel scroll lines.
-***/
-UINT GetMouseScrollLines()
-{
-	#ifdef SHOW_CALLS
-		OutputDebugStringA("called GetMouseScrollLines");
-	#endif
-	int nScrollLines = 3;
-	HKEY hKey;
-
-	if (RegOpenKeyExA(HKEY_CURRENT_USER,  _T("Control Panel\\Desktop"),
-		0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS)
-	{
-		char szData[128];
-		DWORD dwKeyDataType;
-		DWORD dwDataBufSize = sizeof(szData);
-
-		if (RegQueryValueExA(hKey, "WheelScrollLines", NULL, &dwKeyDataType,
-			(LPBYTE) &szData, &dwDataBufSize) == ERROR_SUCCESS)
-		{
-			nScrollLines = strtoul(szData, NULL, 10);
-		}
-
-		RegCloseKey(hKey);
-	}
-
-	return nScrollLines;
-}
-
-
 
 /**
 * Constructor : creates game handler and sets various states.
@@ -127,13 +96,17 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	calibrate_tracker(false)
 {
 
+	config         = cfg;
+	m_configBackup = cfg;
+
+
 	tracker = 0;
 
 	menu.init( this );
 
 	InitVRBoost();
 
-	m_spShaderViewAdjustment = std::make_shared<ViewAdjustment>( cfg );
+	m_spShaderViewAdjustment = std::make_shared<ViewAdjustment>( config );
 	m_pGameHandler = new GameHandler();
 
 	// Check the maximum number of supported render targets
@@ -198,22 +171,16 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	ShowPopup(splashPopup);
 
 
-
-	config         = cfg;
-	m_configBackup = cfg;
-
 	eyeShutter = 1;
 	m_bfloatingMenu = false;
 	m_bfloatingScreen = false;
-	m_bSurpressHeadtracking = false;
 
 	// first time configuration
 	m_pGameHandler->Load(config, m_spShaderViewAdjustment);
 	stereoView                 = new StereoView( config );
 	stereoView->HeadYOffset    = 0;
 
-	BRASSA_UpdateDeviceSettings();
-	OnCreateOrRestore();
+
 
 	//credits will go to world-scale menu, or maybe to startup screen!
 	//"Brown Reischl and Schneider Settings Analyzer (B.R.A.S.S.A.)."
@@ -227,6 +194,7 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	
 	i = m->addSpinner( "Separation" , &config.stereoScale , 0.0000001 , 100000 , 0.005 );
 	i->callbackValueChanged = [this](){
+	printf("scale %f\n", config.stereoScale);
 		m_spShaderViewAdjustment->UpdateProjectionMatrices((float)stereoView->viewport.Width/(float)stereoView->viewport.Height);
 	};
 
@@ -289,34 +257,57 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	m->addSpinner( "Constant value 2"          , VRBoostValue + 35 , 0.01);
 
 
+
+
+
+
+
 	m = menu.root.addSubmenu( "Tracker Configuration" );
+	
+
+	m->addCheckbox( "Tracker rotation" , &config.trackerRotationEnable );
 	m->addSpinner ( "Yaw   multiplier" , &config.trackerYawMultiplier   , 0.05 );
 	m->addSpinner ( "Pitch multiplier" , &config.trackerPitchMultiplier , 0.05 );
 	m->addSpinner ( "Roll  multiplier" , &config.trackerRollMultiplier  , 0.05 );
 	m->addCheckbox( "Roll  thing..."   , &config.rollEnabled  );
 
-	m->addCheckbox( "Mouse emulation"        , &config.trackerMouseEmulation );
-	m->addSpinner ( "Mouse yaw   multiplier" , &config.trackerMouseYawMultiplier   , 0.05 );
-	m->addSpinner ( "Mouse pitch multiplier" , &config.trackerMousePitchMultiplier , 0.05 );
 
-	i = m->addCheckbox( "Positional tracking"    , &m_bPosTrackingToggle );
+	i = m->addCheckbox( "Tracker movement" , &config.trackerPositionEnable );
 	i->callbackValueChanged = [this](){
-		if (!m_bPosTrackingToggle){
+		if( !config.trackerPositionEnable ){
 			m_spShaderViewAdjustment->UpdatePosition(0.0f, 0.0f, 0.0f);
 		}
 	};
 
-	i = m->addAction( "Positional tracking reset"   );
+	i = m->addSpinner( "X multiplier" , &config.trackerXMultiplier , 0.00001 );
+	i->callbackValueChanged = [this](){
+		BRASSA_UpdateConfigSettings();
+	};
+
+	i = m->addSpinner( "Y multiplier" , &config.trackerYMultiplier , 0.00001 );
+	i->callbackValueChanged = [this](){
+		BRASSA_UpdateConfigSettings();
+	};
+
+	i = m->addSpinner( "Z multiplier" , &config.trackerZMultiplier , 0.00001 );
+	i->callbackValueChanged = [this](){
+		BRASSA_UpdateConfigSettings();
+	};
+
+
+	m->addCheckbox( "Mouse emulation"        , &config.trackerMouseEmulation );
+	m->addSpinner ( "Mouse yaw   multiplier" , &config.trackerMouseYawMultiplier   , 0.05 );
+	m->addSpinner ( "Mouse pitch multiplier" , &config.trackerMousePitchMultiplier , 0.05 );
+
+
+	i = m->addAction( "Reset view"   );
 	i->callbackValueChanged = [this](){
 		if( tracker ){
 			tracker->reset();
 		}
 	};
 
-	i = m->addSpinner( "Positional tracking multiplier" , &config.trackerPositionMultiplier , 0.001 );
-	i->callbackValueChanged = [this](){
-		BRASSA_UpdateConfigSettings();
-	};
+
 
 
 	i= menu.root.addAction ( "Restore configuration" );
@@ -328,6 +319,9 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	i->callbackValueChanged = [this](){
 		SaveConfiguration();
 	};
+
+	BRASSA_UpdateDeviceSettings();
+	OnCreateOrRestore();
 
 }
 
@@ -2046,20 +2040,20 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 		return;
 	}
 
-		printf("tracker %f %f %f\n" , tracker->currentYaw,	tracker->currentPitch,tracker->currentRoll);
+	if( config.trackerRotationEnable ){
+		m_spShaderViewAdjustment->UpdatePitchYaw( tracker->currentPitch , tracker->currentYaw );
+	}else{
+		m_spShaderViewAdjustment->UpdatePitchYaw( 0 , 0 );
+	}
 
-
-	m_spShaderViewAdjustment->UpdatePitchYaw( tracker->currentPitch , tracker->currentYaw );
-
-	if( m_bPosTrackingToggle ){
+	if( config.trackerPositionEnable ){
 		m_spShaderViewAdjustment->UpdatePosition(
 			tracker->currentYaw,
 			tracker->currentPitch,
 			tracker->currentRoll,
-			(VRBoostValue[VRboostAxis::CameraTranslateX] / 20.0f) + tracker->currentX, 
-			(VRBoostValue[VRboostAxis::CameraTranslateY] / 20.0f) + tracker->currentY,
-			(VRBoostValue[VRboostAxis::CameraTranslateZ] / 20.0f) + tracker->currentZ,
-			config.trackerPositionMultiplier
+			(VRBoostValue[VRboostAxis::CameraTranslateX] / 20.0f) + tracker->currentX * config.trackerXMultiplier * config.stereoScale, 
+			(VRBoostValue[VRboostAxis::CameraTranslateY] / 20.0f) + tracker->currentY * config.trackerYMultiplier * config.stereoScale,
+			(VRBoostValue[VRboostAxis::CameraTranslateZ] / 20.0f) + tracker->currentZ * config.trackerZMultiplier * config.stereoScale
 		);
 	}
 		
@@ -2068,11 +2062,11 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 	m_isFirstBeginSceneOfFrame = false;
 
 	// update vrboost, if present, tracker available and shader count higher than the minimum
-	if ((!m_bSurpressHeadtracking) && (!config.trackerMouseEmulation) && (hmVRboost) && (m_VRboostRulesPresent) 
-		&& (m_bVRBoostToggle)
+	if( hmVRboost && m_VRboostRulesPresent && m_bVRBoostToggle
 		&& (m_VertexShaderCountLastFrame>(UINT)config.VRboostMinShaderCount)
 		&& (m_VertexShaderCountLastFrame<(UINT)config.VRboostMaxShaderCount) )
 	{
+	printf("vrbu\n");
 		VRBoostStatus.VRBoost_Active = true;
 		// development bool
 		bool createNSave = false;
@@ -3174,7 +3168,6 @@ METHOD_IMPL( bool , , D3DProxyDevice , InitVRBoost )
 METHOD_IMPL( bool , , D3DProxyDevice , InitBrassa )
 	screenshot = (int)false;
 	m_bVRBoostToggle = true;
-	m_bPosTrackingToggle = true;
 	m_bShowVRMouse = false;
 	m_fVRBoostIndicator = 0.0f;
 
