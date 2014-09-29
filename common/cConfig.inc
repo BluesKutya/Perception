@@ -34,6 +34,7 @@ P( int     , VRboostMaxShaderCount      , )// Maximum Vertex Shader Count to app
 P( int     , game_type                  , )// Game type enumeration. Matching D3DProxyDevice::ProxyTypes
 P( bool    , rollEnabled                , )// True if headtracking-roll is to be enabled
 P( bool    , swap_eyes                  , )// Option to swap the eye output for different 3D systems
+P( bool    , showVRMouse                , )
 
 P( float   , trackerYawMultiplier		, )
 P( float   , trackerPitchMultiplier	    , )

@@ -64,7 +64,7 @@ void        HijackHookUpdate ( );
 void        HijackHookInstall( );
 
 #include "cConfig.h"
-extern cConfig config;
+extern cConfig vireio_global_config;
 
 
 class D3D9ProxySurface;

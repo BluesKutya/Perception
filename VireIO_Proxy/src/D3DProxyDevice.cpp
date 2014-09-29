@@ -189,12 +189,13 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	cMenuItem* i;
 	cMenuItem* m;
 
+
+
 	m = menu.root.addSubmenu( "Stereoscopic 3D calibration" );
 	m->showCalibrator = true;
 	
 	i = m->addSpinner( "Separation" , &config.stereoScale , 0.0000001 , 100000 , 0.005 );
 	i->callbackValueChanged = [this](){
-	printf("scale %f\n", config.stereoScale);
 		m_spShaderViewAdjustment->UpdateProjectionMatrices((float)stereoView->viewport.Width/(float)stereoView->viewport.Height);
 	};
 
@@ -202,6 +203,9 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	i->callbackValueChanged = [this](){
 		m_spShaderViewAdjustment->UpdateProjectionMatrices((float)stereoView->viewport.Width/(float)stereoView->viewport.Height);
 	};
+
+
+
 
 
 	m = menu.root.addSubmenu( "Image settings" );
@@ -228,12 +232,21 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 			}
 		}
 	};
+	
 
 	i = m->addAction ( "Take screenshot" );
 	i->callbackValueChanged = [this](){
 		screenshot = 3;
 		menu.show = false;
 	};
+
+
+
+
+	m = menu.root.addSubmenu( "OSD and GUI settings" );
+	m->addCheckbox( "Show VR mouse" , &config.showVRMouse );
+
+
 
 
 
@@ -310,15 +323,20 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 
 
 
+
 	i= menu.root.addAction ( "Restore configuration" );
 	i->callbackValueChanged = [this](){
 		config = m_configBackup;
 	};
 
+
+
 	i= menu.root.addAction ( "Save configuration" );
 	i->callbackValueChanged = [this](){
 		SaveConfiguration();
 	};
+
+
 
 	BRASSA_UpdateDeviceSettings();
 	OnCreateOrRestore();
@@ -2671,58 +2689,6 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_AdditionalOutput )
 		//m_fVRBoostIndicator-=menuSeconds;
 	}
 
-	//GBCODE - Test VR Mouse Positioning
-	if (m_bShowVRMouse)
-	{
-		POINT pt;   
-		GetCursorPos(&pt); 
-		D3DRECT rec2;	
-		//D3DRECT rec2hud;	
-		rec2.x1 = (int)-5 + ((pt.x * config.guiSquishPresets[(int)config.gui3DDepthMode]) + (((1 - config.guiSquishPresets[(int)config.gui3DDepthMode]) / 2) * viewportWidth)); 
-		rec2.x2 = rec2.x1 + 10; 
-		rec2.y1 = (int)-5 + ((pt.y * config.guiSquishPresets[(int)config.gui3DDepthMode]) + (((1 - config.guiSquishPresets[(int)config.gui3DDepthMode]) / 2) * viewportHeight)); 
-		rec2.y2 = rec2.y1 + 10; 	
-		
-		ClearRect(vireio::RenderPosition::Left, rec2, D3DCOLOR_ARGB(255,255,255,255));
-		ClearRect(vireio::RenderPosition::Right, rec2, D3DCOLOR_ARGB(255,255,255,255));
-		rec2.x1 += 2;
-		rec2.x2 -= 2;
-		rec2.y1 += 2;
-		rec2.y2 -= 2;
-		ClearRect(vireio::RenderPosition::Left, rec2, D3DCOLOR_ARGB(0,0,0,0));
-		ClearRect(vireio::RenderPosition::Right, rec2, D3DCOLOR_ARGB(0,0,0,0));	
-		/*
-		//Hud Depth = 0 = Full Size 0.5 = Half Size
-		/*rec2hud.x1 = (int)-5 + (hudDistancePresets[(int)hud3DDepthMode]) * viewportWidth)) + (pt.x * (1 - hudDistancePresets[(int)hud3DDepthMode]));
-		rec2hud.x2 = rec2hud.x1 + 10;		
-		rec2hud.y1 = (int)-5 + (hudDistancePresets[(int)hud3DDepthMode]) * viewportHeight)) + (pt.y * (1 - hudDistancePresets[(int)hud3DDepthMode]));
-		rec2hud.y2 = rec2hud.y1 + 10;
-		
-		rec2hud.x1 = (int)-5 + ((pt.x * (1 - hudDistancePresets[(int)hud3DDepthMode])) + (((hudDistancePresets[(int)hud3DDepthMode]) / 2) * viewportWidth)); 
-		rec2hud.x2 = rec2hud.x1 + 10; 
-		rec2hud.y1 = (int)-5 + ((pt.y * (1 - hudDistancePresets[(int)hud3DDepthMode])) + (((hudDistancePresets[(int)hud3DDepthMode]) / 2) * viewportHeight)); 
-		rec2hud.y2 = rec2hud.y1 + 10; 	
-		ClearRect(vireio::RenderPosition::Left, rec2hud, D3DCOLOR_ARGB(255,255,255,255));
-		ClearRect(vireio::RenderPosition::Right, rec2hud, D3DCOLOR_ARGB(255,255,255,255));
-
-		rec2hud.x1 = 0;
-		rec2hud.x2 = (viewportWidth / 2) * (hudDistancePresets[(int)hud3DDepthMode]) + 200;		
-		rec2hud.y1 = 0;
-		rec2hud.y2 = (viewportHeight / 2) * (hudDistancePresets[(int)hud3DDepthMode]) + 200;
-		ClearRect(vireio::RenderPosition::Left, rec2hud, D3DCOLOR_ARGB(255,255,255,255));
-		//ClearRect(vireio::RenderPosition::Right, rec2hud, D3DCOLOR_ARGB(255,255,255,255));
-
-		rec2hud.x1 = viewportWidth - ((hudDistancePresets[(int)hud3DDepthMode]) * viewportWidth);
-		rec2hud.x2 = rec2hud.x1 + 10;		
-		rec2hud.y1 = viewportHeight - ((hudDistancePresets[(int)hud3DDepthMode]) * viewportHeight);
-		rec2hud.y2 = rec2hud.y1 + 10;
-		ClearRect(vireio::RenderPosition::Left, rec2hud, D3DCOLOR_ARGB(255,255,255,255));
-		ClearRect(vireio::RenderPosition::Right, rec2hud, D3DCOLOR_ARGB(255,255,255,255));*/
-	}
-	
-	// do not squish the viewport in case brassa menu is open - GBCODE - Why? Test on supported games. 
-	//if ((BRASSA_mode>=BRASSA_Modes::MAINMENU) && (BRASSA_mode<BRASSA_Modes::BRASSA_ENUM_RANGE))
-	//return;
 
 	//Finally, draw any popups if required
 	DisplayCurrentPopup();
@@ -3168,7 +3134,6 @@ METHOD_IMPL( bool , , D3DProxyDevice , InitVRBoost )
 METHOD_IMPL( bool , , D3DProxyDevice , InitBrassa )
 	screenshot = (int)false;
 	m_bVRBoostToggle = true;
-	m_bShowVRMouse = false;
 	m_fVRBoostIndicator = 0.0f;
 
 	ChangeHUD3DDepthMode(HUD_3D_Depth_Modes::HUD_DEFAULT);

@@ -82,7 +82,7 @@ void HijackHookUpdate(){
 			}
 		}
 
-		if( h->old_function && config.logHijack  ){
+		if( h->old_function && vireio_global_config.logHijack  ){
 			printf( "hook: found      %s\n" , h->function_name );
 		}
 
@@ -165,7 +165,7 @@ QString HijackInject( HANDLE proccess ){
 		load_func = (FARPROC)LoadLibraryA;
 	}
 
-	QByteArray path = ( config.vireioDir + "bin/Vireio_Proxy.dll" ).toLocal8Bit();
+	QByteArray path = ( vireio_global_config.vireioDir + "bin/Vireio_Proxy.dll" ).toLocal8Bit();
 	path.replace( "/" , "\\" );
 
 	remote_lib_name = VirtualAllocEx( proccess , 0 , path.size()+1 , MEM_COMMIT , PAGE_READWRITE );
@@ -241,7 +241,7 @@ QString HijackInject( HANDLE proccess ){
 
 
 void HijackHookInstall( ){
-	if( config.logHijack ){
+	if( vireio_global_config.logHijack ){
 		printf("hook: installing...\n");
 	}
 
@@ -251,7 +251,7 @@ void HijackHookInstall( ){
 	HOOK( "Kernel32.dll" , FARPROC , WINAPI , GetProcAddress , ( HMODULE hModule , LPCSTR lpProcName ) , {
 		for( HookInfo* h = hooks ; h ; h=h->next ){
 			if( h->module == hModule && strcmp(h->function_name,lpProcName)==0 ){
-				if( config.logHijack ){
+				if( vireio_global_config.logHijack ){
 					printf("hook: requested  %s\n",lpProcName);
 				}
 				return h->new_function;
@@ -261,7 +261,7 @@ void HijackHookInstall( ){
 	})
 
 	HOOK( "Kernel32.dll" , HMODULE , WINAPI , LoadLibraryA , ( LPCSTR  lpLibFileName ) , {
-		if( config.logHijack ){
+		if( vireio_global_config.logHijack ){
 			printf("hook: load       %s\n" , lpLibFileName );
 		}
 		HMODULE m = ORIG( lpLibFileName );
@@ -271,7 +271,7 @@ void HijackHookInstall( ){
 
 
 	HOOK( "Kernel32.dll" , HMODULE , WINAPI , LoadLibraryW , ( LPCWSTR lpLibFileName ) , {
-		if( config.logHijack ){
+		if( vireio_global_config.logHijack ){
 			printf("hook: load       %S\n" , lpLibFileName );
 		}
 		HMODULE m = ORIG( lpLibFileName );
@@ -281,7 +281,7 @@ void HijackHookInstall( ){
 
 
 	HOOK( "Kernel32.dll" , HMODULE , WINAPI , LoadLibraryExA , ( LPCSTR lpLibFileName , HANDLE hFile , DWORD dwFlags ) , {
-		if( config.logHijack ){
+		if( vireio_global_config.logHijack ){
 			printf("hook: load       %s\n" , lpLibFileName );
 		}
 		HMODULE m = ORIG( lpLibFileName , hFile , dwFlags );
@@ -291,7 +291,7 @@ void HijackHookInstall( ){
 
 
 	HOOK( "Kernel32.dll" , HMODULE , WINAPI , LoadLibraryExW , ( LPCWSTR lpLibFileName , HANDLE hFile , DWORD dwFlags ) , {
-		if( config.logHijack ){
+		if( vireio_global_config.logHijack ){
 			printf("hook: load       %S\n" , lpLibFileName );
 		}
 		HMODULE m = ORIG( lpLibFileName , hFile , dwFlags );
@@ -311,42 +311,42 @@ void HijackHookInstall( ){
 
 
 	HOOK( "Kernel32.dll" , BOOL , WINAPI , CreateProcessA , (LPCSTR lpApplicationName,LPSTR lpCommandLine,LPSECURITY_ATTRIBUTES lpProcessAttributes,LPSECURITY_ATTRIBUTES lpThreadAttributes,BOOL bInheritHandles,DWORD dwCreationFlags,LPVOID lpEnvironment,LPCSTR lpCurrentDirectory,LPSTARTUPINFOA lpStartupInfo,LPPROCESS_INFORMATION lpProcessInformation) , {
-		if( config.logHijack ){
+		if( vireio_global_config.logHijack ){
 			printf("hook: launching %s\n" , lpApplicationName );
 		}
 		CreateProcess_macro(lpApplicationName,lpCommandLine,lpProcessAttributes,lpThreadAttributes,bInheritHandles,dwCreationFlags,lpEnvironment,lpCurrentDirectory,lpStartupInfo,lpProcessInformation)
 	})
 
 	HOOK( "*" , BOOL , WINAPI , CreateProcessAsUserA , (HANDLE hToken,LPCSTR lpApplicationName,LPSTR lpCommandLine,LPSECURITY_ATTRIBUTES lpProcessAttributes,LPSECURITY_ATTRIBUTES lpThreadAttributes,BOOL bInheritHandles,DWORD dwCreationFlags,LPVOID lpEnvironment,LPCSTR lpCurrentDirectory,LPSTARTUPINFOA lpStartupInfo,LPPROCESS_INFORMATION lpProcessInformation) , {
-		if( config.logHijack ){
+		if( vireio_global_config.logHijack ){
 			printf("hook: launching %s\n" , lpApplicationName );
 		}
 		CreateProcess_macro(hToken,lpApplicationName,lpCommandLine,lpProcessAttributes,lpThreadAttributes,bInheritHandles,dwCreationFlags,lpEnvironment,lpCurrentDirectory,lpStartupInfo,lpProcessInformation)
 	})
 
 	HOOK( "Kernel32.dll" , BOOL , WINAPI , CreateProcessAsUserW , (HANDLE hToken,LPCWSTR lpApplicationName,LPWSTR lpCommandLine,LPSECURITY_ATTRIBUTES lpProcessAttributes,LPSECURITY_ATTRIBUTES lpThreadAttributes,BOOL bInheritHandles,DWORD dwCreationFlags,LPVOID lpEnvironment,LPCWSTR lpCurrentDirectory,LPSTARTUPINFOW lpStartupInfo,LPPROCESS_INFORMATION lpProcessInformation) , {
-		if( config.logHijack ){
+		if( vireio_global_config.logHijack ){
 			printf("hook: launching %S\n" , lpApplicationName );
 		}
 		CreateProcess_macro(hToken,lpApplicationName,lpCommandLine,lpProcessAttributes,lpThreadAttributes,bInheritHandles,dwCreationFlags,lpEnvironment,lpCurrentDirectory,lpStartupInfo,lpProcessInformation)
 	})
 
 	HOOK( "Kernel32.dll" , BOOL , WINAPI , CreateProcessW , (LPCWSTR lpApplicationName,LPWSTR lpCommandLine,LPSECURITY_ATTRIBUTES lpProcessAttributes,LPSECURITY_ATTRIBUTES lpThreadAttributes,BOOL bInheritHandles,DWORD dwCreationFlags,LPVOID lpEnvironment,LPCWSTR lpCurrentDirectory,LPSTARTUPINFOW lpStartupInfo,LPPROCESS_INFORMATION lpProcessInformation) , {
-		if( config.logHijack ){
+		if( vireio_global_config.logHijack ){
 			printf("hook: launching %S\n" , lpApplicationName );
 		}
 		CreateProcess_macro(lpApplicationName,lpCommandLine,lpProcessAttributes,lpThreadAttributes,bInheritHandles,dwCreationFlags,lpEnvironment,lpCurrentDirectory,lpStartupInfo,lpProcessInformation)
 	})
 
 	HOOK( "*" , BOOL , WINAPI , CreateProcessWithLogonW , (LPCWSTR lpUsername,LPCWSTR lpDomain,LPCWSTR lpPassword,DWORD dwLogonFlags,LPCWSTR lpApplicationName,LPWSTR lpCommandLine,DWORD dwCreationFlags,LPVOID lpEnvironment,LPCWSTR lpCurrentDirectory,LPSTARTUPINFOW lpStartupInfo,LPPROCESS_INFORMATION lpProcessInformation) , {
-		if( config.logHijack ){
+		if( vireio_global_config.logHijack ){
 			printf("hook: launching %S\n" , lpApplicationName );
 		}
 		CreateProcess_macro(lpUsername,lpDomain,lpPassword,dwLogonFlags,lpApplicationName,lpCommandLine,dwCreationFlags,lpEnvironment,lpCurrentDirectory,lpStartupInfo,lpProcessInformation)
 	})
 
 	HOOK( "*" , BOOL , WINAPI , CreateProcessWithTokenW , (HANDLE hToken,DWORD dwLogonFlags,LPCWSTR lpApplicationName,LPWSTR lpCommandLine,DWORD dwCreationFlags,LPVOID lpEnvironment,LPCWSTR lpCurrentDirectory,LPSTARTUPINFOW lpStartupInfo,LPPROCESS_INFORMATION lpProcessInformation) , {
-		if( config.logHijack ){
+		if( vireio_global_config.logHijack ){
 			printf("hook: launching %S\n" , lpApplicationName );
 		}
 		CreateProcess_macro(hToken,dwLogonFlags,lpApplicationName,lpCommandLine,dwCreationFlags,lpEnvironment,lpCurrentDirectory,lpStartupInfo,lpProcessInformation)
@@ -354,7 +354,7 @@ void HijackHookInstall( ){
 	
 	HijackHookUpdate();
 	
-	if( config.logHijack ){
+	if( vireio_global_config.logHijack ){
 		printf("hook: installed  default hooks\n");
 	}
 }

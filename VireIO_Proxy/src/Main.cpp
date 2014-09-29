@@ -69,7 +69,7 @@ namespace{
 			return 0;
 		}
 		
-		return new D3D9ProxyDirect3D( ret , 0 , config );
+		return new D3D9ProxyDirect3D( ret , 0 , vireio_global_config );
 	}
 
 	HRESULT WINAPI NEW_Direct3DCreate9Ex( unsigned int nSDKVersion , IDirect3D9Ex** ret ){
@@ -124,7 +124,7 @@ static void print_value( T(&v)[S] ){
 
 BOOL APIENTRY DllMain( HINSTANCE dll , DWORD fdwReason, LPVOID ){
 	if( fdwReason == DLL_PROCESS_DETACH ){
-		if( config.logToConsole && config.pauseOnLaunch ){
+		if( vireio_global_config.logToConsole && vireio_global_config.pauseOnLaunch ){
 			MessageBoxA( 0 , "pause" , "click ok to exit proccess" , 0 );
 		}
 	}
@@ -146,35 +146,35 @@ BOOL APIENTRY DllMain( HINSTANCE dll , DWORD fdwReason, LPVOID ){
 
 	HijackHookInstall();
 
-	config.vireioDir = QFileInfo(dll_path).absolutePath() + "/../";
+	vireio_global_config.vireioDir = QFileInfo(dll_path).absolutePath() + "/../";
 
-	if( !config.load( config.getMainConfigFile() ) ){
+	if( !vireio_global_config.load( vireio_global_config.getMainConfigFile() ) ){
 		printf( "virieo: load general settings failed\n" );
 		return TRUE;
 	}
 
-	if( !config.load( config.getGameConfigFile(exe_path) ) ){
+	if( !vireio_global_config.load( vireio_global_config.getGameConfigFile(exe_path) ) ){
 		printf( "virieo: load game settings failed\n" );
 		return TRUE;
 	}
 
-	if( !config.loadDevice( ) ){
+	if( !vireio_global_config.loadDevice( ) ){
 		printf( "virieo: load device settings failed \n" );
 		return TRUE;
 	}
 
-	if( !config.loadProfile( ) ){
+	if( !vireio_global_config.loadProfile( ) ){
 		printf( "virieo: load profile settings failed\n" );
 		return TRUE;
 	}
 
 	//load game settings again, in case if there any overrides for profile settings
-	config.load( config.getGameConfigFile(exe_path) );
+	vireio_global_config.load( vireio_global_config.getGameConfigFile(exe_path) );
 
-	config.calculateValues();
+	vireio_global_config.calculateValues();
 
 
-	#define P(t,n,s) printf( "%-31s = " , #n ); print_value(config.n); printf("\n");
+	#define P(t,n,s) printf( "%-31s = " , #n ); print_value(vireio_global_config.n); printf("\n");
 	#define C(n)     printf( #n " settings\n" );
 	#include "cConfig.inc"
 	#undef P
@@ -184,16 +184,16 @@ BOOL APIENTRY DllMain( HINSTANCE dll , DWORD fdwReason, LPVOID ){
 	HijackHookAdd( "d3d9.dll" , "Direct3DCreate9Ex"      , (void**)&ORIG_Direct3DCreate9Ex  , (void*)NEW_Direct3DCreate9Ex );
 
 
-	if( !config.logToConsole ){
+	if( !vireio_global_config.logToConsole ){
 		fclose(stdout);
 		FreeConsole();
 	}
 
-	if( config.logToFile ){
+	if( vireio_global_config.logToFile ){
 		freopen( "vireio_log.txt" , "w" , stdout );
 	}
 
-	if( config.pauseOnLaunch ){
+	if( vireio_global_config.pauseOnLaunch ){
 		MessageBoxA( 0 , "pause" , "click ok to resume" , 0 );
 	}
 

@@ -16,7 +16,7 @@ cMainWindow::cMainWindow( ){
 
 	ui.games->header()->setSectionResizeMode( 0 , QHeaderView::ResizeToContents );
 
-	for( QString& s : config.getAvailableDevices() ){
+	for( QString& s : vireio_global_config.getAvailableDevices() ){
 		ui.stereoMode->addItem( s );
 	}
 
@@ -29,18 +29,18 @@ cMainWindow::cMainWindow( ){
 
 
 
-	ui.stereoMode      ->setCurrentIndex( ui.stereoMode ->findText(config.stereoDevice)  );
-	ui.trackerMode     ->setCurrentIndex( ui.trackerMode->findData(config.trackerMode) );
-	ui.logToConsole    ->setChecked     ( config.logToConsole      );
-	ui.logToFile       ->setChecked     ( config.logToFile         );
-	ui.logHijack       ->setChecked     ( config.logHijack         );
-	ui.pauseOnLaunch   ->setChecked     ( config.pauseOnLaunch     );
-	ui.streamingEnable ->setChecked     ( config.streamingEnable   );
-	ui.streamingAddress->setText        ( config.streamingAddress  );
-	ui.streamingPort   ->setValue       ( config.streamingPort     );
-	ui.streamingCodec  ->setCurrentText ( config.streamingCodec    );
-	ui.streamingBitrate->setValue       ( config.streamingBitrate  );
-	ui.shaderAnalyzer  ->setChecked     ( config.shaderAnalyzer    );
+	ui.stereoMode      ->setCurrentIndex( ui.stereoMode ->findText(vireio_global_config.stereoDevice)  );
+	ui.trackerMode     ->setCurrentIndex( ui.trackerMode->findData(vireio_global_config.trackerMode) );
+	ui.logToConsole    ->setChecked     ( vireio_global_config.logToConsole      );
+	ui.logToFile       ->setChecked     ( vireio_global_config.logToFile         );
+	ui.logHijack       ->setChecked     ( vireio_global_config.logHijack         );
+	ui.pauseOnLaunch   ->setChecked     ( vireio_global_config.pauseOnLaunch     );
+	ui.streamingEnable ->setChecked     ( vireio_global_config.streamingEnable   );
+	ui.streamingAddress->setText        ( vireio_global_config.streamingAddress  );
+	ui.streamingPort   ->setValue       ( vireio_global_config.streamingPort     );
+	ui.streamingCodec  ->setCurrentText ( vireio_global_config.streamingCodec    );
+	ui.streamingBitrate->setValue       ( vireio_global_config.streamingBitrate  );
+	ui.shaderAnalyzer  ->setChecked     ( vireio_global_config.shaderAnalyzer    );
 
 	LoadGames();
 }
@@ -63,20 +63,20 @@ void cMainWindow::AddGame( cGame* g ){
 
 
 void cMainWindow::on_saveSettings_clicked(){
-	config.stereoDevice      = ui.stereoMode       ->currentText();
-	config.trackerMode       = ui.trackerMode      ->currentData().toInt();
-	config.logToConsole      = ui.logToConsole     ->isChecked();
-	config.logToFile         = ui.logToFile        ->isChecked();
-	config.logHijack         = ui.logHijack        ->isChecked();
-	config.pauseOnLaunch     = ui.pauseOnLaunch    ->isChecked();
-	config.streamingEnable   = ui.streamingEnable  ->isChecked();
-	config.streamingAddress  = ui.streamingAddress ->text();
-	config.streamingPort     = ui.streamingPort    ->value();
-	config.streamingCodec    = ui.streamingCodec   ->currentText();
-	config.streamingBitrate  = ui.streamingBitrate ->value();
-	config.shaderAnalyzer    = ui.shaderAnalyzer     ->isChecked();
+	vireio_global_config.stereoDevice      = ui.stereoMode       ->currentText();
+	vireio_global_config.trackerMode       = ui.trackerMode      ->currentData().toInt();
+	vireio_global_config.logToConsole      = ui.logToConsole     ->isChecked();
+	vireio_global_config.logToFile         = ui.logToFile        ->isChecked();
+	vireio_global_config.logHijack         = ui.logHijack        ->isChecked();
+	vireio_global_config.pauseOnLaunch     = ui.pauseOnLaunch    ->isChecked();
+	vireio_global_config.streamingEnable   = ui.streamingEnable  ->isChecked();
+	vireio_global_config.streamingAddress  = ui.streamingAddress ->text();
+	vireio_global_config.streamingPort     = ui.streamingPort    ->value();
+	vireio_global_config.streamingCodec    = ui.streamingCodec   ->currentText();
+	vireio_global_config.streamingBitrate  = ui.streamingBitrate ->value();
+	vireio_global_config.shaderAnalyzer    = ui.shaderAnalyzer     ->isChecked();
 
-	config.save( config.getMainConfigFile() , QList<int>()<<config.SAVE_GENERAL );
+	vireio_global_config.save( vireio_global_config.getMainConfigFile() , QList<int>()<<cConfig::SAVE_GENERAL );
 }
 
 
@@ -107,7 +107,7 @@ void cMainWindow::on_games_customContextMenuRequested( const QPoint& pos ){
 				cConfig cfg;
 				cfg.exePath     = pd.exeName;
 				cfg.profileName = pd.selectedProfileName;
-				cfg.save( config.getGameConfigFile(cfg.exePath) , QList<int>()<<config.SAVE_GAME );
+				cfg.save( vireio_global_config.getGameConfigFile(cfg.exePath) , QList<int>()<<cConfig::SAVE_GAME );
 				LoadGames( );
 			}
 		}
@@ -125,7 +125,7 @@ void cMainWindow::on_games_customContextMenuRequested( const QPoint& pos ){
 void cMainWindow::LoadGames(){
 	ui.games->clear();
 
-	for( QFileInfo& info : QDir(config.vireioDir+"games").entryInfoList(QDir::Files) ){
+	for( QFileInfo& info : QDir(vireio_global_config.vireioDir+"games").entryInfoList(QDir::Files) ){
 		cConfig cfg;
 		if( cfg.load( info.absoluteFilePath() ) ){
 			QTreeWidgetItem* item = new QTreeWidgetItem;
@@ -162,12 +162,12 @@ void cMainWindow::ScanGames(){
 
 
 	for( QString& file : file_list ){
-		QString profile = config.findProfileFileForExe( file );
+		QString profile = vireio_global_config.findProfileFileForExe( file );
 		if( !profile.isEmpty() ){
 			cConfig cfg;
 			cfg.exePath     = file;
 			cfg.profileName = profile;
-			cfg.save( config.getGameConfigFile(file) , QList<int>()<<config.SAVE_GAME );
+			cfg.save( vireio_global_config.getGameConfigFile(file) , QList<int>()<<cConfig::SAVE_GAME );
 		}
 	}
 
@@ -176,7 +176,7 @@ void cMainWindow::ScanGames(){
 
 
 void cMainWindow::on_games_itemDoubleClicked( QTreeWidgetItem *item , int ){
-	cConfig game = config;
+	cConfig game = vireio_global_config;
 	if( !game.load( item->text(2) ) ){
 		return;
 	}

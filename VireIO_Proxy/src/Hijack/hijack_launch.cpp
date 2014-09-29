@@ -26,7 +26,7 @@ QString HijackLaunchProcess  ( QString exe_path , QString args , QStringList env
 	QByteArray env;
 	for( QString s : (environment + QProcessEnvironment::systemEnvironment().toStringList()) ){
 		if( s.toLower().startsWith("path=") ){
-			s = s + ";" + config.vireioDir + "bin";
+			s = s + ";" + vireio_global_config.vireioDir + "bin";
 		}
 		env += s.toLocal8Bit() + QByteArray("\0",1);
 	}

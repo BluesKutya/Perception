@@ -279,6 +279,27 @@ void cMenu::render( ){
 		return;
 	}
 
+
+	if( device->config.showVRMouse ){
+		POINT pt;   
+		GetCursorPos(&pt); 
+		D3DRECT rec2;	
+		rec2.x1 = (int)-5 + ((pt.x * device->config.guiSquishPresets[(int)device->config.gui3DDepthMode]) + (((1 - device->config.guiSquishPresets[(int)device->config.gui3DDepthMode]) / 2) * viewportWidth)); 
+		rec2.x2 = rec2.x1 + 10; 
+		rec2.y1 = (int)-5 + ((pt.y * device->config.guiSquishPresets[(int)device->config.gui3DDepthMode]) + (((1 - device->config.guiSquishPresets[(int)device->config.gui3DDepthMode]) / 2) * viewportHeight)); 
+		rec2.y2 = rec2.y1 + 10; 	
+		
+		device->Clear( 1 , &rec2 , D3DCLEAR_TARGET , D3DCOLOR_ARGB(255,255,255,255) , 0 , 0 );
+
+		rec2.x1 += 2;
+		rec2.x2 -= 2;
+		rec2.y1 += 2;
+		rec2.y2 -= 2;
+
+		device->Clear( 1 , &rec2 , D3DCLEAR_TARGET , D3DCOLOR_ARGB(255,0,0,0) , 0 , 0 );
+	}
+
+
 	newKeyDown = false;
 	
 	if( !menu->selected && !menu->children.isEmpty() ){

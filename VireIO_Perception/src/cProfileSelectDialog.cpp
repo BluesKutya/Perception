@@ -5,7 +5,7 @@
 cProfileSelectDialog::cProfileSelectDialog( QWidget* parent ) : QDialog(parent) {
 	ui.setupUi(this);
 
-	for( QString& s : config.getAvailableProfiles() ){
+	for( QString& s : vireio_global_config.getAvailableProfiles() ){
 		ui.profile->addItem( s );
 	}
 }

@@ -3,7 +3,7 @@
 #include "cConfig.h"
 #include "cPropsFile.h"
 
-cConfig config;
+cConfig vireio_global_config;
 
 
 cConfig::cConfig(){
@@ -41,6 +41,8 @@ cConfig::cConfig(){
 
 	hud3DDepthMode = 0;
 	gui3DDepthMode = 0;
+
+	showVRMouse = true;
 
 }
 
@@ -138,7 +140,7 @@ QString cConfig::findProfileFileForExe( const QString& gameExePath ){
 
 QStringList cConfig::getAvailableProfiles( ){
 	QStringList ret;
-	for( QFileInfo& info : QDir(config.vireioDir+"/profiles").entryInfoList(QDir::Files) ){
+	for( QFileInfo& info : QDir(vireioDir+"/profiles").entryInfoList(QDir::Files) ){
 		ret += info.baseName();
 	}
 	return ret;
@@ -147,7 +149,7 @@ QStringList cConfig::getAvailableProfiles( ){
 
 QStringList cConfig::getAvailableDevices( ){
 	QStringList ret;
-	for( QFileInfo& info : QDir(config.vireioDir+"/modes").entryInfoList(QDir::Files) ){
+	for( QFileInfo& info : QDir(vireioDir+"/modes").entryInfoList(QDir::Files) ){
 		ret += info.baseName();
 	}
 	return ret;

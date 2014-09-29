@@ -5,9 +5,9 @@
 int main(int argc, char **argv){
 	QApplication a(argc, argv);
 
-	config.vireioDir = a.applicationDirPath() + "/../";
+	vireio_global_config.vireioDir = a.applicationDirPath() + "/../";
 
-	config.load( config.getMainConfigFile() );
+	vireio_global_config.load( vireio_global_config.getMainConfigFile() );
 	
 	QCoreApplication::setOrganizationName( "Vireio" );
 	QCoreApplication::setApplicationName ( "Perception" );
