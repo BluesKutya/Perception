@@ -231,7 +231,7 @@ void ShaderRegisters::SetFromStateBlockData(std::map<UINT, D3DXVECTOR4> * stored
 	auto itNewRegsVS = storedVSRegisters->begin();
 	while (itNewRegsVS != storedVSRegisters->end()) {
 
-		if ((RegisterIndex(itNewRegsVS->first) + VECTOR_LENGTH) >= m_vsRegistersF.size())
+		if ((RegisterIndex(itNewRegsVS->first) + VECTOR_LENGTH) > m_vsRegistersF.size())
 			throw std::out_of_range("Register from stateblock is out of range, implosion imminent");
 
 		//std::copy(static_cast<float*>(itNewRegsVS->second), static_cast<float*>(itNewRegsVS->second) + VECTOR_LENGTH,  &m_vsRegistersF[RegisterIndex(itNewRegsVS->first)]);
@@ -253,7 +253,7 @@ void ShaderRegisters::SetFromStateBlockData(std::map<UINT, D3DXVECTOR4> * stored
 	auto itNewRegsPS = storedPSRegisters->begin();
 	while (itNewRegsPS != storedPSRegisters->end()) {
 
-		if ((RegisterIndex(itNewRegsPS->first) + VECTOR_LENGTH) >= m_psRegistersF.size())
+		if ((RegisterIndex(itNewRegsPS->first) + VECTOR_LENGTH) > m_psRegistersF.size())
 			throw std::out_of_range("Register from stateblock is out of range, implosion imminent");
 
 		// copy produces warnings, this does not.

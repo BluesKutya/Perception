@@ -149,13 +149,14 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 		dinput.Activate();		
 	}	
 
+	/*
 	menu.showMessage( 
 		"Vireio Perception: Stereoscopic 3D Driver\n"
 		"This program is distributed in the hope that it will be useful,\n" 
 		"but WITHOUT ANY WARRANTY; without even the implied warranty of \n" 
 		"MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n"
 		"See the GNU LGPL: http://www.gnu.org/licenses/ for more details. "
-	);
+	);*/
 
 	eyeShutter = 1;
 	m_bfloatingMenu = false;
@@ -177,7 +178,7 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	cMenuItem* m;
 
 
-
+	/*
 	m = menu.root.addSubmenu( "Stereoscopic 3D calibration" );
 	m->showCalibrator = true;
 	
@@ -345,7 +346,7 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 		SaveConfiguration();
 	};
 
-
+	*/
 }
 
 void D3DProxyDevice::SaveConfiguration(){

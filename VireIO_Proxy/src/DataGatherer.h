@@ -68,45 +68,48 @@ private:
 	void Analyze();
 	void GetCurrentShaderRules( bool allStartRegisters );
 	void MarkShaderAsUsed     ( int hash , bool isVertex );
-	/**
-	* Describes a shader constant.
-	***/
-	struct ShaderConstant
-	{
-		std::string            name;
-		UINT               hash;
-		D3DXCONSTANT_DESC  desc;
-		bool               nodeOpen;
-		bool               hasRule;
-		bool               isTransposed;
-		std::string        ruleName;
-		cMenuItem*         item;
-		bool               applyRule;
-	};
+
 
 
 	struct Shader{
-		int        hash;
-		bool       exclude;
-		bool       isVertex;
-		bool       used;
-		cMenuItem* item;
+		IUnknown*    ptr;
+		QByteArray   code;
+		QByteArray   hash;
+		bool         isVertex;
+		bool         blink;
+		bool         hide;
+		bool         used;
+		cMenuItem*   item;
 	};
 
-	QList<Shader> shaders;
-	cMenuItem*    shadersMenu;
-	cMenuItem*    rulesMenu;
+	struct ShaderConstant{
+		Shader*            shader;
+		
+		D3DXCONSTANT_DESC  desc;
+		QString            name;
+		cMenuItem*         item;
+
+		/*bool               nodeOpen;
+		bool               hasRule;
+		bool               isTransposed;
+		QString            ruleName;
+		
+		bool               applyRule;*/
+	};
 
 
-
-	/**
-	* True if analyzing will output transposed shader rules.
-	***/
-	bool m_bTransposedRules;
-	/**
-	* True if analyzer tests for transposed matrices.
-	***/
-	bool m_bTestForTransposed;
+	QList<Shader*>         shaders;
+	QList<ShaderConstant*> constants;
+	Shader*                currentVS;
+	Shader*                currentPS;
+	cMenuItem*             shadersMenu;
+	cMenuItem*             rulesMenu;
+	bool                   showUnusedShaders;
+	bool                   showPixelShaders;
+	
+	void ShaderUse   ( IUnknown* ptr , Shader** current );
+	void ShaderCreate( IUnknown* ptr , bool isVertex );
+	bool isDrawHide  ( );
 	/**
 	* Vector of all relevant vertex shader constants.
 	***/

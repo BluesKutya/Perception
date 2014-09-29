@@ -30,25 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "StereoView.h"
 #include <Streamer.h>
 #include "D3D9ProxySurface.h"
-/**
-* Tiny debug helper.
-* Outputs debug info if object reference counter is not zero when release.
-***/
-inline void releaseCheck(char* object, int newRefCount)
-{
-#ifdef _DEBUG
-	if (newRefCount > 0) {
-		char buf[128];
-		sprintf_s(buf, "Error: %s count = %d\n", object, newRefCount);
-		OutputDebugStringA(buf);
-	}
-#endif
-}
 
-/**
-* Constructor.
-* Sets game configuration data. Sets all member pointers to NULL to prevent uninitialized objects being used.
-***/ 
 StereoView::StereoView( ){
 	OutputDebugStringA("Created SteroView\n");
 	initialized = false;
@@ -125,25 +107,14 @@ StereoView::StereoView( ){
 	m_pStreamer = new Streamer( );
 }
 
-/**
-* Empty destructor.
-***/
-StereoView::~StereoView()
-{
-	OutputDebugStringA("Destroyed SteroView\n");
+
+StereoView::~StereoView(){
 	delete m_pStreamer;
 }
 
-/**
-* StereoView init.
-* Must be initialised with an actual device. Not a wrapped device.
-***/
-void StereoView::Init(IDirect3DDevice9* pActualDevice)
-{
-	OutputDebugStringA("SteroView Init\n");
 
-	if (initialized) {
-		OutputDebugStringA("SteroView already Init'd\n");
+void StereoView::Init(IDirect3DDevice9* pActualDevice){
+	if( initialized ){
 		return;
 	}
 
@@ -160,60 +131,19 @@ void StereoView::Init(IDirect3DDevice9* pActualDevice)
 /**
 * Releases all Direct3D objects.
 ***/
-void StereoView::ReleaseEverything()
-{
-	OutputDebugStringA("SteroView Reset\n");
-
-	if(!initialized)
-		OutputDebugStringA("SteroView is already reset\n");
-
-	if(backBuffer)
-		releaseCheck("backBuffer", backBuffer->Release());	
-	backBuffer = NULL;
-
-	if(leftTexture)
-		releaseCheck("leftTexture", leftTexture->Release());
-	leftTexture = NULL;
-
-	if(rightTexture)
-		releaseCheck("rightTexture", rightTexture->Release());
-	rightTexture = NULL;
-
-	if(leftSurface)
-		releaseCheck("leftSurface", leftSurface->Release());
-	leftSurface = NULL;
-
-	if(rightSurface)
-		releaseCheck("rightSurface", rightSurface->Release());
-	rightSurface = NULL;
-
-	if(lastVertexShader)
-		releaseCheck("lastVertexShader", lastVertexShader->Release());
-	lastVertexShader = NULL;
-
-	if(lastPixelShader)
-		releaseCheck("lastPixelShader", lastPixelShader->Release());
-	lastPixelShader = NULL;
-
-	if(lastTexture)
-		releaseCheck("lastTexture", lastTexture->Release());
-	lastTexture = NULL;
-
-	if(lastTexture1)
-		releaseCheck("lastTexture1", lastTexture1->Release());
-	lastTexture1 = NULL;
-
-	if(lastVertexDeclaration)
-		releaseCheck("lastVertexDeclaration", lastVertexDeclaration->Release());
-	lastVertexDeclaration = NULL;
-
-	if(lastRenderTarget0)
-		releaseCheck("lastRenderTarget0", lastRenderTarget0->Release());
-	lastRenderTarget0 = NULL;
-
-	if(lastRenderTarget1)
-		releaseCheck("lastRenderTarget1", lastRenderTarget1->Release());
-	lastRenderTarget1 = NULL;
+void StereoView::ReleaseEverything(){
+	SAFE_RELEASE( backBuffer )
+	SAFE_RELEASE( leftTexture )
+	SAFE_RELEASE( rightTexture )
+	SAFE_RELEASE( leftSurface )
+	SAFE_RELEASE( rightSurface )
+	SAFE_RELEASE( lastVertexShader )
+	SAFE_RELEASE( lastPixelShader )
+	SAFE_RELEASE( lastTexture )
+	SAFE_RELEASE( lastTexture1 )
+	SAFE_RELEASE( lastVertexDeclaration )
+	SAFE_RELEASE( lastRenderTarget0 )
+	SAFE_RELEASE( lastRenderTarget1 )
 
 	viewEffect->OnLostDevice();
 
@@ -689,39 +619,25 @@ void StereoView::RestoreState()
 	m_pActualDevice->SetSamplerState(1, D3DSAMP_MIPFILTER, ssMip1);
 
 	m_pActualDevice->SetTexture(0, lastTexture);
-	if(lastTexture != NULL)
-		lastTexture->Release();
-	lastTexture = NULL;
+	SAFE_RELEASE( lastTexture )
 
 	m_pActualDevice->SetTexture(1, lastTexture1);
-	if(lastTexture1 != NULL)
-		lastTexture1->Release();
-	lastTexture1 = NULL;
+	SAFE_RELEASE( lastTexture1 )
 
 	m_pActualDevice->SetVertexShader(lastVertexShader);
-	if(lastVertexShader != NULL)
-		lastVertexShader->Release();
-	lastVertexShader = NULL;
+	SAFE_RELEASE( lastVertexShader )
 
 	m_pActualDevice->SetPixelShader(lastPixelShader);
-	if(lastPixelShader != NULL)
-		lastPixelShader->Release();
-	lastPixelShader = NULL;
+	SAFE_RELEASE( lastPixelShader )
 
 	m_pActualDevice->SetVertexDeclaration(lastVertexDeclaration);
-	if(lastVertexDeclaration != NULL)
-		lastVertexDeclaration->Release();
-	lastVertexDeclaration = NULL;
+	SAFE_RELEASE( lastVertexDeclaration )
 
 	m_pActualDevice->SetRenderTarget(0, lastRenderTarget0);
-	if(lastRenderTarget0 != NULL)
-		lastRenderTarget0->Release();
-	lastRenderTarget0 = NULL;
+	SAFE_RELEASE( lastRenderTarget0 )
 
 	m_pActualDevice->SetRenderTarget(1, lastRenderTarget1);
-	if(lastRenderTarget1 != NULL)
-		lastRenderTarget1->Release();
-	lastRenderTarget1 = NULL;
+	SAFE_RELEASE( lastRenderTarget1 )
 }
 
 /**

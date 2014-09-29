@@ -29,6 +29,9 @@ cConfig::cConfig(){
 	hudDistance 	   = 0;
 	hudDepth           = 0;
 
+	shaderAnalyzerTranspose       = false;
+	shaderAnalyzerDetectTranspose = false;
+
 	showVRMouse = true;
 
 }

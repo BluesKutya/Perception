@@ -208,7 +208,6 @@ void ViewAdjustment::UpdatePosition(float yaw, float pitch, float roll, float xP
 void ViewAdjustment::ComputeViewTransforms()
 {
 
-printf("%f %f %f\n",config.PlayerIPD,config.stereoScale,SeparationInWorldUnits());
 	// separation settings are overall (HMD and desktop), since they are based on physical IPD
 	D3DXMatrixTranslation(&transformLeft, SeparationInWorldUnits() * LEFT_CONSTANT, 0, 0);
 	D3DXMatrixTranslation(&transformRight, SeparationInWorldUnits() * RIGHT_CONSTANT, 0, 0);

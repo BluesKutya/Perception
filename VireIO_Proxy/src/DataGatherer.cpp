@@ -1,195 +1,33 @@
-/********************************************************************
-Vireio Perception: Open-Source Stereoscopic 3D Driver
-Copyright (C) 2012 Andres Hernandez
-
-File <DataGatherer.cpp> and
-Class <DataGatherer> :
-Copyright (C) 2013 Chris Drain
-
-Vireio Perception Version History:
-v1.0.0 2012 by Andres Hernandez
-v1.0.X 2013 by John Hicks, Neil Schneider
-v1.1.x 2013 by Primary Coding Author: Chris Drain
-Team Support: John Hicks, Phil Larkson, Neil Schneider
-v2.0.x 2013 by Denis Reischl, Neil Schneider, Joshua Brown
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Lesser General Public License for more details.
-
-You should have received a copy of the GNU Lesser General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-********************************************************************/
-
 #include "DataGatherer.h"
 #include "D3D9ProxyVertexShader.h"
-
-#define MATRIX_NAMES 17
-#define AVOID_SUBSTRINGS 2
-#define ANALYZE_FRAMES 500
-
-/**
-* Simple helper to get the hash of a shader.
-* @param pShader The input vertex shader.
-* @return The hash code of the shader.
-***/
-uint32_t ShaderHash(LPDIRECT3DVERTEXSHADER9 pShader)
-{
-	if (!pShader) return 0;
-
-	BYTE* pData = NULL;
-	UINT pSizeOfData;
-	pShader->GetFunction(NULL, &pSizeOfData);
-
-	pData = new BYTE[pSizeOfData];
-	pShader->GetFunction(pData, &pSizeOfData);
-
-	uint32_t hash = 0;
-	MurmurHash3_x86_32(pData, pSizeOfData, VIREIO_SEED, &hash);
-	delete[] pData;
-	return hash;
-}
-
-/**
-* Simple helper to get the hash of a shader.
-* @param pShader The input vertex shader.
-* @return The hash code of the shader.
-***/
-uint32_t ShaderHash(LPDIRECT3DPIXELSHADER9 pShader)
-{
-	if (!pShader) return 0;
-
-	BYTE* pData = NULL;
-	UINT pSizeOfData;
-	pShader->GetFunction(NULL, &pSizeOfData);
-
-	pData = new BYTE[pSizeOfData];
-	pShader->GetFunction(pData, &pSizeOfData);
-
-	uint32_t hash = 0;
-	MurmurHash3_x86_32(pData, pSizeOfData, VIREIO_SEED, &hash);
-	delete[] pData;
-	return hash;
-}
-
-/**
-* Constructor, opens the dump file.
-* @param pDevice Imbed actual device.
-* @param pCreatedBy Pointer to the object that created the device.
-***/
-DataGatherer::DataGatherer(IDirect3DDevice9* pDevice, IDirect3DDevice9Ex* pDeviceEx,D3D9ProxyDirect3D* pCreatedBy ):D3DProxyDevice(pDevice,pDeviceEx ,pCreatedBy),
-	m_recordedVShaders(),
-	m_recordedPShaders(),
-	m_recordedSetVShaders(),
-	m_bAvoidDraw(false),
-	m_bAvoidDrawPS(false),
-	m_startAnalyzingTool(false),
-	m_analyzingFrameCounter(0)
-{
-	// create matrix name array 
-	static std::string names[] = { "ViewProj", "viewproj", "viewProj", "wvp", "mvp", "WVP", "MVP", "wvP", "mvP", "matFinal", "matrixFinal", "MatrixFinal", "FinalMatrix", "finalMatrix", "m_VP", "m_P", "m_screen" };
-	m_wvpMatrixConstantNames = names;
-	static std::string avoid[] = { "Inv", "inv" };
-	m_wvpMatrixAvoidedSubstrings = avoid;
-
-	// set commands predefined before read from cfg file
-	m_bOutputShaderCode = false;
-	m_bTransposedRules = false;
-	m_bTestForTransposed = true;
-
-	// get potential matrix names
+#include <qfile.h>
+#include <qtextstream.h>
+#include <qcryptographichash.h>
 
 
-	std::ifstream cfgFile;
-	cfgFile.open( (config.vireioDir+"/config/brassa.cfg").toLocal8Bit() , std::ios::in);
-	if (cfgFile.is_open())
-	{
-		enum CFG_FILEMODE
-		{
-			POTENTIAL_MATRIX_NAMES = 1,
-			BRASSA_COMMANDS
-		} cfgFileMode;
 
-		// get names
-		std::vector<std::string> vNames;
-		UINT numLines = 0;
-		std::string unused;
-		while ( cfgFile.good() )
-		{
-			static std::string s;
-
-			// read whole line
-			s.clear();
-			char ch;
-			while (cfgFile.get(ch) && ch != '\n' && ch != '\r')
-				s += ch;
-
-			if (s.find('#')!=std::string::npos)
-			{
-				// comments
-			}
-			else if (s.compare("<Potential_Matrix_Names>")==0)
-			{
-				cfgFileMode = POTENTIAL_MATRIX_NAMES;
-			} else if (s.compare("<BRASSA_Commands>")==0)
-			{
-				cfgFileMode = BRASSA_COMMANDS;
-			} else
-			{
-				switch(cfgFileMode)
-				{
-				case POTENTIAL_MATRIX_NAMES:
-					vNames.push_back(s);
-					numLines++;
-					break;
-				case BRASSA_COMMANDS:
-					if (s.compare("Output_Shader_Code")==0)
-					{
-						OutputDebugStringA("Output_Shader_Code");
-						m_bOutputShaderCode = true;
-					}
-					if (s.compare("Do_Transpose_Matrices")==0)
-					{
-						OutputDebugStringA("Do_Transpose_Matrices");
-						m_bTransposedRules = true;
-						m_bTestForTransposed = false;
-					}
-					if (s.compare("Do_Not_Transpose_Matrices")==0)
-					{
-						OutputDebugStringA("Do_Not_Transpose_Matrices");
-						m_bTransposedRules = false;
-						m_bTestForTransposed = false;
-					}
-					break;
-				}
-			}
-		}
-
-		// create array out of vector
-		m_wvpMatrixConstantNames = new std::string[numLines];
-		for (UINT i = 0; i < numLines; i++)
-			m_wvpMatrixConstantNames[i] = vNames[i];
-
-		cfgFile.close();
-		vNames.clear();
-	}
-
-	// create shader dump file
-	m_shaderDumpFile.open("shaderDump.csv", std::ios::out);
-	m_shaderDumpFile << "Shader Hash,Constant Name,ConstantType,Start Register,Register Count,Vertex/Pixel Shader" << std::endl;
-
+DataGatherer::DataGatherer(IDirect3DDevice9* pDevice, IDirect3DDevice9Ex* pDeviceEx,D3D9ProxyDirect3D* pCreatedBy ) : D3DProxyDevice(pDevice,pDeviceEx ,pCreatedBy){
+	currentVS         = 0;
+	currentPS         = 0;
+	showUnusedShaders = false;
+	showPixelShaders  = false;
 
 	cMenuItem* m;
 	cMenuItem* i;
 
 	m = menu.root.addSubmenu( "Shader analyzer" );
 
+	i = m->addCheckbox( "Use transposed rules"          , &config.shaderAnalyzerTranspose       );
+
+	i = m->addCheckbox( "Detect use of transposed rules" , &config.shaderAnalyzerDetectTranspose );
+
+	shadersMenu = m->addSubmenu( "Shader list" );
+
+	shadersMenu->addCheckbox( "Show unused shaders" , &showUnusedShaders );
+	shadersMenu->addCheckbox( "Show pixel  shaders" , &showPixelShaders );
+	
+	
+	/*
 	i = m->addAction( "Create new shader rule" );
 	i->callbackOpenSubmenu = [this](){
 		GetCurrentShaderRules(true);
@@ -202,499 +40,338 @@ DataGatherer::DataGatherer(IDirect3DDevice9* pDevice, IDirect3DDevice9Ex* pDevic
 	};
 
 
-	shadersMenu = m->addSubmenu( "Show shaders" );
-	
+
 	i = m->addSubmenu( "Save rules shaders" );
 	i->callbackOpenSubmenu = [this](){
 		saveShaderRules();
 		menu.show = false;
-	};
+	};*/
+}
+
+
+
+DataGatherer::~DataGatherer( ){
+}
+
+
+
+bool DataGatherer::isDrawHide( ){
+	return (currentVS && currentVS->hide) || (currentPS && currentPS->hide);
+}
+
+
+void DataGatherer::ShaderCreate( IUnknown* ptr , bool isVertex ){
+	ptr->AddRef();
+
+	printf("create %d\n",ptr);
+
+	Shader* shader = new Shader;
+	shader->ptr      = ptr;
+	shader->isVertex = isVertex;
+	shader->used     = true;
+	shader->hide     = false;
+	shader->blink    = false;
+
+	shaders += shader;
 
 	
-}
+	D3D9ProxyVertexShader* vs = static_cast<D3D9ProxyVertexShader*>( isVertex ? ptr : 0   );
+	D3D9ProxyPixelShader*  ps = static_cast<D3D9ProxyPixelShader* >( isVertex ? 0   : ptr );
 
-/**
-* Destructor, closes the dump file.
-***/
-DataGatherer::~DataGatherer()
-{
-	m_shaderDumpFile.close();
-	delete [] m_wvpMatrixConstantNames;
-}
+	ID3DXConstantTable*     table = 0;
 
-/**
-* If F7 pressed, starts to analyze.
-***/
-HRESULT WINAPI DataGatherer::Present(CONST RECT* pSourceRect,CONST RECT* pDestRect,HWND hDestWindowOverride,CONST RGNDATA* pDirtyRegion)
-{
-	// analyze ?
-	if (m_startAnalyzingTool)
-	{
-		// analyze the first time
-		Analyze();
-		m_startAnalyzingTool = false;
+	{ //Get shader hash and table
+		UINT len;
 
-		// draw a rectangle to show beeing in analyze mode
-		D3DRECT rec = {320, 320, 384, 384};
-		ClearRect(vireio::RenderPosition::Left, rec, D3DCOLOR_ARGB(255,255,0,0));
+		if( vs ){
+			vs->actual->GetFunction( 0 , &len );
+		}else{
+			ps->actual->GetFunction( 0 , &len );			
+		}
+
+		shader->code.resize( len );
+
+		if( vs ){
+			vs->actual->GetFunction( shader->code.data() , &len );
+		}else{
+			ps->actual->GetFunction( shader->code.data() , &len );			
+		}
+	
+		shader->hash = QCryptographicHash::hash( shader->code , QCryptographicHash::Md5 ).toHex().toUpper();
+	
+		D3DXGetShaderConstantTable( reinterpret_cast<DWORD*>(shader->code.data()) , &table );
 	}
 
-	// draw an indicator (colored rectangle) for each found rule
-	UINT xPos = 320;
-	auto itAddedConstants = m_addedVSConstants.begin();
-	while (itAddedConstants != m_addedVSConstants.end())
-	{
-		// draw a rectangle to show beeing in analyze mode
-		D3DRECT rec = {xPos, 288, xPos+16, 304};
-		ClearRect(vireio::RenderPosition::Left, rec, D3DCOLOR_ARGB(255,0,255,0));
 
-		xPos+=20;
-		++itAddedConstants;
+	cMenuItem* mi;
+
+	shader->item = shadersMenu->addSubmenu( QString(vs?"Vertex":"Pixel") + " shader " + shader->hash );
+
+	shader->item->addCheckbox( "Do not draw" , &shader->hide );
+	
+	shader->item->addCheckbox( "Blink" , &shader->blink ); 
+
+	/*
+	cMenuItem* i = shader->item->addAction( "Save shader to \"" + shader->name + ".vs\"" ); 
+	i->callbackValueChanged = [=](){
+		QFile file( shader->name + ".vs" );
+		if( file.open( QFile::WriteOnly ) ){
+			QTextStream text( &file );
+
+			ID3DXBuffer* buf; 
+			D3DXDisassembleShader( reinterpret_cast<DWORD*>(shader->code.data()) , false , 0 , &buf ); 
+
+			text << QByteArray( (char*)buf->GetBufferPointer() , buf->GetBufferSize() );
+			text << "\r\n";
+			text << "Shader Creator: " << shader->desc.Creator << "\r\n";
+			text << "Shader Version: " << shader->desc.Version << "\r\n";
+			text << "Shader Hash   : " << shader->name         << "\r\n";
+
+			buf->Release();
+		}
+	};
+	*/
+
+
+
+
+	if( table ){
+		D3DXCONSTANTTABLE_DESC tableDesc;
+		table->GetDesc(&tableDesc);
+
+		for( int c=0 ; c<tableDesc.Constants ; c++ ){
+			D3DXHANDLE handle = table->GetConstant( 0 , c );
+			if( !handle ){
+				continue;
+			}
+
+			D3DXCONSTANT_DESC constantDesc[512];
+			UINT              constantCount = 512;
+
+			table->GetConstantDesc( handle , constantDesc , &constantCount );
+			
+			if( constantCount >= 512 ){
+				printf("Need larger constant description buffer");
+			}
+
+			// loop through constants, output relevant data
+			for( int i=0 ; i<constantCount ; i++ ){
+				D3DXCONSTANT_DESC& desc = constantDesc[i];
+
+				if( desc.RegisterSet != D3DXRS_FLOAT4 ){
+					continue;
+				}
+				
+				QString typeName;
+
+				switch( desc.Class ){
+				case D3DXPC_VECTOR:
+					typeName = "D3DXPC_VECTOR";
+					break;
+
+				case D3DXPC_MATRIX_ROWS:
+					typeName = "D3DXPC_MATRIX_ROWS";
+					break;
+
+				case D3DXPC_MATRIX_COLUMNS:
+					typeName = "D3DXPC_MATRIX_COLUMNS";
+					break;
+				}
+
+				if( typeName.isEmpty() ){
+					continue;
+				}
+
+				ShaderConstant* n = new ShaderConstant;
+				n->shader            = shader;
+				n->desc              = desc;
+				n->name              = desc.Name;
+
+				n->item = shader->item->addSubmenu( "Constant \"" + n->name + "\"" );
+
+				constants += n;
+				
+			}
+		}
+		
+		SAFE_RELEASE(table)
 	}
-
-	return D3DProxyDevice::Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
 }
 
-/**
-* Sets last frame updates, calls super funtion.
-***/
-HRESULT WINAPI DataGatherer::BeginScene()
-{
+
+
+
+void DataGatherer::ShaderUse( IUnknown* ptr , Shader** current  ){
+	*current = 0;
+
+	for( Shader* s : shaders ){
+		if( s->ptr == ptr ){
+			*current = s;
+
+			s->used = true;
+
+			if( s->blink ){
+				s->hide = ((GetTickCount()%300)>150);
+			}
+
+			break;
+		}
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+HRESULT WINAPI DataGatherer::BeginScene( ){
 	if( m_isFirstBeginSceneOfFrame ){
-		for( Shader& s : shaders ){
-			s.item->visible = s.used;
-			s.used = false;
+		for( Shader* s : shaders ){
+			s->item->visible = (s->used || showUnusedShaders) && (s->isVertex || showPixelShaders);
+			s->used          = false;
 		}
 	}
 
 	return D3DProxyDevice::BeginScene();
 }
 
-/**
-* Skips draw call if specified bool is set.
-***/
-HRESULT WINAPI DataGatherer::DrawPrimitive(D3DPRIMITIVETYPE PrimitiveType,UINT StartVertex,UINT PrimitiveCount)
-{
-	if ((m_bAvoidDraw) || (m_bAvoidDrawPS))
+
+
+HRESULT WINAPI DataGatherer::Present(CONST RECT* pSourceRect,CONST RECT* pDestRect,HWND hDestWindowOverride,CONST RGNDATA* pDirtyRegion){
+	return D3DProxyDevice::Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
+}
+
+
+HRESULT WINAPI DataGatherer::DrawPrimitive(D3DPRIMITIVETYPE PrimitiveType,UINT StartVertex,UINT PrimitiveCount){
+	if( isDrawHide() ){
 		return S_OK;
-	else 
-		return D3DProxyDevice::DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
+	}
+	return D3DProxyDevice::DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
 }
 
-/**
-* Skips draw call if specified bool is set.
-***/
-HRESULT WINAPI DataGatherer::DrawIndexedPrimitive(D3DPRIMITIVETYPE PrimitiveType,INT BaseVertexIndex,UINT MinVertexIndex,UINT NumVertices,UINT startIndex,UINT primCount)
-{
-	if ((m_bAvoidDraw) || (m_bAvoidDrawPS))
+
+
+HRESULT WINAPI DataGatherer::DrawIndexedPrimitive(D3DPRIMITIVETYPE PrimitiveType,INT BaseVertexIndex,UINT MinVertexIndex,UINT NumVertices,UINT startIndex,UINT primCount){
+	if( isDrawHide() ){
 		return S_OK;
-	else 
-		return D3DProxyDevice::DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
+	}
+	return D3DProxyDevice::DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
 }
 
-/**
-* Skips draw call if specified bool is set.
-***/
-HRESULT WINAPI DataGatherer::DrawPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType,UINT PrimitiveCount,CONST void* pVertexStreamZeroData,UINT VertexStreamZeroStride)
-{
-	if ((m_bAvoidDraw) || (m_bAvoidDrawPS))
+
+
+HRESULT WINAPI DataGatherer::DrawPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType,UINT PrimitiveCount,CONST void* pVertexStreamZeroData,UINT VertexStreamZeroStride){
+	if( isDrawHide() ){
 		return S_OK;
-	else 
-		return D3DProxyDevice::DrawPrimitiveUP(PrimitiveType, PrimitiveCount, pVertexStreamZeroData, VertexStreamZeroStride);
+	}
+	return D3DProxyDevice::DrawPrimitiveUP(PrimitiveType, PrimitiveCount, pVertexStreamZeroData, VertexStreamZeroStride);
 }
 
-/**
-* Skips draw call if specified bool is set.
-***/
-HRESULT WINAPI DataGatherer::DrawIndexedPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType,UINT MinVertexIndex,UINT NumVertices,UINT PrimitiveCount,CONST void* pIndexData,D3DFORMAT IndexDataFormat,CONST void* pVertexStreamZeroData,UINT VertexStreamZeroStride)
-{
-	if ((m_bAvoidDraw) || (m_bAvoidDrawPS))
+
+
+HRESULT WINAPI DataGatherer::DrawIndexedPrimitiveUP(D3DPRIMITIVETYPE PrimitiveType,UINT MinVertexIndex,UINT NumVertices,UINT PrimitiveCount,CONST void* pIndexData,D3DFORMAT IndexDataFormat,CONST void* pVertexStreamZeroData,UINT VertexStreamZeroStride){
+	if( isDrawHide() ){
 		return S_OK;
-	else 
-		return D3DProxyDevice::DrawIndexedPrimitiveUP(PrimitiveType, MinVertexIndex, NumVertices, PrimitiveCount, pIndexData, IndexDataFormat, pVertexStreamZeroData, VertexStreamZeroStride);
-}
-
-/**
-* Creates proxy vertex shader and outputs relevant constant data to dump file.
-* (if compiled for debug, output shader code to "VS(hash).txt")
-***/
-HRESULT WINAPI DataGatherer::CreateVertexShader(CONST DWORD* pFunction,IDirect3DVertexShader9** ppShader)
-{
-	// create proxy vertex shader
-	HRESULT creationResult = D3DProxyDevice::CreateVertexShader(pFunction, ppShader);
-
-	if (SUCCEEDED(creationResult)) {
-		D3D9ProxyVertexShader* pWrappedShader = static_cast<D3D9ProxyVertexShader*>(*ppShader);
-		IDirect3DVertexShader9* pActualShader = pWrappedShader->actual;
-
-		// No idea what happens if the same vertex shader is created twice. Pointer to the same shader or two
-		// separate instances? guessing separate in which case m_recordedShader as is is pointless. 
-		// TODO Replace pointer check with check on hash of shader data. (and print hash with data)
-		if (m_recordedVShaders.insert(pActualShader).second && m_shaderDumpFile.is_open()) {
-
-			// insertion succeeded - record shader details.
-			LPD3DXCONSTANTTABLE pConstantTable = NULL;
-
-			BYTE* pData = NULL;
-			UINT pSizeOfData;
-			pActualShader->GetFunction(NULL, &pSizeOfData);
-
-			pData = new BYTE[pSizeOfData];
-			pActualShader->GetFunction(pData, &pSizeOfData);
-
-			uint32_t hash = 0;
-			MurmurHash3_x86_32(pData, pSizeOfData, VIREIO_SEED, &hash); 
-
-			D3DXGetShaderConstantTable(reinterpret_cast<DWORD*>(pData), &pConstantTable);
-
-			if(pConstantTable == NULL) 
-				return creationResult;
-
-			D3DXCONSTANTTABLE_DESC pDesc;
-			pConstantTable->GetDesc(&pDesc);
-
-			D3DXCONSTANT_DESC pConstantDesc[512];
-			UINT pConstantNum = 512;
-
-			for(UINT i = 0; i < pDesc.Constants; i++)
-			{
-				D3DXHANDLE handle = pConstantTable->GetConstant(NULL,i);
-				if(handle == NULL) continue;
-
-				pConstantTable->GetConstantDesc(handle, pConstantDesc, &pConstantNum);
-				if (pConstantNum >= 512) {
-					OutputDebugStringA("Need larger constant description buffer");
-				}
-
-				// loop through constants, output relevant data
-				for(UINT j = 0; j < pConstantNum; j++)
-				{
-					if ((pConstantDesc[j].RegisterSet == D3DXRS_FLOAT4) &&
-						((pConstantDesc[j].Class == D3DXPC_VECTOR) || (pConstantDesc[j].Class == D3DXPC_MATRIX_ROWS) || (pConstantDesc[j].Class == D3DXPC_MATRIX_COLUMNS))  ) {
-
-							m_shaderDumpFile << hash;
-							m_shaderDumpFile << "," << pConstantDesc[j].Name;
-
-							if (pConstantDesc[j].Class == D3DXPC_VECTOR) {
-								m_shaderDumpFile << ",Vector";
-							}
-							else if (pConstantDesc[j].Class == D3DXPC_MATRIX_ROWS) {
-								m_shaderDumpFile << ",MatrixR";
-							}
-							else if (pConstantDesc[j].Class == D3DXPC_MATRIX_COLUMNS) {
-								m_shaderDumpFile << ",MatrixC";
-							}
-
-							m_shaderDumpFile << "," << pConstantDesc[j].RegisterIndex;
-							m_shaderDumpFile << "," << pConstantDesc[j].RegisterCount << ",VS" << std::endl;
-
-							// add constant to relevant constant vector
-							ShaderConstant sc;
-							sc.hash = hash;
-							sc.desc = D3DXCONSTANT_DESC(pConstantDesc[j]);
-							sc.name = std::string(pConstantDesc[j].Name);
-							m_relevantVSConstants.push_back(sc);
-					}
-				}
-			}
-
-			// output shader code ?
-			if (m_bOutputShaderCode)
-			{
-				// optionally, output shader code to "VS(hash).txt"
-				char buf[32]; ZeroMemory(&buf[0],32);
-				sprintf_s(buf, "VS%u.txt", hash);
-				std::ofstream oLogFile(buf,std::ios::ate);
-
-				if (oLogFile.is_open())
-				{
-					LPD3DXBUFFER bOut; 
-					D3DXDisassembleShader(reinterpret_cast<DWORD*>(pData),NULL,NULL,&bOut); 
-					oLogFile << static_cast<char*>(bOut->GetBufferPointer()) << std::endl;
-					oLogFile << std::endl << std::endl;
-					oLogFile << "// Shader Creator: " << pDesc.Creator << std::endl;
-					oLogFile << "// Shader Version: " << pDesc.Version << std::endl;
-					oLogFile << "// Shader Hash   : " << hash << std::endl;
-				}
-			}
-
-			_SAFE_RELEASE(pConstantTable);
-			if (pData) delete[] pData;
-		}
-		// else shader already recorded
 	}
-
-	return creationResult;
+	return D3DProxyDevice::DrawIndexedPrimitiveUP(PrimitiveType, MinVertexIndex, NumVertices, PrimitiveCount, pIndexData, IndexDataFormat, pVertexStreamZeroData, VertexStreamZeroStride);
 }
 
 
-void DataGatherer::MarkShaderAsUsed( int hash , bool isVertex ){
-	Shader* s = 0;
 
-	for( Shader& c : shaders ){
-		if( c.hash == m_currentVertexShaderHash ){
-			s = &c;
-			break;
-		}
+HRESULT WINAPI DataGatherer::CreateVertexShader(CONST DWORD* pFunction,IDirect3DVertexShader9** ppShader){
+	HRESULT ret = D3DProxyDevice::CreateVertexShader(pFunction, ppShader);
+	if( SUCCEEDED(ret) ){
+		ShaderCreate( *ppShader , true );
 	}
-
-	if( !s ){
-		shaders.append( Shader() );
-		s = &shaders.last();
-		s->hash     = hash;
-		s->exclude  = false;
-		s->isVertex = isVertex;
-
-		char buf[256];
-		sprintf( buf , "%s %u" , isVertex?"VS":"PS" , hash );
-
-		s->item = shadersMenu->addCheckbox( buf , &s->exclude , "exclude/blink" , "active" );
-	}
-
-	s->used = true;
-	
-	if( isVertex ){
-		m_bAvoidDraw = false;
-	}else{
-		m_bAvoidDrawPS = false;
-	}
-
-	if( s->exclude && ((GetTickCount()%300)>150) ){
-		if( isVertex ){
-			m_bAvoidDraw = true;
-		}else{
-			m_bAvoidDrawPS = true;
-		}
-	}
+	return ret;
 }
 
-/**
-* Sets the shader and the current shader hash.
-***/
-HRESULT WINAPI DataGatherer::SetVertexShader(IDirect3DVertexShader9* pShader)
-{
-	// set the current vertex shader hash code for the call counter
-	if( pShader ){
-		m_currentVertexShaderHash = ShaderHash(pShader);
-		MarkShaderAsUsed( m_currentVertexShaderHash , true );
-	}else{
-		m_currentVertexShaderHash = 0;
+
+HRESULT WINAPI DataGatherer::CreatePixelShader(CONST DWORD* pFunction,IDirect3DPixelShader9** ppShader){
+	HRESULT ret = D3DProxyDevice::CreatePixelShader(pFunction, ppShader);
+	if( SUCCEEDED(ret) ){
+		ShaderCreate( *ppShader , false );
 	}
+	return ret;
+}
 
-#ifdef _DEBUG
-	D3D9ProxyVertexShader* pWrappedVShaderData = static_cast<D3D9ProxyVertexShader*>(pShader);
-	if (pWrappedVShaderData)
-	{
-		if (!pWrappedVShaderData->m_bSquishViewport)
-		{
-			if (m_recordedSetVShaders.insert(pShader).second)
-			{
-				char buf[32];
-				sprintf_s(buf,"Set Vertex Shader: %u", m_currentVertexShaderHash);
-				OutputDebugStringA(buf);
-			}
 
-		}
-	}
-#endif
 
+HRESULT WINAPI DataGatherer::SetVertexShader( IDirect3DVertexShader9* pShader ){
+	ShaderUse( pShader , &currentVS );
 	return D3DProxyDevice::SetVertexShader(pShader);
 }
 
-/**
-* Tests if the set constant is a transposed matrix and sets the relevant bool.
-* Is Matrix transposed ?
-* Affine transformation matrices have in the last row (0,0,0,1). World and view matrices are 
-* usually affine, since they are a combination of affine transformations (rotation, scale, 
-* translation ...).
-* Perspective projection matrices have in the last column (0,0,1,0) if left-handed and 
-* (0,0,-1,0) if right-handed.
-* Orthographic projection matrices have in the last column (0,0,0,1).
-* If those are transposed you find the entries in the last column/row.
-**/
-HRESULT WINAPI DataGatherer::SetVertexShaderConstantF(UINT StartRegister,CONST float* pConstantData,UINT Vector4fCount)
-{
-	// test for transposed rules
-	if (m_bTestForTransposed)
-	{
-		// loop through relevant vertex shader constants
-		auto itShaderConstants = m_relevantVSConstants.begin();
-		while (itShaderConstants != m_relevantVSConstants.end())
-		{
-			// is a constant of current shader ?
-			// start register ? 
-			if ((itShaderConstants->hash == m_currentVertexShaderHash) &&
-				(itShaderConstants->desc.RegisterIndex < (StartRegister+Vector4fCount)) &&
-				(itShaderConstants->desc.RegisterIndex >= StartRegister))
-			{	
-				// is a matrix ?
-				if (itShaderConstants->desc.Class == D3DXPARAMETER_CLASS::D3DXPC_MATRIX_ROWS)
-				{
-					// Perspective projection matrices have in the last column (0,0,1,0) if left-handed and 
-					// * (0,0,-1,0) if right-handed.
-					// Note that we DO NOT TEST here wether this is actually a projection matrix
-					// (we do that in the analyze() method)
-					D3DXMATRIX matrix = D3DXMATRIX(pConstantData+((itShaderConstants->desc.RegisterIndex-StartRegister)*4*sizeof(float)));
 
-					// [14] for row matrix ??
-					if ((!vireio::AlmostSame(matrix[14], 1.0f, 0.00001f)) && (!vireio::AlmostSame(matrix[14], -1.0f, 0.00001f)))
-						m_bTransposedRules = true;
+HRESULT WINAPI DataGatherer::SetPixelShader( IDirect3DPixelShader9* pShader ){
+	ShaderUse( pShader , &currentPS );
+	return D3DProxyDevice::SetPixelShader(pShader);
+}
 
-				}
-				else if (itShaderConstants->desc.Class == D3DXPARAMETER_CLASS::D3DXPC_MATRIX_COLUMNS)
-				{
-					// Perspective projection matrices have in the last column (0,0,1,0) if left-handed and 
-					// * (0,0,-1,0) if right-handed.
-					// Note that we DO NOT TEST here wether this is actually a projection matrix
-					// (we do that in the analyze() method)
-					D3DXMATRIX matrix = D3DXMATRIX(pConstantData+((itShaderConstants->desc.RegisterIndex-StartRegister)*4*sizeof(float)));
 
-					// [12] for column matrix ??
-					if ((!vireio::AlmostSame(matrix[12], 1.0f, 0.00001f)) && (vireio::AlmostSame(matrix[12], -1.0f, 0.00001f)))
-						m_bTransposedRules = true;
+
+
+
+
+// Tests if the set constant is a transposed matrix and sets the relevant bool.
+// Is Matrix transposed ?
+// Affine transformation matrices have in the last row (0,0,0,1). World and view matrices are 
+// usually affine, since they are a combination of affine transformations (rotation, scale, 
+// translation ...).
+// Perspective projection matrices have in the last column (0,0,1,0) if left-handed and 
+// (0,0,-1,0) if right-handed.
+// Orthographic projection matrices have in the last column (0,0,0,1).
+// If those are transposed you find the entries in the last column/row.
+HRESULT WINAPI DataGatherer::SetVertexShaderConstantF( UINT StartRegister , CONST float* pConstantData , UINT Vector4fCount ){
+
+	if( config.shaderAnalyzerDetectTranspose ){
+		for( ShaderConstant* c : constants ){
+			if( c->shader == currentVS ){
+				if( c->desc.RegisterIndex >= StartRegister  &&
+					c->desc.RegisterIndex < StartRegister + Vector4fCount
+				){
+
+					int i = 0;
+
+					if( c->desc.Class == D3DXPARAMETER_CLASS::D3DXPC_MATRIX_ROWS ){
+						i = 14;
+					}
+
+					if( c->desc.Class == D3DXPARAMETER_CLASS::D3DXPC_MATRIX_COLUMNS ){
+						i = 12;
+					}
+
+					if( i ){
+						D3DXMATRIX matrix = D3DXMATRIX( pConstantData + (c->desc.RegisterIndex-StartRegister)*4*sizeof(float) );
+					
+						if( fabs( fabs(matrix[i]) - 1.0 ) > 0.00001 ){
+							config.shaderAnalyzerTranspose = true;
+						}
+					}
 				}
 			}
-			++itShaderConstants;
 		}
 	}
 
 	return D3DProxyDevice::SetVertexShaderConstantF(StartRegister, pConstantData, Vector4fCount);
 }
 
-/**
-*
-***/
-HRESULT WINAPI DataGatherer::CreatePixelShader(CONST DWORD* pFunction,IDirect3DPixelShader9** ppShader)
-{
-	// create proxy vertex shader
-	HRESULT creationResult = D3DProxyDevice::CreatePixelShader(pFunction, ppShader);
 
-	if (SUCCEEDED(creationResult)) {
-		D3D9ProxyPixelShader* pWrappedShader = static_cast<D3D9ProxyPixelShader*>(*ppShader);
-		IDirect3DPixelShader9* pActualShader = pWrappedShader->actual;
 
-		// No idea what happens if the same vertex shader is created twice. Pointer to the same shader or two
-		// separate instances? guessing separate in which case m_recordedShader as is is pointless. 
-		// TODO Replace pointer check with check on hash of shader data. (and print hash with data)
-		if (m_recordedPShaders.insert(pActualShader).second && m_shaderDumpFile.is_open()) {
-
-			// insertion succeeded - record shader details.
-			LPD3DXCONSTANTTABLE pConstantTable = NULL;
-
-			BYTE* pData = NULL;
-			UINT pSizeOfData;
-			pActualShader->GetFunction(NULL, &pSizeOfData);
-
-			pData = new BYTE[pSizeOfData];
-			pActualShader->GetFunction(pData, &pSizeOfData);
-
-			uint32_t hash = 0;
-			MurmurHash3_x86_32(pData, pSizeOfData, VIREIO_SEED, &hash); 
-
-			D3DXGetShaderConstantTable(reinterpret_cast<DWORD*>(pData), &pConstantTable);
-
-			if(pConstantTable == NULL) 
-				return creationResult;
-
-			D3DXCONSTANTTABLE_DESC pDesc;
-			pConstantTable->GetDesc(&pDesc);
-
-			D3DXCONSTANT_DESC pConstantDesc[512];
-			UINT pConstantNum = 512;
-
-			for(UINT i = 0; i < pDesc.Constants; i++)
-			{
-				D3DXHANDLE handle = pConstantTable->GetConstant(NULL,i);
-				if(handle == NULL) continue;
-
-				pConstantTable->GetConstantDesc(handle, pConstantDesc, &pConstantNum);
-				if (pConstantNum >= 512) {
-					OutputDebugStringA("Need larger constant description buffer");
-				}
-
-				// loop through constants, output relevant data
-				for(UINT j = 0; j < pConstantNum; j++)
-				{
-					if ((pConstantDesc[j].RegisterSet == D3DXRS_FLOAT4) &&
-						((pConstantDesc[j].Class == D3DXPC_VECTOR) || (pConstantDesc[j].Class == D3DXPC_MATRIX_ROWS) || (pConstantDesc[j].Class == D3DXPC_MATRIX_COLUMNS))  ) {
-
-							m_shaderDumpFile << hash;
-							m_shaderDumpFile << "," << pConstantDesc[j].Name;
-
-							if (pConstantDesc[j].Class == D3DXPC_VECTOR) {
-								m_shaderDumpFile << ",Vector";
-							}
-							else if (pConstantDesc[j].Class == D3DXPC_MATRIX_ROWS) {
-								m_shaderDumpFile << ",MatrixR";
-							}
-							else if (pConstantDesc[j].Class == D3DXPC_MATRIX_COLUMNS) {
-								m_shaderDumpFile << ",MatrixC";
-							}
-
-							m_shaderDumpFile << "," << pConstantDesc[j].RegisterIndex;
-							m_shaderDumpFile << "," << pConstantDesc[j].RegisterCount << ",PS" << std::endl;
-
-							//// add constant to relevant constant vector - TODO !! pixel shader constants
-							//ShaderConstant sc;
-							//sc.hash = hash;
-							//sc.desc = D3DXCONSTANT_DESC(pConstantDesc[j]);
-							//sc.name = std::string(pConstantDesc[j].Name);
-							//sc.hasRule = false;
-							//m_relevantVSConstants.push_back(sc);
-					}
-				}
-			}
-
-			// output shader code ?
-			if (m_bOutputShaderCode)
-			{
-				// optionally, output shader code to "PS(hash).txt"
-				char buf[32]; ZeroMemory(&buf[0],32);
-				sprintf_s(buf, "PS%u.txt", hash);
-				std::ofstream oLogFile(buf,std::ios::ate);
-
-				if (oLogFile.is_open())
-				{
-					LPD3DXBUFFER bOut; 
-					D3DXDisassembleShader(reinterpret_cast<DWORD*>(pData),NULL,NULL,&bOut); 
-					oLogFile << static_cast<char*>(bOut->GetBufferPointer()) << std::endl;
-					oLogFile << std::endl << std::endl;
-					oLogFile << "// Shader Creator: " << pDesc.Creator << std::endl;
-					oLogFile << "// Shader Version: " << pDesc.Version << std::endl;
-					oLogFile << "// Shader Hash   : " << hash << std::endl;
-				}
-			}
-
-			_SAFE_RELEASE(pConstantTable);
-			if (pData) delete[] pData;
-		}
-		// else shader already recorded
-	}
-
-	return creationResult;
-}
-
-/**
-* Sets the shader and the outputs current shader hash for debug reasons.
-***/
-HRESULT WINAPI DataGatherer::SetPixelShader(IDirect3DPixelShader9* pShader)
-{
-	uint32_t hash = 0;
-	if( pShader ){
-		hash = ShaderHash(pShader);
-		MarkShaderAsUsed( hash , false );
-	}
-
-#ifdef _DEBUG
-	char buf[32];
-	sprintf_s(buf,"Cur Vertex Shader: %u", m_currentVertexShaderHash);
-	OutputDebugStringA(buf);
-	sprintf_s(buf,"Set Pixel Shader: %u", hash);
-	OutputDebugStringA(buf);
-#endif
-
-	return D3DProxyDevice::SetPixelShader(pShader);
-}
 
 
 
@@ -1008,6 +685,7 @@ void DataGatherer::BRASSA_ChangeRules()
 ***/
 void DataGatherer::Analyze()
 {
+/*
 	// loop through relevant vertex shader constants
 	auto itShaderConstants = m_relevantVSConstantNames.begin();
 	while (itShaderConstants != m_relevantVSConstantNames.end())
@@ -1078,6 +756,7 @@ void DataGatherer::Analyze()
 
 	// save data
 	saveShaderRules();
+	*/
 }
 
 /**
@@ -1086,7 +765,7 @@ void DataGatherer::Analyze()
 ***/
 void DataGatherer::GetCurrentShaderRules(bool allStartRegisters)
 {
-	ShaderModificationRepository* pModRep = m_pGameHandler->GetShaderModificationRepository();
+	/*ShaderModificationRepository* pModRep = m_pGameHandler->GetShaderModificationRepository();
 
 	// clear name vector, loop through constants
 	for( ShaderConstant& c : m_relevantVSConstantNames ){
@@ -1162,5 +841,5 @@ void DataGatherer::GetCurrentShaderRules(bool allStartRegisters)
 			m_relevantVSConstantNames.push_back( constant );
 		}
 
-	}
+	}*/
 }

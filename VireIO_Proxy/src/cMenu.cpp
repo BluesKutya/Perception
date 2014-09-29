@@ -99,6 +99,7 @@ cMenuItem::cMenuItem(){
 	showCalibrator = false;
 	visible        = true;
 	hotkey.input   = 0;
+	readOnly       = false;
 }
 
 
@@ -207,22 +208,26 @@ void cMenuItem::trigger( float k ){
 		break;
 
 	case CHECKBOX:
-		*checkVar = !*checkVar;
+		if( !readOnly ){
+			*checkVar = !*checkVar;
+		}
 		if( callbackValueChanged ){
 			callbackValueChanged();
 		}
 		break;
 
 	case SPINNER:
-		*spinVar += spinStep * k;
+		if( !readOnly ){
+			*spinVar += spinStep * k;
 
-		if( spinLimit ){
-			if( *spinVar > spinMax ){
-				*spinVar = spinMax;
-			}
+			if( spinLimit ){
+				if( *spinVar > spinMax ){
+					*spinVar = spinMax;
+				}
 
-			if( *spinVar < spinMin ){
-				*spinVar = spinMin;
+				if( *spinVar < spinMin ){
+					*spinVar = spinMin;
+				}
 			}
 		}
 
@@ -232,14 +237,16 @@ void cMenuItem::trigger( float k ){
 		break;
 
 	case SELECT:
-		(*selectVar) += (int)k;
+		if( !readOnly ){
+			(*selectVar) += (int)k;
 
-		if( (*selectVar) < 0 ){
-			(*selectVar) = 0;
-		}
+			if( (*selectVar) < 0 ){
+				(*selectVar) = 0;
+			}
 
-		if( (*selectVar) >= selectVariants.count() ){
-			(*selectVar) = selectVariants.count() - 1;
+			if( (*selectVar) >= selectVariants.count() ){
+				(*selectVar) = selectVariants.count() - 1;
+			}
 		}
 		break;
 	}
@@ -306,6 +313,16 @@ void cMenu::render( ){
 	
 	if( !menu->selected && !menu->children.isEmpty() ){
 		menu->selected = menu->children.first();
+	}
+
+	if( menu->selected && !menu->selected->visible ){
+		menu->selected = 0;
+		for( cMenuItem* i : menu->children ){
+			if( i->visible ){
+				menu->selected = i;
+				break;
+			}
+		}
 	}
 
 
@@ -416,10 +433,20 @@ void cMenu::render( ){
 
 		if( move_y ){
 			int i = menu->children.indexOf( sel );
-			if( i >=0 ){
-				i -= move_y;
-				if( i >= 0 && i < menu->children.count() ){
-					menu->selected = menu->children[i];
+
+			if( i < 0 ){
+				menu->selected = 0;
+			}else{
+				for(;;){
+					i -= move_y;
+					if( i < 0 || i >= menu->children.count() ){
+						break;
+					}
+
+					if( menu->children[i]->visible ){
+						menu->selected = menu->children[i];
+						break;
+					}
 				}
 			}
 		}

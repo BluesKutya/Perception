@@ -39,6 +39,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // 64mm in meters
 #define IPD_DEFAULT 0.064f
 
+#define SAFE_RELEASE(x) if(x){  x->Release(); x=0; }
+
 
 namespace vireio {
 	enum RenderPosition

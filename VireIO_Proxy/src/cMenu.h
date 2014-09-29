@@ -31,8 +31,9 @@ public:
 
 class cMenuItem{
 public:
-	bool                  showCalibrator;
-	bool                  visible;
+	bool showCalibrator;
+	bool visible;
+	bool readOnly;
 
 	std::function<void()> callbackOpenSubmenu;
 	std::function<void()> callbackCloseSubmenu;
