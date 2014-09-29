@@ -183,6 +183,12 @@ cMenuItem* cMenuItem::addSelect  ( const QString& n , int* v , const QStringList
 	return i;
 }
 
+cMenuItem* cMenuItem::addText( const QString& n , QString* v ){
+	cMenuItem* i = add( n , TEXT );
+	i->textVar      = v;
+	return i;
+}
+
 
 
 QString cMenuItem::path( ){
@@ -552,6 +558,9 @@ void cMenu::render( ){
 			}else
 			if( i->type == cMenuItem::SELECT ){
 				drawText( i->selectVariants[ *i->selectVar ] , ALIGN_RIGHT_COLUMN );
+			}else
+			if( i->type == cMenuItem::TEXT ){
+				drawText( *i->textVar , ALIGN_RIGHT_COLUMN );
 			}
 
 			posY += 40;

@@ -88,13 +88,11 @@ private:
 		D3DXCONSTANT_DESC  desc;
 		QString            name;
 		cMenuItem*         item;
-
-		/*bool               nodeOpen;
-		bool               hasRule;
-		bool               isTransposed;
+		bool               nodeCreated;
+		bool               applyRule;
 		QString            ruleName;
-		
-		bool               applyRule;*/
+		UINT               ruleOperation;
+		bool               ruleTranspose;
 	};
 
 
@@ -110,6 +108,7 @@ private:
 	void ShaderUse   ( IUnknown* ptr , Shader** current );
 	void ShaderCreate( IUnknown* ptr , bool isVertex );
 	bool isDrawHide  ( );
+	void UpdateRuleDisplay( ShaderConstant* c );
 	/**
 	* Vector of all relevant vertex shader constants.
 	***/

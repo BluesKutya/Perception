@@ -42,10 +42,11 @@ public:
 
 	cMenuItem* addSubmenu ( const QString& name );
 	cMenuItem* addAction  ( const QString& name );
-	cMenuItem* addSpinner ( const QString& name , float* variable , float min , float max , float step );
-	cMenuItem* addSpinner ( const QString& name , float* variable , float step );
-	cMenuItem* addCheckbox( const QString& name , bool*  variable , const QString& on_text="true" , const QString& off_text="false" );
-	cMenuItem* addSelect  ( const QString& name , int*   variable , const QStringList& variants );
+	cMenuItem* addSpinner ( const QString& name , float*   variable , float min , float max , float step );
+	cMenuItem* addSpinner ( const QString& name , float*   variable , float step );
+	cMenuItem* addCheckbox( const QString& name , bool*    variable , const QString& on_text="true" , const QString& off_text="false" );
+	cMenuItem* addSelect  ( const QString& name , int*     variable , const QStringList& variants );
+	cMenuItem* addText    ( const QString& name , QString* variable );
 
 	~cMenuItem();
 
@@ -56,6 +57,7 @@ private:
 		SPINNER,
 		CHECKBOX,
 		SELECT,
+		TEXT,
 	};
 	
 	QString               name;
@@ -71,6 +73,7 @@ private:
 	bool*                 checkVar;
 	int*                  selectVar;
 	QStringList           selectVariants;
+	QString*              textVar;
 	QString               checkOn;
 	QString               checkOff;
 	cHotkey               hotkey;

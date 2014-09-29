@@ -60,6 +60,7 @@ bool DataGatherer::isDrawHide( ){
 }
 
 
+
 void DataGatherer::ShaderCreate( IUnknown* ptr , bool isVertex ){
 	ptr->AddRef();
 
@@ -186,9 +187,25 @@ void DataGatherer::ShaderCreate( IUnknown* ptr , bool isVertex ){
 				n->shader            = shader;
 				n->desc              = desc;
 				n->name              = desc.Name;
+				n->applyRule         = false;
+				n->nodeCreated       = false;
 
 				n->item = shader->item->addSubmenu( "Constant \"" + n->name + "\"" );
+				
+				n->item->addCheckbox( "Apply rule" , &n->applyRule );
+				n->item->callbackValueChanged = [=](){
+					if( n->applyRule ){
+						bool transpose = config.shaderAnalyzerTranspose;
+						if( n->desc.Class == D3DXPARAMETER_CLASS::D3DXPC_VECTOR ){
+							transpose = false;
+						}
+						addRule( n->name.toStdString() , true , n->desc.RegisterIndex , n->desc.Class , 1 , transpose );
+					}else{
+						deleteRule( n->name.toStdString() );
+					}
+				};
 
+				
 				constants += n;
 				
 			}
@@ -220,7 +237,54 @@ void DataGatherer::ShaderUse( IUnknown* ptr , Shader** current  ){
 }
 
 
+void DataGatherer::UpdateRuleDisplay( ShaderConstant* c ){
+	static int dummy;
+	
+	if( !c->nodeCreated ){
+	
+		std::string s;
 
+		c->applyRule = m_pGameHandler->GetShaderModificationRepository()->ConstantHasRule( c->name.toStdString() , s , c->ruleOperation , c->ruleTranspose );
+
+		if( c->applyRule ){
+			c->ruleName = QString::fromStdString( s );
+
+			c->item->addText    ( "Rule name"      , &c->ruleName )->readOnly = true;;
+			
+			c->item->addCheckbox( "Rule transpose" , &c->ruleTranspose )->callbackValueChanged = [=](){
+				if( c->applyRule ){
+				}
+			};
+
+			c->item->addSelect  ( "Rule operation" , &dummy , QStringList()<<"!"<<"$#$" );
+
+			c->nodeCreated = true;
+		}
+							}
+		
+
+		//c->item->addSelect( "Rule" , (int*)&c->ruleOperation 
+
+
+	}
+
+				/*mi = n->item->addCheckbox( "Apply rule" , &n->applyRule );
+				mi->callbackValueChanged = [=](){
+					if( n->applyRule ){
+						bool transpose = config.shaderAnalyzerTranspose;
+						if( n->desc.Class == D3DXPARAMETER_CLASS::D3DXPC_VECTOR ){
+							transpose = false;
+						}
+						addRule( n->name.toStdString() , true , n->desc.RegisterIndex , n->desc.Class , 1 , transpose );
+					}else{
+						deleteRule( n->name.toStdString() );
+					}
+				};*/
+
+
+				//n->item->addSelect  ( "Rule "      , &n->haveRule );
+
+}
 
 
 
