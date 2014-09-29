@@ -1,5 +1,7 @@
 #define __STDC_CONSTANT_MACROS
 
+#include <Vireio.h>
+
 extern "C" {
 	#include <libavcodec/avcodec.h>
 	#include <libavformat/avformat.h>
@@ -64,7 +66,7 @@ void Streamer::enc_encode( void* pixels , int w , int h ){
 			error
 		}
 
-		codec_context->bit_rate      = cfg.streamingBitrate*1024;
+		codec_context->bit_rate      = config.streamingBitrate*1024;
 		codec_context->width         = width;
 		codec_context->height        = height;
 		codec_context->time_base.den = 60;

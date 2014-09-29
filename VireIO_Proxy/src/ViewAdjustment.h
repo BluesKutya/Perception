@@ -50,7 +50,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 class ViewAdjustment
 {
 public:	
-	ViewAdjustment( cConfig& cfg );
+	ViewAdjustment( );
 	virtual ~ViewAdjustment();
 
 	/*** ViewAdjustment public methods ***/
@@ -102,8 +102,6 @@ public:
 	float         SeparationInWorldUnits();
 	float         SeparationIPDAdjustment();
 
-
-	cConfig& config;
 
 	/*** Projection Matrix variables ***/
 	float n;	/**< Minimum z-value of the view volume. */

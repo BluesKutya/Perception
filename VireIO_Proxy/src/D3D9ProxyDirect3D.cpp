@@ -37,11 +37,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 * Constructor. 
 * @param pD3D Imbed actual Direct3D object. 
 ***/
-D3D9ProxyDirect3D::D3D9ProxyDirect3D(IDirect3D9* pD3D , IDirect3D9Ex* pD3DEx , cConfig& cfg ) :
+D3D9ProxyDirect3D::D3D9ProxyDirect3D(IDirect3D9* pD3D , IDirect3D9Ex* pD3DEx ) :
 	actual(pD3D),
 	actualEx(pD3DEx),
-	m_nRefCount(1) ,
-	config(cfg)
+	m_nRefCount(1)
 {
 }
 
@@ -164,15 +163,15 @@ METHOD_IMPL( HRESULT  , WINAPI , D3D9ProxyDirect3D , ProxyCreateDevice , UINT , 
 
 	// if game profile = game type + 10000 -> return DataGatherer (=shader analyzer)
 	if( config.game_type == D3DProxyDevice::GAMEBRYO ){
-		newDev = new D3DProxyDeviceAdv(dev, devEx , this , config );
+		newDev = new D3DProxyDeviceAdv(dev, devEx , this );
 	}else
 	if( config.game_type == D3DProxyDevice::DEBUG_LOG_FILE ){
-		newDev = new D3DProxyDeviceDebug(dev, devEx , this , config );
+		newDev = new D3DProxyDeviceDebug(dev, devEx , this );
 	}else
 	if( config.shaderAnalyzer ){
-		newDev = new DataGatherer(dev, devEx , this , config );
+		newDev = new DataGatherer(dev, devEx , this );
 	}else{
-		newDev = new D3DProxyDevice(dev, devEx , this , config );
+		newDev = new D3DProxyDevice(dev, devEx , this );
 	}
 
 	if( ppReturnedDeviceInterface ){

@@ -49,7 +49,7 @@ class Streamer;
 class StereoView
 {
 public:
-	StereoView(cConfig& config );
+	StereoView( );
 	virtual ~StereoView();
 
 	/*** StereoView public methods ***/
@@ -69,7 +69,7 @@ public:
 		RIGHT_EYE
 	};
 
-	cConfig& config;
+
 	/**
 	* Current Direct3D Viewport.
 	***/

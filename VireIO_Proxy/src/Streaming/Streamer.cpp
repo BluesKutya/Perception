@@ -1,8 +1,8 @@
+#include <Vireio.h>
 #include "Streamer.h"
 
-Streamer::Streamer( cConfig& c ) :
-	surf(0) ,
-	cfg (c)
+Streamer::Streamer( ) :
+	surf(0)
 {
 	net_init();
 	enc_init();
@@ -22,7 +22,7 @@ void Streamer::send( IDirect3DDevice9* device ){
 
 	QueryPerformanceCounter( &i1 );
 
-	if( !cfg.streamingEnable ){
+	if( !config.streamingEnable ){
 		return;
 	}
 	

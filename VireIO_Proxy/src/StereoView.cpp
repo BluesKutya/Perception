@@ -49,9 +49,7 @@ inline void releaseCheck(char* object, int newRefCount)
 * Constructor.
 * Sets game configuration data. Sets all member pointers to NULL to prevent uninitialized objects being used.
 ***/ 
-StereoView::StereoView(cConfig& cfg ) :
-	config(cfg)
-{
+StereoView::StereoView( ){
 	OutputDebugStringA("Created SteroView\n");
 	initialized = false;
 	XOffset = 0;
@@ -124,7 +122,7 @@ StereoView::StereoView(cConfig& cfg ) :
 		break;
 	}
 
-	m_pStreamer = new Streamer( config );
+	m_pStreamer = new Streamer( );
 }
 
 /**

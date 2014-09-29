@@ -114,7 +114,6 @@
     <ClInclude Include="..\..\common\cConfig.h" />
     <ClInclude Include="..\..\common\cPropsFile.h" />
     <ClInclude Include="..\..\common\cTracker.h" />
-    <ClInclude Include="..\..\common\hijack.h" />
     <ClInclude Include="..\..\common\pugiconfig.hpp" />
     <ClInclude Include="..\..\common\pugixml.hpp" />
     <ClInclude Include="..\..\common\VireIO.h" />
@@ -141,7 +140,6 @@
     <ClInclude Include="..\src\DirectInput.h" />
     <ClInclude Include="..\src\GameHandler.h" />
     <ClInclude Include="..\src\InputControls.h" />
-    <ClInclude Include="..\src\IStereoCapableWrapper.h" />
     <ClInclude Include="..\src\MatrixConvOffsetAdjustment.h" />
     <ClInclude Include="..\src\MatrixDoNothing.h" />
     <ClInclude Include="..\src\MatrixGatheredOrhoSquash.h" />

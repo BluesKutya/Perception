@@ -1,4 +1,4 @@
 
 //Defines the current version of Vireio, used for splash screen and perception app
-#define APP_VERSION	  "2.0.4 Alpha 3"
+#define APP_VERSION	  "3.0.0 alpha 1"
 

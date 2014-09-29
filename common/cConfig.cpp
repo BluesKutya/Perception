@@ -3,7 +3,8 @@
 #include "cConfig.h"
 #include "cPropsFile.h"
 
-cConfig vireio_global_config;
+cConfig config;
+cConfig configBackup;
 
 
 cConfig::cConfig(){

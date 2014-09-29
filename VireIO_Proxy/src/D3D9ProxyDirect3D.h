@@ -33,7 +33,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 class D3D9ProxyDirect3D : public IDirect3D9Ex {
 public:
-	D3D9ProxyDirect3D(IDirect3D9* pD3D , IDirect3D9Ex* pD3DEx , cConfig& cfg );
+	D3D9ProxyDirect3D(IDirect3D9* pD3D , IDirect3D9Ex* pD3DEx );
 	~D3D9ProxyDirect3D();
 
 	/*** IUnknown methods ***/
@@ -68,7 +68,6 @@ public:
 	HRESULT WINAPI ProxyCreateDevice(UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow,DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters,D3DDISPLAYMODEEX* pFullscreenDisplayMode,IDirect3DDevice9** ppReturnedDeviceInterface,IDirect3DDevice9Ex** ppReturnedDeviceInterfaceEx);
 
 private:
-	cConfig&      config;
 	IDirect3D9*   actual;
 	IDirect3D9Ex* actualEx;
 	ULONG         m_nRefCount;

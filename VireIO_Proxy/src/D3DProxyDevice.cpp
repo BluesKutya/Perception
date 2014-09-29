@@ -80,7 +80,7 @@ using namespace VRBoost;
 /**
 * Constructor : creates game handler and sets various states.
 ***/
-D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDeviceEx,  D3D9ProxyDirect3D* pCreatedBy , cConfig& cfg ) :
+D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDeviceEx,  D3D9ProxyDirect3D* pCreatedBy ) :
 	actual(pDevice),
 	actualEx(pDeviceEx),
 	m_pCreatedBy(pCreatedBy),
@@ -96,17 +96,13 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	calibrate_tracker(false)
 {
 
-	config         = cfg;
-	m_configBackup = cfg;
-
-
 	tracker = 0;
 
 	menu.init( this );
 
 	InitVRBoost();
 
-	m_spShaderViewAdjustment = std::make_shared<ViewAdjustment>( config );
+	m_spShaderViewAdjustment = std::make_shared<ViewAdjustment>( );
 	m_pGameHandler = new GameHandler();
 
 	// Check the maximum number of supported render targets
@@ -177,7 +173,7 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 
 	// first time configuration
 	m_pGameHandler->Load(config, m_spShaderViewAdjustment);
-	stereoView                 = new StereoView( config );
+	stereoView                 = new StereoView();
 	stereoView->HeadYOffset    = 0;
 
 
@@ -326,7 +322,7 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 
 	i= menu.root.addAction ( "Restore configuration" );
 	i->callbackValueChanged = [this](){
-		config = m_configBackup;
+		config = configBackup;
 	};
 
 

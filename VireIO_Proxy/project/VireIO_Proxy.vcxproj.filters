@@ -226,9 +226,6 @@
     <ClInclude Include="..\src\InputControls.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\IStereoCapableWrapper.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\MatrixConvOffsetAdjustment.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -326,9 +323,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\common\cPropsFile.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\common\hijack.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\common\VireIO.h">

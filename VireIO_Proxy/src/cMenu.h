@@ -72,7 +72,6 @@ private:
 	QString               checkOn;
 	QString               checkOff;
 	cHotkey               hotkey;
-	cConfig*              config;
 
 	cMenuItem();
 

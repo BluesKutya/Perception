@@ -1,4 +1,6 @@
 #include <Winsock2.h>
+#include <Vireio.h>
+
 
 #define VIREIO_STREAMER_NET \
 	SOCKET      sock; \
@@ -23,8 +25,8 @@ void Streamer::net_init( ){
 	//}
 
 	addr.sin_family      = AF_INET;
-	addr.sin_addr.s_addr = inet_addr( cfg.streamingAddress.toLocal8Bit() );
-	addr.sin_port        = htons( cfg.streamingPort );
+	addr.sin_addr.s_addr = inet_addr( config.streamingAddress.toLocal8Bit() );
+	addr.sin_port        = htons( config.streamingPort );
 	
 	connected = false;
 }

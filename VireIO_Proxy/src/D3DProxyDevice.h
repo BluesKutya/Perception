@@ -60,7 +60,7 @@ class GameHandler;
 class D3DProxyDevice : public IDirect3DDevice9Ex
 {
 public:
-	D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDeviceEx, D3D9ProxyDirect3D* pCreatedBy , cConfig& cfg );
+	D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDeviceEx, D3D9ProxyDirect3D* pCreatedBy );
 	virtual ~D3DProxyDevice();
 
 	friend class D3D9ProxyStateBlock;
@@ -302,10 +302,6 @@ public:
 		GUI_ENUM_RANGE = 4
 	};
 
-	/**
-	* Game-specific proxy configuration.
-	**/
-	cConfig config;
 	/**
 	* VRBoost values. 
 	* Set to public for future use in input device classes.
@@ -756,7 +752,6 @@ public:
 	/**
 	* Backup of the current game profile.
 	***/
-	cConfig m_configBackup;
 
 	int screenshot;
 

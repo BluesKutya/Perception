@@ -8,9 +8,8 @@
 
 class Streamer {
 public:
-	cConfig& cfg;
 
-	Streamer ( cConfig& c );
+	Streamer ( );
 	~Streamer( );
 
 	void send             ( IDirect3DDevice9*  device  );

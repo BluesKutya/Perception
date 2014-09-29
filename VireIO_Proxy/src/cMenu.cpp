@@ -122,11 +122,10 @@ cMenuItem* cMenuItem::add( const QString& n , TYPE t ){
 	i->name         = n;
 	i->type         = t;
 	i->hotkey.input = hotkey.input;
-	i->config       = config;
 
-	int index = config->hotkey_uid.indexOf( i->path() );
+	int index = config.hotkey_uid.indexOf( i->path() );
 	if( index >= 0 ){
-		i->hotkey.fromCodeString( config->hotkey_codes[index] );
+		i->hotkey.fromCodeString( config.hotkey_codes[index] );
 	}
 
 	children += i;
@@ -256,7 +255,6 @@ void cMenu::init( D3DProxyDevice* d ){
 	root.name         = "Vireio Main Menu";
 	root.type         = cMenuItem::SUBMENU;
 	root.parent       = 0;
-	root.config       = &d->config;;
 	root.hotkey.input = &d->controls;
 
 	hotkeyNew.input   = &d->controls;
@@ -280,13 +278,13 @@ void cMenu::render( ){
 	}
 
 
-	if( device->config.showVRMouse ){
+	if( config.showVRMouse ){
 		POINT pt;   
 		GetCursorPos(&pt); 
 		D3DRECT rec2;	
-		rec2.x1 = (int)-5 + ((pt.x * device->config.guiSquishPresets[(int)device->config.gui3DDepthMode]) + (((1 - device->config.guiSquishPresets[(int)device->config.gui3DDepthMode]) / 2) * viewportWidth)); 
+		rec2.x1 = (int)-5 + ((pt.x * config.guiSquishPresets[(int)config.gui3DDepthMode]) + (((1 - config.guiSquishPresets[(int)config.gui3DDepthMode]) / 2) * viewportWidth)); 
 		rec2.x2 = rec2.x1 + 10; 
-		rec2.y1 = (int)-5 + ((pt.y * device->config.guiSquishPresets[(int)device->config.gui3DDepthMode]) + (((1 - device->config.guiSquishPresets[(int)device->config.gui3DDepthMode]) / 2) * viewportHeight)); 
+		rec2.y1 = (int)-5 + ((pt.y * config.guiSquishPresets[(int)config.gui3DDepthMode]) + (((1 - config.guiSquishPresets[(int)config.gui3DDepthMode]) / 2) * viewportHeight)); 
 		rec2.y2 = rec2.y1 + 10; 	
 		
 		device->Clear( 1 , &rec2 , D3DCLEAR_TARGET , D3DCOLOR_ARGB(255,255,255,255) , 0 , 0 );
@@ -670,14 +668,14 @@ void cMenu::freeResources(){
 
 void cMenu::saveHotkeys( cMenuItem* item ){
 	if( !item ){
-		device->config.hotkey_uid  .clear();
-		device->config.hotkey_codes.clear();
+		config.hotkey_uid  .clear();
+		config.hotkey_codes.clear();
 		item = &root;
 	}
 
 	if( item->hotkey.valid() ){
-		device->config.hotkey_uid   += item->path();
-		device->config.hotkey_codes += item->hotkey.toCodeString();
+		config.hotkey_uid   += item->path();
+		config.hotkey_codes += item->hotkey.toCodeString();
 	}
 
 	for( cMenuItem* c : item->children ){

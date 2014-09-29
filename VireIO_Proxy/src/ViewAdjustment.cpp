@@ -36,8 +36,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 * Constructor.
 * Sets class constants, identity matrices and a projection matrix.
 ***/
-ViewAdjustment::ViewAdjustment( cConfig& cfg ) :
-	config(cfg) ,
+ViewAdjustment::ViewAdjustment( ) :
 	bulletLabyrinth(false)
 {
 	// TODO : max, min convergence; arbitrary now
@@ -72,7 +71,7 @@ ViewAdjustment::ViewAdjustment( cConfig& cfg ) :
 	D3DXMatrixIdentity(&matGatheredLeft);
 	D3DXMatrixIdentity(&matGatheredRight);
 
-	UpdateProjectionMatrices( cfg.screenAspectRatio );
+	UpdateProjectionMatrices( config.screenAspectRatio );
 	D3DXMatrixIdentity(&rollMatrix);
 	D3DXMatrixIdentity(&rollMatrixNegative);
 	ComputeViewTransforms();
