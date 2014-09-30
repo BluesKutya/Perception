@@ -831,7 +831,7 @@ void D3D9ProxyStateBlock::Capture(CaptureableState toCap)
 
 	case PixelShader: 
 		{
-			m_pStoredPixelShader = device->m_pActivePixelShader;
+			m_pStoredPixelShader = device->currentPS;
 			if (m_pStoredPixelShader)
 				m_pStoredPixelShader->AddRef();
 
@@ -840,7 +840,7 @@ void D3D9ProxyStateBlock::Capture(CaptureableState toCap)
 
 	case VertexShader: 
 		{
-			m_pStoredVertexShader = device->m_pActiveVertexShader;
+			m_pStoredVertexShader = device->currentVS;
 			if (m_pStoredVertexShader)
 				m_pStoredVertexShader->AddRef();
 
@@ -963,24 +963,24 @@ void D3D9ProxyStateBlock::Apply(CaptureableState toApply, bool reApplyStereo)
 
 	case PixelShader: 
 		{
-			if (device->m_pActivePixelShader)
-				device->m_pActivePixelShader->Release();
+			SAFE_RELEASE( device->currentPS )
 
-			device->m_pActivePixelShader = m_pStoredPixelShader;
-			if (device->m_pActivePixelShader)
-				device->m_pActivePixelShader->AddRef();
+			device->currentPS = m_pStoredPixelShader;
+
+			if (device->currentPS)
+				device->currentPS->AddRef();
 
 			break;
 		}
 
 	case VertexShader: 
 		{
-			if (device->m_pActiveVertexShader)
-				device->m_pActiveVertexShader->Release();
+			SAFE_RELEASE( device->currentVS )
 
-			device->m_pActiveVertexShader = m_pStoredVertexShader;
-			if (device->m_pActiveVertexShader)
-				device->m_pActiveVertexShader->AddRef();
+
+			device->currentVS = m_pStoredVertexShader;
+			if (device->currentVS)
+				device->currentVS->AddRef();
 
 			break;
 		}

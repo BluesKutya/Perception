@@ -37,6 +37,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "D3DProxyDevice.h"
 #include "ShaderModificationRepository.h"
 #include <cBase.h>
+#include "cShader.h"
 
 class D3DProxyDevice;
 class ShaderModificationRepository;
@@ -45,7 +46,7 @@ class ShaderModificationRepository;
 *  Direct 3D proxy pixel shader class.
 *  Overwrites BaseDirect3DPixelShader9 and handles modified constants.
 */
-class D3D9ProxyPixelShader : public cBase<IDirect3DPixelShader9>
+class D3D9ProxyPixelShader : public cBase<IDirect3DPixelShader9> , public cShader
 {
 public:	
 	D3D9ProxyPixelShader(IDirect3DPixelShader9* pActualPixelShader, D3DProxyDevice* pOwningDevice, ShaderModificationRepository* pModLoader);

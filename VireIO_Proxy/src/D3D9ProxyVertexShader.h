@@ -38,12 +38,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "D3DProxyDevice.h"
 #include "ShaderModificationRepository.h"
 #include <cBase.h>
+#include "cShader.h"
 
 /**
 *  Direct 3D proxy vertex shader class.
 *  Overwrites BaseDirect3DVertexShader9 and handles modified constants.
 */
-class D3D9ProxyVertexShader : public cBase<IDirect3DVertexShader9>
+class D3D9ProxyVertexShader : public cBase<IDirect3DVertexShader9> , public cShader
 {
 public:	
 	D3D9ProxyVertexShader(IDirect3DVertexShader9* pActualVertexShader, D3DProxyDevice* pOwningDevice, ShaderModificationRepository* pModLoader);
@@ -51,14 +52,7 @@ public:
 	/*** IDirect3DVertexShader9 methods ***/
 	HRESULT WINAPI GetFunction(void *pDate, UINT *pSizeOfData);
 
-	/**
-	* Modified shader constants.
-	* <StartRegister, StereoShaderConstant<>>
-	* @see StereoShaderConstant
-	***/
+
 	std::map<UINT, StereoShaderConstant<>> m_modifiedConstants;
-	/**
-	* True if viewport should be squished (seen as GUI) if this shader is set.
-	***/
 	bool m_bSquishViewport;
 };

@@ -44,6 +44,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "DirectInput.h"
 #include <cConfig.h>
 #include "cMenu.h"
+#include "cShader.h"
 
 #define _SAFE_RELEASE(x) if(x) { x->Release(); x = NULL; } 
 // Define SHOW_CALLS to have each method output a debug string when it is invoked
@@ -388,6 +389,21 @@ public:
 	};
 	FPS_TYPE show_fps;
 
+
+
+	D3D9ProxyPixelShader*  currentPS;
+	D3D9ProxyVertexShader* currentVS;
+	
+	QList<cShader*>        shaders;
+	cMenuItem*             shadersMenu;
+	cMenuItem*             rulesMenu;
+	bool                   showUnusedShaders;
+	bool                   showPixelShaders;
+	
+	bool isDrawHide  ( );
+
+
+
 	/** Whether the calibrate tracker message is to be shown */
 	bool calibrate_tracker;
 
@@ -404,14 +420,7 @@ public:
 	* Currently not used WorldViewTransform matrix.
 	**/
 	D3DXMATRIX* m_pCurrentMatViewTransform;
-	/**
-	* Active stored proxy pixel shader.
-	**/
-	D3D9ProxyPixelShader* m_pActivePixelShader;
-	/**
-	* Active stored proxy vertex shader.
-	**/
-	D3D9ProxyVertexShader* m_pActiveVertexShader;
+
 	/**
 	* Proxy state block to capture various states.
 	**/

@@ -71,9 +71,6 @@
     <ClCompile Include="..\src\D3DProxyDeviceEgo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\DataGatherer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\DirectInput.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -158,6 +155,9 @@
     <ClCompile Include="..\src\cMenu.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\cShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\D3D9ProxyCubeTexture.h">
@@ -212,9 +212,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\D3DProxyDeviceEgo.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\DataGatherer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\DirectInput.h">
@@ -334,9 +331,6 @@
     <ClInclude Include="..\..\common\pugixml.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\common\cBase.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\common\cBaseTexture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -348,6 +342,9 @@
     </ClInclude>
     <ClInclude Include="..\src\cMenu.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\cShader.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

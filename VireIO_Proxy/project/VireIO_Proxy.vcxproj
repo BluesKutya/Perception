@@ -45,7 +45,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>dbghelp.lib;psapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>dbghelp.lib;psapi.lib;d3dx9.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>del "$(TargetPath)"</Command>
@@ -66,6 +66,7 @@
     <ClCompile Include="..\..\common\cTracker.cpp" />
     <ClCompile Include="..\..\common\pugixml.cpp" />
     <ClCompile Include="..\src\cMenu.cpp" />
+    <ClCompile Include="..\src\cShader.cpp" />
     <ClCompile Include="..\src\D3D9ProxyCubeTexture.cpp" />
     <ClCompile Include="..\src\D3D9ProxyDirect3D.cpp" />
     <ClCompile Include="..\src\D3D9ProxyIndexBuffer.cpp" />
@@ -84,7 +85,6 @@
     <ClCompile Include="..\src\D3DProxyDeviceAdv.cpp" />
     <ClCompile Include="..\src\D3DProxyDeviceDebug.cpp" />
     <ClCompile Include="..\src\D3DProxyDeviceEgo.cpp" />
-    <ClCompile Include="..\src\DataGatherer.cpp" />
     <ClCompile Include="..\src\DirectInput.cpp" />
     <ClCompile Include="..\src\GameHandler.cpp" />
     <ClCompile Include="..\src\Hijack\hijack_hook.cpp" />
@@ -109,7 +109,6 @@
     <ClCompile Include="..\src\Vireio.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\common\cBase.h" />
     <ClInclude Include="..\..\common\cBaseTexture.h" />
     <ClInclude Include="..\..\common\cConfig.h" />
     <ClInclude Include="..\..\common\cPropsFile.h" />
@@ -118,6 +117,7 @@
     <ClInclude Include="..\..\common\pugixml.hpp" />
     <ClInclude Include="..\..\common\VireIO.h" />
     <ClInclude Include="..\src\cMenu.h" />
+    <ClInclude Include="..\src\cShader.h" />
     <ClInclude Include="..\src\D3D9ProxyCubeTexture.h" />
     <ClInclude Include="..\src\D3D9ProxyDirect3D.h" />
     <ClInclude Include="..\src\D3D9ProxyIndexBuffer.h" />
@@ -136,7 +136,6 @@
     <ClInclude Include="..\src\D3DProxyDeviceAdv.h" />
     <ClInclude Include="..\src\D3DProxyDeviceDebug.h" />
     <ClInclude Include="..\src\D3DProxyDeviceEgo.h" />
-    <ClInclude Include="..\src\DataGatherer.h" />
     <ClInclude Include="..\src\DirectInput.h" />
     <ClInclude Include="..\src\GameHandler.h" />
     <ClInclude Include="..\src\InputControls.h" />

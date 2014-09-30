@@ -1,33 +1,3 @@
-/********************************************************************
-Vireio Perception: Open-Source Stereoscopic 3D Driver
-Copyright (C) 2012 Andres Hernandez
-
-File <D3DProxyDevice.cpp> and
-Class <D3DProxyDevice> :
-Copyright (C) 2012 Andres Hernandez
-Modifications Copyright (C) 2013 Chris Drain
-
-Vireio Perception Version History:
-v1.0.0 2012 by Andres Hernandez
-v1.0.X 2013 by John Hicks, Neil Schneider
-v1.1.x 2013 by Primary Coding Author: Chris Drain
-Team Support: John Hicks, Phil Larkson, Neil Schneider
-v2.0.x 2013 by Denis Reischl, Neil Schneider, Joshua Brown
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Lesser General Public License for more details.
-
-You should have received a copy of the GNU Lesser General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-********************************************************************/
-
 #include "D3DProxyDevice.h"
 #include "D3D9ProxySurface.h"
 #include "D3D9ProxySwapChain.h"
@@ -56,14 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <comdef.h>
 #include <tchar.h>
 #include <cTracker.h>
-
-#ifdef _DEBUG
-#include "DxErr.h"
-#endif
-
-#include "Version.h"
-
-#pragma comment(lib, "d3dx9.lib")
+#include <DxErr.h>
 
 #define SMALL_FLOAT 0.001f
 #define	SLIGHTLY_LESS_THAN_ONE 0.999f
@@ -130,8 +93,6 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	m_spManagedShaderRegisters = std::make_shared<ShaderRegisters>(MaxPixelShaderConst, capabilities.MaxVertexShaderConst, pDevice);	
 	m_pActiveStereoDepthStencil = NULL;
 	m_pActiveIndicies = NULL;
-	m_pActivePixelShader = NULL;
-	m_pActiveVertexShader = NULL;
 	m_pActiveVertexDeclaration = NULL;
 	m_bActiveViewportIsDefault = true;
 	m_bViewportIsSquished = false;
@@ -140,6 +101,18 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	m_bInBeginEndStateBlock = false;
 	m_pCapturingStateTo = NULL;
 	m_isFirstBeginSceneOfFrame = true;
+
+
+	currentVS         = 0;
+	currentPS         = 0;
+	showUnusedShaders = false;
+	showPixelShaders  = false;
+
+
+
+
+
+
 
 	InitBrassa();
 	//Create Direct Input Mouse Device
@@ -176,9 +149,8 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 
 	cMenuItem* i;
 	cMenuItem* m;
-
-
 	/*
+
 	m = menu.root.addSubmenu( "Stereoscopic 3D calibration" );
 	m->showCalibrator = true;
 	
@@ -345,9 +317,622 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	i->callbackValueChanged = [this](){
 		SaveConfiguration();
 	};
-
 	*/
+
+
+	if( config.shaderAnalyzer ){
+
+		m = menu.root.addSubmenu( "Shader analyzer" );
+
+		i = m->addCheckbox( "Use transposed rules"          , &config.shaderAnalyzerTranspose       );
+
+		i = m->addCheckbox( "Detect use of transposed rules" , &config.shaderAnalyzerDetectTranspose );
+
+		shadersMenu = m->addSubmenu( "Shader list" );
+
+		shadersMenu->addCheckbox( "Show unused shaders" , &showUnusedShaders );
+		shadersMenu->addCheckbox( "Show pixel  shaders" , &showPixelShaders );
+	}
+	
+	
+	/*
+	i = m->addAction( "Create new shader rule" );
+	i->callbackOpenSubmenu = [this](){
+		GetCurrentShaderRules(true);
+		menu.show = false;
+	};
+
+	rulesMenu = m->addSubmenu( "Change current shader rules" );
+	rulesMenu->callbackOpenSubmenu = [this](){
+		GetCurrentShaderRules(false);
+	};
+
+
+
+	i = m->addSubmenu( "Save rules shaders" );
+	i->callbackOpenSubmenu = [this](){
+		saveShaderRules();
+		menu.show = false;
+	};*/
+
+
 }
+
+
+
+
+
+
+
+
+
+
+
+bool D3DProxyDevice::isDrawHide( ){
+	return config.shaderAnalyzer && ((currentVS && currentVS->hide) || (currentPS && currentPS->hide));
+}
+
+
+
+
+
+/*
+void DataGatherer::UpdateRuleDisplay( ShaderConstant* c ){
+	static int dummy;
+	
+	if( !c->nodeCreated ){
+	
+		std::string s;
+
+		c->applyRule = m_pGameHandler->GetShaderModificationRepository()->ConstantHasRule( c->name.toStdString() , s , c->ruleOperation , c->ruleTranspose );
+
+		if( c->applyRule ){
+			c->ruleName = QString::fromStdString( s );
+
+			c->item->addText    ( "Rule name"      , &c->ruleName )->readOnly = true;;
+			
+			c->item->addCheckbox( "Rule transpose" , &c->ruleTranspose )->callbackValueChanged = [=](){
+				if( c->applyRule ){
+				}
+			};
+
+			c->item->addSelect  ( "Rule operation" , &dummy , QStringList()<<"!"<<"$#$" );
+
+			c->nodeCreated = true;
+		}
+
+		
+
+		//c->item->addSelect( "Rule" , (int*)&c->ruleOperation 
+
+
+	}
+
+				/*mi = n->item->addCheckbox( "Apply rule" , &n->applyRule );
+				mi->callbackValueChanged = [=](){
+					if( n->applyRule ){
+						bool transpose = config.shaderAnalyzerTranspose;
+						if( n->desc.Class == D3DXPARAMETER_CLASS::D3DXPC_VECTOR ){
+							transpose = false;
+						}
+						addRule( n->name.toStdString() , true , n->desc.RegisterIndex , n->desc.Class , 1 , transpose );
+					}else{
+						deleteRule( n->name.toStdString() );
+					}
+				};*
+
+
+				//n->item->addSelect  ( "Rule "      , &n->haveRule );
+
+}
+*/
+
+
+
+
+/*
+
+
+void DataGatherer::BRASSA_ChangeRules()
+{
+	menuHelperRect.left = 0;
+	menuHelperRect.top = 0;
+
+	UINT menuEntryCount = 2;
+	UINT constantIndex = 0;
+	std::vector<std::string> menuEntries;
+	std::vector<bool> menuColor;
+	std::vector<DWORD> menuID;
+	// loop through relevant vertex shader constants
+	auto itShaderConstants = m_relevantVSConstantNames.begin();
+	while (itShaderConstants != m_relevantVSConstantNames.end())
+	{
+		menuColor.push_back(itShaderConstants->hasRule);
+		menuID.push_back(constantIndex);
+		menuEntries.push_back(itShaderConstants->name);
+		if (itShaderConstants->nodeOpen)
+		{
+			// output the class
+			menuColor.push_back(itShaderConstants->hasRule);
+			menuID.push_back(constantIndex+(1<<31));
+			// output shader constant + index 
+			switch(itShaderConstants->desc.Class)
+			{
+			case D3DXPC_VECTOR:
+				menuEntries.push_back("  D3DXPC_VECTOR");
+				break;
+			case D3DXPC_MATRIX_ROWS:
+				menuEntries.push_back("  D3DXPC_MATRIX_ROWS");
+				break;
+			case D3DXPC_MATRIX_COLUMNS:
+				menuEntries.push_back("  D3DXPC_MATRIX_COLUMNS");
+				break;
+			}
+			menuEntryCount++;
+
+			// output the class
+			menuColor.push_back(itShaderConstants->hasRule);
+			menuID.push_back(constantIndex+(1<<30));
+			if (itShaderConstants->hasRule)
+				menuEntries.push_back("  "+itShaderConstants->ruleName);
+			else
+				menuEntries.push_back("  No Rule assigned");
+			menuEntryCount++;
+
+			// output wether transposed or not
+			if ((itShaderConstants->hasRule) && (itShaderConstants->desc.Class != D3DXPC_VECTOR))
+			{
+				menuColor.push_back(itShaderConstants->hasRule);
+				menuID.push_back(constantIndex+(1<<29));
+				if (itShaderConstants->isTransposed)
+					menuEntries.push_back("  Transposed");
+				else
+					menuEntries.push_back("  Non-Transposed");
+				menuEntryCount++;
+			}
+		}
+
+		constantIndex++;
+		menuEntryCount++;
+		++itShaderConstants;
+	}
+
+
+	if ((controls.Key_Down(VK_RETURN) || controls.Key_Down(VK_RSHIFT) || (controls.xButtonsStatus[0x0c])) && (menuVelocity == D3DXVECTOR2(0.0f, 0.0f)))
+	{
+		// switch shader rule node
+		if ((entryID >= 0) && (entryID < menuEntryCount-2) && (menuEntryCount>2))
+		{
+			// constant node entry ?
+			if ((menuID[entryID] & (1<<31)) == (1<<31))
+			{
+				// no influence on class node entry
+			}
+			else if ((menuID[entryID] & (1<<30)) == (1<<30)) // add/delete rule
+			{
+				// no rule present, so add
+				if (!m_relevantVSConstantNames[menuID[entryID]].hasRule)
+				{
+					auto itShaderConstants = m_relevantVSConstants.begin();
+					while (itShaderConstants != m_relevantVSConstants.end())
+					{
+						// constant name in menu entries already present
+						if (itShaderConstants->name.compare(m_relevantVSConstantNames[menuID[entryID]].name) == 0)
+						{
+							// never assign "transposed" to vector
+							if (itShaderConstants->desc.Class == D3DXPARAMETER_CLASS::D3DXPC_VECTOR)
+								
+							else
+								addRule(itShaderConstants->name, true, itShaderConstants->desc.RegisterIndex, itShaderConstants->desc.Class, 1, m_bTransposedRules);
+							itShaderConstants->hasRule = true;
+
+							// set the menu output accordingly
+							auto itShaderConstants1 = m_relevantVSConstantNames.begin();
+							while (itShaderConstants1 != m_relevantVSConstantNames.end())
+							{
+								// set rule bool for all relevant constant names
+								if (itShaderConstants1->name.compare(m_relevantVSConstantNames[menuID[entryID]].name) == 0)
+								{
+									UINT operation;
+									itShaderConstants1->hasRule = m_pGameHandler->GetShaderModificationRepository()->ConstantHasRule(itShaderConstants1->name, itShaderConstants1->ruleName, operation, itShaderConstants1->isTransposed);
+								}
+								++itShaderConstants1;
+							}
+						}
+
+						++itShaderConstants;
+					}
+				}
+				else // rule present, so delete
+				{
+					deleteRule(m_relevantVSConstantNames[menuID[entryID]].name);
+
+					// set the menu output accordingly
+					auto itShaderConstants1 = m_relevantVSConstantNames.begin();
+					while (itShaderConstants1 != m_relevantVSConstantNames.end())
+					{
+						// set rule bool for all relevant constant names
+						if (itShaderConstants1->name.compare(m_relevantVSConstantNames[menuID[entryID]].name) == 0)
+						{
+							UINT operation;
+							itShaderConstants1->hasRule = m_pGameHandler->GetShaderModificationRepository()->ConstantHasRule(itShaderConstants1->name, itShaderConstants1->ruleName, operation, itShaderConstants1->isTransposed);
+						}
+						++itShaderConstants1;
+					}
+				}
+			}
+			else if ((menuID[entryID] & (1<<29)) == (1<<29))
+			{
+				bool newTrans = !m_relevantVSConstantNames[menuID[entryID]].isTransposed;
+				// transposed or non-transposed
+				auto itShaderConstants = m_relevantVSConstants.begin();
+				while (itShaderConstants != m_relevantVSConstants.end())
+				{
+					// constant name in menu entries already present
+					if (itShaderConstants->name.compare(m_relevantVSConstantNames[menuID[entryID]].name) == 0)
+					{
+						// get the operation id
+						UINT operation;
+						m_pGameHandler->GetShaderModificationRepository()->ConstantHasRule(itShaderConstants->name, itShaderConstants->ruleName, operation, itShaderConstants->isTransposed);
+						modifyRule(itShaderConstants->name, operation, newTrans);
+
+						// set the menu output accordingly
+						auto itShaderConstants1 = m_relevantVSConstantNames.begin();
+						while (itShaderConstants1 != m_relevantVSConstantNames.end())
+						{
+							// set rule bool for all relevant constant names
+							if (itShaderConstants1->name.compare(m_relevantVSConstantNames[menuID[entryID]].name) == 0)
+							{
+								itShaderConstants1->hasRule = m_pGameHandler->GetShaderModificationRepository()->ConstantHasRule(itShaderConstants1->name, itShaderConstants1->ruleName, operation, itShaderConstants1->isTransposed);
+							}
+							++itShaderConstants1;
+						}
+					}
+
+					itShaderConstants++;
+				}
+			}
+			else
+			{
+				// open or close node
+				m_relevantVSConstantNames[menuID[entryID]].nodeOpen = !m_relevantVSConstantNames[menuID[entryID]].nodeOpen;
+
+				auto itShaderConstants = m_relevantVSConstants.begin();
+				while (itShaderConstants != m_relevantVSConstants.end())
+				{
+					// constant name in menu entries already present
+					if (itShaderConstants->name.compare(m_relevantVSConstantNames[menuID[entryID]].name) == 0)
+					{
+						// show blinking if shader is drawn
+						if (m_relevantVSConstantNames[menuID[entryID]].nodeOpen)
+						{
+							if (std::find(m_excludedVShaders.begin(), m_excludedVShaders.end(), itShaderConstants->hash) == m_excludedVShaders.end()) {
+								m_excludedVShaders.push_back(itShaderConstants->hash);
+							}
+						}
+						else
+						{
+							// erase all entries for that hash
+							m_excludedVShaders.erase(std::remove(m_excludedVShaders.begin(), m_excludedVShaders.end(), itShaderConstants->hash), m_excludedVShaders.end()); 
+						}
+					}
+					++itShaderConstants;
+				}
+			}
+
+			menuVelocity.x+=2.0f;
+		}
+		// back to main menu
+		if (entryID == menuEntryCount-2)
+		{
+			BRASSA_mode = BRASSA_Modes::MAINMENU;
+			menuVelocity.x+=2.0f;
+		}
+		// back to game
+		if (entryID == menuEntryCount-1)
+		{
+			BRASSA_mode = BRASSA_Modes::INACTIVE;
+		}
+	}
+
+	if ((controls.Key_Down(VK_LEFT) || controls.Key_Down(0x4A) || (controls.xInputState.Gamepad.sThumbLX<-8192)) && (menuVelocity == D3DXVECTOR2(0.0f, 0.0f)))
+	{
+		// switch shader rule node
+		if ((entryID >= 0) && (entryID < menuEntryCount-2) && (menuEntryCount>2))
+		{
+			if ((menuID[entryID] & (1<<30)) == (1<<30)) // rule node entry
+			{
+				// rule present, so modify
+				if (m_relevantVSConstantNames[menuID[entryID]].hasRule)
+				{
+					// get the operation id
+					UINT operation;
+					m_pGameHandler->GetShaderModificationRepository()->ConstantHasRule(m_relevantVSConstantNames[menuID[entryID]].name, m_relevantVSConstantNames[menuID[entryID]].ruleName, operation, m_relevantVSConstantNames[menuID[entryID]].isTransposed);
+					if (operation > 0)
+						operation--;
+
+					auto itShaderConstants = m_relevantVSConstants.begin();
+					while (itShaderConstants != m_relevantVSConstants.end())
+					{
+						// constant name in menu entries already present
+						if (itShaderConstants->name.compare(m_relevantVSConstantNames[menuID[entryID]].name) == 0)
+						{
+							modifyRule(itShaderConstants->name, operation, itShaderConstants->isTransposed);
+
+							// set the menu output accordingly
+							auto itShaderConstants1 = m_relevantVSConstantNames.begin();
+							while (itShaderConstants1 != m_relevantVSConstantNames.end())
+							{
+								// set rule bool for all relevant constant names
+								if (itShaderConstants1->name.compare(m_relevantVSConstantNames[menuID[entryID]].name) == 0)
+								{
+									itShaderConstants1->hasRule = m_pGameHandler->GetShaderModificationRepository()->ConstantHasRule(itShaderConstants1->name, itShaderConstants1->ruleName, operation, itShaderConstants1->isTransposed);
+								}
+								++itShaderConstants1;
+							}
+						}
+
+						itShaderConstants++;
+					}
+				}
+			}
+		}
+		menuVelocity.x+=2.0f;
+	}
+
+	if ((controls.Key_Down(VK_RIGHT) || controls.Key_Down(0x4C) || (controls.xInputState.Gamepad.sThumbLX>8192)) && (menuVelocity == D3DXVECTOR2(0.0f, 0.0f)))
+	{
+		// switch shader rule node
+		if ((entryID >= 0) && (entryID < menuEntryCount-2) && (menuEntryCount>2))
+		{
+			if ((menuID[entryID] & (1<<30)) == (1<<30)) // rule node entry
+			{
+				// rule present, so modify
+				if (m_relevantVSConstantNames[menuID[entryID]].hasRule)
+				{
+					// get the operation id
+					UINT operation;
+					m_pGameHandler->GetShaderModificationRepository()->ConstantHasRule(m_relevantVSConstantNames[menuID[entryID]].name, m_relevantVSConstantNames[menuID[entryID]].ruleName, operation, m_relevantVSConstantNames[menuID[entryID]].isTransposed);
+					if (m_relevantVSConstantNames[menuID[entryID]].desc.Class == D3DXPARAMETER_CLASS::D3DXPC_VECTOR)
+					{
+						if (operation < (UINT)ShaderConstantModificationFactory::Vec4EyeShiftUnity)
+							operation++;
+					}
+					else
+					{
+						if (operation < (UINT)ShaderConstantModificationFactory::MatConvergenceOffset)
+							operation++;
+					}
+
+					auto itShaderConstants = m_relevantVSConstants.begin();
+					while (itShaderConstants != m_relevantVSConstants.end())
+					{
+						// constant name in menu entries already present
+						if (itShaderConstants->name.compare(m_relevantVSConstantNames[menuID[entryID]].name) == 0)
+						{
+							modifyRule(itShaderConstants->name, operation, itShaderConstants->isTransposed);
+
+							// set the menu output accordingly
+							auto itShaderConstants1 = m_relevantVSConstantNames.begin();
+							while (itShaderConstants1 != m_relevantVSConstantNames.end())
+							{
+								// set rule bool for all relevant constant names
+								if (itShaderConstants1->name.compare(m_relevantVSConstantNames[menuID[entryID]].name) == 0)
+								{
+									itShaderConstants1->hasRule = m_pGameHandler->GetShaderModificationRepository()->ConstantHasRule(itShaderConstants1->name, itShaderConstants1->ruleName, operation, itShaderConstants1->isTransposed);
+								}
+								++itShaderConstants1;
+							}
+						}
+
+						itShaderConstants++;
+					}
+				}
+			}
+		}
+		menuVelocity.x+=2.0f;
+	}
+
+}
+
+
+
+void DataGatherer::Analyze()
+{
+
+	// loop through relevant vertex shader constants
+	auto itShaderConstants = m_relevantVSConstantNames.begin();
+	while (itShaderConstants != m_relevantVSConstantNames.end())
+	{
+		// loop through matrix constant name assumptions
+		for (int i = 0; i < MATRIX_NAMES; i++)
+		{
+			// test if assumption is found in constant name
+			if (strstr(itShaderConstants->name.c_str(), m_wvpMatrixConstantNames[i].c_str()) != 0)
+			{
+				// test for "to-be-avoided" assumptions
+				for (int j = 0; j < AVOID_SUBSTRINGS; j++)
+				{
+					if (strstr(itShaderConstants->name.c_str(), m_wvpMatrixAvoidedSubstrings[j].c_str()) != 0)
+					{
+						// break loop
+						i = MATRIX_NAMES;
+						break;
+					}
+				}
+
+				// still in loop ?
+				if (i < MATRIX_NAMES)
+				{
+					// add this rule !!!!
+					if (addRule(itShaderConstants->name, true, itShaderConstants->desc.RegisterIndex, itShaderConstants->desc.Class, 2, m_bTransposedRules))
+						m_addedVSConstants.push_back(*itShaderConstants);
+
+					// output debug data
+					OutputDebugStringA("---Shader Rule");
+					// output constant name
+					OutputDebugStringA(itShaderConstants->desc.Name);
+					// output shader constant + index 
+					switch(itShaderConstants->desc.Class)
+					{
+					case D3DXPC_VECTOR:
+						OutputDebugStringA("D3DXPC_VECTOR");
+						break;
+					case D3DXPC_MATRIX_ROWS:
+						OutputDebugStringA("D3DXPC_MATRIX_ROWS");
+						break;
+					case D3DXPC_MATRIX_COLUMNS:
+						OutputDebugStringA("D3DXPC_MATRIX_COLUMNS");
+						break;
+					}
+					char buf[32];
+					sprintf_s(buf,"Register Index: %d", itShaderConstants->desc.RegisterIndex);
+					OutputDebugStringA(buf);
+					sprintf_s(buf,"Shader Hash: %u", itShaderConstants->hash);
+					OutputDebugStringA(buf);
+					sprintf_s(buf,"Transposed: %d", m_bTransposedRules);
+					OutputDebugStringA(buf);
+
+					// end loop
+					i = MATRIX_NAMES;
+				}
+			}
+			else
+				if (itShaderConstants->desc.RegisterIndex == 128)
+				{
+					OutputDebugStringA(itShaderConstants->name.c_str());
+					OutputDebugStringA(m_wvpMatrixConstantNames[i].c_str());
+				}
+		}
+
+		++itShaderConstants;
+	}
+
+	// save data
+	saveShaderRules();
+	
+}
+
+
+void DataGatherer::GetCurrentShaderRules(bool allStartRegisters)
+{
+	ShaderModificationRepository* pModRep = m_pGameHandler->GetShaderModificationRepository();
+
+	// clear name vector, loop through constants
+	for( ShaderConstant& c : m_relevantVSConstantNames ){
+		delete c.item;
+	}
+	m_relevantVSConstantNames.clear();
+
+
+	for( ShaderConstant& constant : m_relevantVSConstants ){
+
+		bool namePresent     = false;
+		bool registerPresent = !allStartRegisters;
+
+		for( ShaderConstant& c : m_relevantVSConstantNames ){
+			if( constant.name.compare(c.name) == 0 ){
+				namePresent = true;
+				if( constant.desc.RegisterIndex == c.desc.RegisterIndex ){
+					registerPresent = true;
+				}
+			}
+		}
+
+		if( !namePresent || !registerPresent ){
+			UINT operation = 0;
+
+			if( pModRep ){
+				constant.hasRule = pModRep->ConstantHasRule( constant.name , constant.ruleName , operation , constant.isTransposed );
+			}else{
+				constant.hasRule = false;
+			}
+
+			QString name = QString::fromStdString(constant.name);
+
+			switch( constant.desc.Class ){
+			case D3DXPC_VECTOR:
+				name += " (D3DXPC_VECTOR)";
+				break;
+
+			case D3DXPC_MATRIX_ROWS:
+				name += " (D3DXPC_MATRIX_ROWS)";
+				break;
+
+			case D3DXPC_MATRIX_COLUMNS:
+				name += " (D3DXPC_MATRIX_COLUMNS)";
+				break;
+			}
+
+			constant.applyRule    = false;
+			constant.isTransposed = false;
+			constant.item         = rulesMenu->addSubmenu( name );
+			
+
+			cMenuItem* i;
+
+			if( constant.hasRule && constant.desc.Class != D3DXPARAMETER_CLASS::D3DXPC_VECTOR ){
+				i = constant.item->addCheckbox( "Transposed" , &constant.isTransposed );
+				i->callbackValueChanged = [&](){
+					//UINT operation;
+					//m_pGameHandler->GetShaderModificationRepository()->ConstantHasRule( constant.name, constant.ruleName , operation , constant.isTransposed );
+					//modifyRule( constant.name, operation, constant.isTransposed );
+				};
+			}
+
+			i = constant.item->addCheckbox( "Apply rule" , &constant.applyRule );
+			i->callbackValueChanged = [&](){
+				if( constant.applyRule ){
+					addRule( constant.name , true , constant.desc.RegisterIndex , constant.desc.Class , 1 , constant.isTransposed );
+				}else{
+					deleteRule( constant.name );
+				}
+			};
+
+			m_relevantVSConstantNames.push_back( constant );
+		}
+
+	}
+}
+
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 void D3DProxyDevice::SaveConfiguration(){
 	static char exe_path[MAX_PATH];
@@ -974,6 +1559,13 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , BeginScene )
 
 		// set vertex shader call count to zero
 		m_VertexShaderCount = 0;
+
+		if( config.shaderAnalyzer ){
+			for( cShader* s : shaders ){
+				s->item->visible = (s->used || showUnusedShaders) && (s->vs || showPixelShaders);
+				s->used          = false;
+			}
+		}
 	}
 	else
 	{
@@ -1389,6 +1981,10 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetTexture , DWORD , Stage , ID
 * @see switchDrawingSide()
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawPrimitive , D3DPRIMITIVETYPE , PrimitiveType , UINT , StartVertex , UINT , PrimitiveCount )
+	if( isDrawHide() ){
+		return S_OK;
+	}
+	
 	m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
 
 	HRESULT result;
@@ -1405,6 +2001,10 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawPrimitive , D3DPRIMITIVETYP
 * @see switchDrawingSide()
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawIndexedPrimitive , D3DPRIMITIVETYPE , PrimitiveType , INT , BaseVertexIndex , UINT , MinVertexIndex , UINT , NumVertices , UINT , startIndex , UINT , primCount )
+	if( isDrawHide() ){
+		return S_OK;
+	}
+
 	m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
 
 	HRESULT result;
@@ -1424,6 +2024,10 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawIndexedPrimitive , D3DPRIMI
 * @see switchDrawingSide()
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawPrimitiveUP , D3DPRIMITIVETYPE , PrimitiveType , UINT , PrimitiveCount , CONST void* , pVertexStreamZeroData , UINT , VertexStreamZeroStride )
+	if( isDrawHide() ){
+		return S_OK;
+	}
+
 	m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
 
 	HRESULT result;
@@ -1440,6 +2044,10 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawPrimitiveUP , D3DPRIMITIVET
 * @see switchDrawingSide()
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawIndexedPrimitiveUP , D3DPRIMITIVETYPE , PrimitiveType , UINT , MinVertexIndex , UINT , NumVertices , UINT , PrimitiveCount , CONST void* , pIndexData , D3DFORMAT , IndexDataFormat , CONST void* , pVertexStreamZeroData , UINT , VertexStreamZeroStride )
+	if( isDrawHide() ){
+		return S_OK;
+	}
+
 	m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
 
 	HRESULT result;
@@ -1550,7 +2158,9 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateVertexShader , CONST DWOR
 	HRESULT creationResult = actual->CreateVertexShader(pFunction, &pActualVShader);
 
 	if (SUCCEEDED(creationResult)) {
-		*ppShader = new D3D9ProxyVertexShader(pActualVShader, this, m_pGameHandler->GetShaderModificationRepository());
+		D3D9ProxyVertexShader* shader = new D3D9ProxyVertexShader(pActualVShader, this, m_pGameHandler->GetShaderModificationRepository());
+		*ppShader = shader;
+		shaders += shader;
 	}
 
 	return creationResult;
@@ -1561,45 +2171,53 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateVertexShader , CONST DWOR
 * @see D3D9ProxyVertexShader
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetVertexShader , IDirect3DVertexShader9* , pShader )
-	D3D9ProxyVertexShader* pWrappedVShaderData = static_cast<D3D9ProxyVertexShader*>(pShader);
+	D3D9ProxyVertexShader* shader = static_cast<D3D9ProxyVertexShader*>(pShader);
 
-	// Update actual Vertex shader
 	HRESULT result;
-	if (pWrappedVShaderData)
-		result = actual->SetVertexShader(pWrappedVShaderData->actual);
-	else
+
+	if( shader ){
+		result = actual->SetVertexShader( shader->actual );
+	}else{
 		result = actual->SetVertexShader(NULL);
+	}
 
 	// Update stored proxy Vertex shader
-	if (SUCCEEDED(result)) {
+	if( SUCCEEDED(result) ){
 
 		// If in a Begin-End StateBlock pair update the block state rather than the current proxy device state
 		if (m_pCapturingStateTo) {
-			m_pCapturingStateTo->SelectAndCaptureState(pWrappedVShaderData);
-		}
-		else {
-			if (m_pActiveVertexShader) {
-				m_pActiveVertexShader->Release();
+			m_pCapturingStateTo->SelectAndCaptureState(shader);
+		}else{
+			if (currentVS) {
+				currentVS->Release();
 			}
 
-			m_pActiveVertexShader = pWrappedVShaderData;
-			if (m_pActiveVertexShader) {
-				m_pActiveVertexShader->AddRef();
+			currentVS = shader;
+
+			if (currentVS) {
+				currentVS->AddRef();
 			}
 
-			m_spManagedShaderRegisters->ActiveVertexShaderChanged(m_pActiveVertexShader);
+			m_spManagedShaderRegisters->ActiveVertexShaderChanged( currentVS );
 		}
 	}
 
-	if (pWrappedVShaderData)
-	{
-		if (pWrappedVShaderData->m_bSquishViewport)
+	if( shader ){
+		if( shader->m_bSquishViewport ){
 			SetGUIViewport();
-		else
-		{
-			if (m_bViewportIsSquished)
+		}else{
+			if( m_bViewportIsSquished ){
 				actual->SetViewport(&m_LastViewportSet);
+			}
 			m_bViewportIsSquished = false;
+		}
+
+		if( config.shaderAnalyzer ){
+			shader->used = true;
+
+			if( shader->blink ){
+				shader->hide = ((GetTickCount()%300)>150);
+			}
 		}
 	}
 
@@ -1612,10 +2230,10 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetVertexShader , IDirect3DVert
 * Returns the stored and active proxy vertex shader.
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetVertexShader , IDirect3DVertexShader9** , ppShader )
-	if (!m_pActiveVertexShader)
+	if (!currentVS)
 		return D3DERR_INVALIDCALL;
 
-	*ppShader = m_pActiveVertexShader;
+	*ppShader = currentVS;
 
 	return D3D_OK;
 }
@@ -1627,6 +2245,48 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetVertexShader , IDirect3DVert
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetVertexShaderConstantF , UINT , StartRegister , CONST float* , pConstantData , UINT , Vector4fCount )
 	HRESULT result = D3DERR_INVALIDCALL;
+
+	
+	// Tests if the set constant is a transposed matrix and sets the relevant bool.
+	// Is Matrix transposed ?
+	// Affine transformation matrices have in the last row (0,0,0,1). World and view matrices are 
+	// usually affine, since they are a combination of affine transformations (rotation, scale, 
+	// translation ...).
+	// Perspective projection matrices have in the last column (0,0,1,0) if left-handed and 
+	// (0,0,-1,0) if right-handed.
+	// Orthographic projection matrices have in the last column (0,0,0,1).
+	// If those are transposed you find the entries in the last column/row.
+	if( config.shaderAnalyzer && config.shaderAnalyzerDetectTranspose ){
+		for( cShader* s : shaders ){
+			for( cShaderConstant& c : s->constants ){
+				if( s == currentVS ){
+					if( c.RegisterIndex >= StartRegister  &&
+						c.RegisterIndex < StartRegister + Vector4fCount
+					){
+
+						int i = 0;
+
+						if( c.Class == D3DXPARAMETER_CLASS::D3DXPC_MATRIX_ROWS ){
+							i = 14;
+						}
+
+						if( c.Class == D3DXPARAMETER_CLASS::D3DXPC_MATRIX_COLUMNS ){
+							i = 12;
+						}
+
+						if( i ){
+							D3DXMATRIX matrix = D3DXMATRIX( pConstantData + (c.RegisterIndex-StartRegister)*4*sizeof(float) );
+					
+							if( fabs( fabs(matrix[i]) - 1.0 ) > 0.00001 ){
+								config.shaderAnalyzerTranspose = true;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
 
 	if (m_pCapturingStateTo) {
 		result = m_pCapturingStateTo->SelectAndCaptureStateVSConst(StartRegister, pConstantData, Vector4fCount);
@@ -1794,7 +2454,9 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreatePixelShader , CONST DWORD
 	HRESULT creationResult = actual->CreatePixelShader(pFunction, &pActualPShader);
 
 	if (SUCCEEDED(creationResult)) {
-		*ppShader = new D3D9ProxyPixelShader(pActualPShader, this, m_pGameHandler->GetShaderModificationRepository());
+		D3D9ProxyPixelShader* shader = new D3D9ProxyPixelShader(pActualPShader, this, m_pGameHandler->GetShaderModificationRepository());
+		*ppShader = shader;
+		shaders += shader;
 	}
 
 	return creationResult;
@@ -1805,37 +2467,44 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreatePixelShader , CONST DWORD
 * @see D3D9ProxyStateBlock::SelectAndCaptureState()
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetPixelShader , IDirect3DPixelShader9* , pShader )
-	D3D9ProxyPixelShader* pWrappedPShaderData = static_cast<D3D9ProxyPixelShader*>(pShader);
+	D3D9ProxyPixelShader* shader = static_cast<D3D9ProxyPixelShader*>(pShader);
 
 	// Update actual pixel shader
 	HRESULT result;
-	if (pWrappedPShaderData)
-		result = actual->SetPixelShader(pWrappedPShaderData->actual);
-	else
-	{
+	if( shader ){
+		result = actual->SetPixelShader( shader->actual );
+	}else{
 		result = actual->SetPixelShader(NULL);
 		return result;
 	}
 
 	// Update stored proxy pixel shader
-	if (SUCCEEDED(result)) {
+	if( SUCCEEDED(result) ){
 
 		// If in a Begin-End StateBlock pair update the block state rather than the current proxy device state
 		if (m_pCapturingStateTo) {
-			m_pCapturingStateTo->SelectAndCaptureState(pWrappedPShaderData);
+			m_pCapturingStateTo->SelectAndCaptureState( shader );
+		}else{
+
+			if( currentPS ){
+				currentPS->Release();
+			}
+
+			currentPS = shader;
+
+			if( currentPS ) {
+				currentPS->AddRef();
+			}
+
+			m_spManagedShaderRegisters->ActivePixelShaderChanged( shader );
 		}
-		else {
+	}
 
-			if (m_pActivePixelShader) {
-				m_pActivePixelShader->Release();
-			}
+	if( config.shaderAnalyzer && shader ){
+		shader->used = true;
 
-			m_pActivePixelShader = pWrappedPShaderData;
-			if (m_pActivePixelShader) {
-				m_pActivePixelShader->AddRef();
-			}
-
-			m_spManagedShaderRegisters->ActivePixelShaderChanged(m_pActivePixelShader);
+		if( shader->blink ){
+			shader->hide = ((GetTickCount()%300)>150);
 		}
 	}
 
@@ -1846,10 +2515,10 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetPixelShader , IDirect3DPixel
 * Provides stored pixel shader.
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetPixelShader , IDirect3DPixelShader9** , ppShader )
-	if (!m_pActivePixelShader)
+	if (!currentPS)
 		return D3DERR_INVALIDCALL;
 
-	*ppShader = m_pActivePixelShader;
+	*ppShader = currentPS;
 
 	return D3D_OK;
 }
@@ -2718,32 +3387,11 @@ METHOD_IMPL( void , , D3DProxyDevice , ReleaseEverything )
 	}
 
 
-
-
-	if (m_pActiveStereoDepthStencil) {
-		m_pActiveStereoDepthStencil->Release();
-		m_pActiveStereoDepthStencil = NULL;
-	}
-
-	if (m_pActiveIndicies) {
-		m_pActiveIndicies->Release();
-		m_pActiveIndicies = NULL;
-	}
-
-	if (m_pActivePixelShader) {
-		m_pActivePixelShader->Release();
-		m_pActivePixelShader = NULL;
-	}
-
-	if (m_pActiveVertexShader) {
-		m_pActiveVertexShader->Release();
-		m_pActiveVertexShader = NULL;
-	}
-
-	if (m_pActiveVertexDeclaration) {
-		m_pActiveVertexDeclaration->Release();
-		m_pActiveVertexDeclaration = NULL;
-	}
+	SAFE_RELEASE( m_pActiveStereoDepthStencil )
+	SAFE_RELEASE( m_pActiveIndicies )
+	SAFE_RELEASE( currentPS )
+	SAFE_RELEASE( currentVS )
+	SAFE_RELEASE( m_pActiveVertexDeclaration )
 }
 /**
 * Comparison made against active primary render target.

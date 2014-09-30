@@ -31,7 +31,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 D3D9ProxyPixelShader::D3D9ProxyPixelShader(IDirect3DPixelShader9* pActualPixelShader, D3DProxyDevice *pOwningDevice, ShaderModificationRepository* pModLoader) :
-	cBase( pActualPixelShader , pOwningDevice ) 
+	cBase( pActualPixelShader , pOwningDevice )  ,
+	cShader( pOwningDevice , 0 , pActualPixelShader )
 {
 	if (pModLoader)
 		m_modifiedConstants = pModLoader->GetModifiedConstantsF(pActualPixelShader);
