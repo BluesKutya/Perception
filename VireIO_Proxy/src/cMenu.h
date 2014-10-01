@@ -35,10 +35,10 @@ public:
 	bool visible;
 	bool readOnly;
 
-	std::function<void()> callbackOpenSubmenu;
-	std::function<void()> callbackCloseSubmenu;
-	std::function<void()> callbackValueChanged;
-	std::function<void()> callbackRender;
+	bool internalBool;
+	int  internalInt;
+
+	std::function<void()> callback;
 
 	cMenuItem* addSubmenu ( const QString& name );
 	cMenuItem* addAction  ( const QString& name );
@@ -47,6 +47,7 @@ public:
 	cMenuItem* addCheckbox( const QString& name , bool*    variable , const QString& on_text="true" , const QString& off_text="false" );
 	cMenuItem* addSelect  ( const QString& name , int*     variable , const QStringList& variants );
 	cMenuItem* addText    ( const QString& name , QString* variable );
+	void removeChildren();
 
 	~cMenuItem();
 
@@ -102,6 +103,7 @@ public:
 	void render         ( );
 	void saveHotkeys    ( cMenuItem* item=0 );
 	void showMessage    ( const QString& text );
+	void goToMenu       ( cMenuItem* item=0 );
 
 private:
 	enum{

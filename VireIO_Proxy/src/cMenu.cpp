@@ -169,7 +169,7 @@ cMenuItem* cMenuItem::addSpinner ( const QString& n , float* variable , float st
 
 cMenuItem* cMenuItem::addCheckbox( const QString& n , bool*  variable , const QString& on_text , const QString& off_text ){
 	cMenuItem* i = add( n , CHECKBOX );
-	i->checkVar = variable;
+	i->checkVar = variable ? variable : &i->internalBool;
 	i->checkOn  = on_text;
 	i->checkOff = off_text;
 	return i;
@@ -178,7 +178,7 @@ cMenuItem* cMenuItem::addCheckbox( const QString& n , bool*  variable , const QS
 
 cMenuItem* cMenuItem::addSelect  ( const QString& n , int* v , const QStringList& l ){
 	cMenuItem* i = add( n , SELECT );
-	i->selectVar      = v;
+	i->selectVar      = v ? v : &i->internalInt;
 	i->selectVariants = l;
 	return i;
 }
@@ -202,23 +202,14 @@ QString cMenuItem::path( ){
 void cMenuItem::trigger( float k ){
 	switch( type ){
 	case SUBMENU:
-		if( callbackOpenSubmenu ){
-			callbackOpenSubmenu();
-		}
 		break;
 
 	case ACTION:
-		if( callbackValueChanged ){
-			callbackValueChanged();
-		}
 		break;
 
 	case CHECKBOX:
 		if( !readOnly ){
 			*checkVar = !*checkVar;
-		}
-		if( callbackValueChanged ){
-			callbackValueChanged();
 		}
 		break;
 
@@ -236,10 +227,6 @@ void cMenuItem::trigger( float k ){
 				}
 			}
 		}
-
-		if( callbackValueChanged ){
-			callbackValueChanged();
-		}
 		break;
 
 	case SELECT:
@@ -247,18 +234,34 @@ void cMenuItem::trigger( float k ){
 			(*selectVar) += (int)k;
 
 			if( (*selectVar) < 0 ){
-				(*selectVar) = 0;
+				(*selectVar) = selectVariants.count()-1;
 			}
 
 			if( (*selectVar) >= selectVariants.count() ){
-				(*selectVar) = selectVariants.count() - 1;
+				(*selectVar) = 0;
 			}
 		}
 		break;
 	}
+
+	if( callback ){
+		callback();
+	}
 }
 
 
+
+
+
+
+void cMenuItem::removeChildren( ){
+	selected = 0;
+	QList<cMenuItem*> del = children;
+	for( cMenuItem* i : del ){
+		delete i;
+	}
+	children.clear();
+}
 
 
 
@@ -297,11 +300,14 @@ void cMenu::render( ){
 
 	if( config.showVRMouse ){
 		POINT pt;   
-		GetCursorPos(&pt); 
+		GetCursorPos(&pt);
+		
+		ScreenToClient( device->windowHandle , &pt );
+
 		D3DRECT rec2;	
-		rec2.x1 = (int)-5 + ((pt.x * config.guiSquash) + (((1 - config.guiSquash) / 2) * viewportWidth)); 
+		rec2.x1 = pt.x - 5;
 		rec2.x2 = rec2.x1 + 10; 
-		rec2.y1 = (int)-5 + ((pt.y * config.guiSquash) + (((1 - config.guiSquash) / 2) * viewportHeight)); 
+		rec2.y1 = pt.y - 5;
 		rec2.y2 = rec2.y1 + 10; 	
 		
 		device->Clear( 1 , &rec2 , D3DCLEAR_TARGET , D3DCOLOR_ARGB(255,255,255,255) , 0 , 0 );
@@ -370,9 +376,9 @@ void cMenu::render( ){
 	if( show && !hotkeyState && device->controls.Key_Down( VK_SUBTRACT ) ){
 		newKeyDown = true;
 		if( !prevKeyDown ){
-			if( menu->callbackCloseSubmenu ){
-				menu->callbackCloseSubmenu();
-			}
+			//if( menu->callbackCloseSubmenu ){
+			//	menu->callbackCloseSubmenu();
+			//}
 
 			if( menu->parent ){
 				menu = menu->parent;
@@ -473,7 +479,7 @@ void cMenu::render( ){
 				sel->trigger( k );
 
 			}else
-			if( sel->type == cMenuItem::SELECT ){
+			if( sel->type == cMenuItem::SELECT || sel->type == cMenuItem::CHECKBOX ){
 				if( !prevKeyDown ){
 					sel->trigger( move_x );
 				}
@@ -483,11 +489,11 @@ void cMenu::render( ){
 
 	prevKeyDown = newKeyDown;
 
-	if( show ){
+	/*if( show ){
 		if( menu->callbackRender ){
 			menu->callbackRender();
 		}
-	}
+	}*/
 
 	if( messageText.isEmpty() && !show ){
 		return;

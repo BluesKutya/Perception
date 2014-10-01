@@ -20,9 +20,14 @@ P( int     , streamingPort			, )
 P( QString , streamingCodec			, )
 P( int     , streamingBitrate		, )
 P( bool    , showNotifications		, )
-P( bool    , shaderAnalyzer			, )
-P( bool    , shaderAnalyzerTranspose , )
-P( bool    , shaderAnalyzerDetectTranspose, )
+
+P( bool    , shaderAnalyzer			         , )
+P( bool    , shaderAnalyzerTranspose         , )
+P( bool    , shaderAnalyzerDetectTranspose   , )
+P( bool    , shaderAnalyzerShowUnusedShaders , )
+P( bool    , shaderAnalyzerShowPixelShaders  , )
+
+
 
 C( GAME )
 P( QString , exePath					, )

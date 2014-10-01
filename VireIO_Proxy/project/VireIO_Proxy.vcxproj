@@ -67,6 +67,7 @@
     <ClCompile Include="..\..\common\cTracker.cpp" />
     <ClCompile Include="..\..\common\pugixml.cpp" />
     <ClCompile Include="..\src\cMenu.cpp" />
+    <ClCompile Include="..\src\cRule.cpp" />
     <ClCompile Include="..\src\cShader.cpp" />
     <ClCompile Include="..\src\D3D9ProxyCubeTexture.cpp" />
     <ClCompile Include="..\src\D3D9ProxyDirect3D.cpp" />
@@ -118,6 +119,7 @@
     <ClInclude Include="..\..\common\pugixml.hpp" />
     <ClInclude Include="..\..\common\VireIO.h" />
     <ClInclude Include="..\src\cMenu.h" />
+    <ClInclude Include="..\src\cRule.h" />
     <ClInclude Include="..\src\cShader.h" />
     <ClInclude Include="..\src\D3D9ProxyCubeTexture.h" />
     <ClInclude Include="..\src\D3D9ProxyDirect3D.h" />

@@ -178,6 +178,8 @@ METHOD_IMPL( HRESULT  , WINAPI , D3D9ProxyDirect3D , ProxyCreateDevice , UINT , 
 		*ppReturnedDeviceInterfaceEx = newDev;
 	}
 
+	newDev->windowHandle = hFocusWindow;
+
 	return result;
 }
 

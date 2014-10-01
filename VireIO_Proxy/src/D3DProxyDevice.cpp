@@ -105,11 +105,6 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 
 	currentVS         = 0;
 	currentPS         = 0;
-	showUnusedShaders = false;
-	showPixelShaders  = false;
-
-
-
 
 
 
@@ -147,21 +142,47 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	//"Brown Reischl and Schneider Settings Analyzer (B.R.A.S.S.A.)."
 
 
+
+
 	cMenuItem* i;
 	cMenuItem* m;
 	
+
+	
+	if( config.shaderAnalyzer ){
+		m = menu.root.addSubmenu( "Shader analyzer" );
+
+		rulesMenu =  m->addSubmenu( "Rules" );
+		rulesMenu ->addAction( "Add new rule" )->callback = [this](){
+			cRule* r = new cRule(this);
+			r->operation   = 0;
+			r->transpose   = config.shaderAnalyzerTranspose;
+		};
+		
+		//shadersMenu = m->addSubmenu( "Shaders" );
+		//shadersMenu->callback = [this](){
+		//};
+
+		m->addCheckbox( "Use transposed rules"           , &config.shaderAnalyzerTranspose         );
+		m->addCheckbox( "Detect use of transposed rules" , &config.shaderAnalyzerDetectTranspose   );
+		m->addCheckbox( "Show pixel shaders"             , &config.shaderAnalyzerShowPixelShaders  );
+		m->addCheckbox( "Show unused shaders"            , &config.shaderAnalyzerShowUnusedShaders );
+	}
+	
+
+
 
 	m = menu.root.addSubmenu( "Stereoscopic 3D calibration" );
 	m->showCalibrator = true;
 	
 	i = m->addSpinner( "Separation" , &config.stereoScale , 0.0000001 , 100000 , 0.005 );
-	i->callbackValueChanged = [this](){
+	i->callback = [this](){
 		m_spShaderViewAdjustment->UpdateProjectionMatrices((float)stereoView->viewport.Width/(float)stereoView->viewport.Height);
 		m_spShaderViewAdjustment->ComputeViewTransforms();
 	};
 
 	i = m->addSpinner( "Convergence" , &config.stereoConvergence , -100 , 100 , 0.01 );
-	i->callbackValueChanged = [this](){
+	i->callback = [this](){
 		m_spShaderViewAdjustment->UpdateProjectionMatrices((float)stereoView->viewport.Width/(float)stereoView->viewport.Height);
 		m_spShaderViewAdjustment->ComputeViewTransforms();
 	};
@@ -174,19 +195,19 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	i = m->addCheckbox( "Swap eyes"         , &config.swap_eyes );
 
 	i = m->addSpinner ( "IPD offset" , &config.IPDOffset        , 0.001 );
-	i->callbackValueChanged = [this](){
+	i->callback = [this](){
 		stereoView->PostReset();
 	};
 
 	i = m->addSpinner ( "Distortion scale" , &config.DistortionScale  , 0.01 );
-	i->callbackValueChanged = [this](){
+	i->callback = [this](){
 		stereoView->PostReset();
 	};
 
 	m->addCheckbox( "Chromatic aberration correction" , &config.chromaticAberrationCorrection );
 	
 	i = m->addCheckbox( "VRboost" , &m_bVRBoostToggle );
-	i->callbackValueChanged = [this](){
+	i->callback = [this](){
 		if (hmVRboost!=NULL){
 			m_pVRboost_ReleaseAllMemoryRules();
 			if( tracker ){
@@ -197,7 +218,7 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	
 
 	i = m->addAction ( "Take screenshot" );
-	i->callbackValueChanged = [this](){
+	i->callback = [this](){
 		screenshot = 3;
 		menu.show = false;
 	};
@@ -210,46 +231,51 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	m->addCheckbox( "Gui \"bullet labyrinth\"" , &config.guiBulletLabyrinth  );
 	
 	i = m->addSpinner ( "GUI squash"             , &config.guiSquash  , 0.01 );
-	i->callbackValueChanged = [this](){
+	i->callback = [this](){
 		m_spShaderViewAdjustment->UpdateGui();
 	};
 
 	i = m->addSpinner ( "GUI depth"                , &config.guiDepth     , 0.01 );
-	i->callbackValueChanged = [this](){
+	i->callback = [this](){
 		m_spShaderViewAdjustment->UpdateGui();
 	};
 
 	i = m->addSpinner ( "HUD distance"             , &config.hudDistance  , 0.01 );
-	i->callbackValueChanged = [this](){
+	i->callback = [this](){
 		m_spShaderViewAdjustment->UpdateGui();
 	};
 
 	i = m->addSpinner ( "HUD depth"                , &config.hudDepth     , 0.01 );
-	i->callbackValueChanged = [this](){
+	i->callback = [this](){
 		m_spShaderViewAdjustment->UpdateGui();
 	};
 
 
 
-
-
-	m = menu.root.addSubmenu( "VRBoost values" );
-	m->callbackCloseSubmenu = [this](){
-		BRASSA_UpdateConfigSettings();
+	auto StoreVRBoostValues = [this](){
+		BRASSA_UpdateDeviceSettings();
 	};
 
-	m->addSpinner( "World FOV"                 , VRBoostValue + 24 , 0.01);
-	m->addSpinner( "Player FOV"                , VRBoostValue + 25 , 0.01);
-	m->addSpinner( "Far plane FOV"             , VRBoostValue + 26 , 0.01);
-	m->addSpinner( "Camera translate X"        , VRBoostValue + 27 , 0.01);
-	m->addSpinner( "Camera translate Y"        , VRBoostValue + 28 , 0.01);
-	m->addSpinner( "Camera tanslate Z"         , VRBoostValue + 29 , 0.01);
-	m->addSpinner( "Camera distance"           , VRBoostValue + 30 , 0.01);
-	m->addSpinner( "Camera zoom"               , VRBoostValue + 31 , 0.01);
-	m->addSpinner( "Camera horizon adjustment" , VRBoostValue + 32 , 0.01);
-	m->addSpinner( "Constant value 1"          , VRBoostValue + 33 , 0.01);
-	m->addSpinner( "Constant value 2"          , VRBoostValue + 34 , 0.01);
-	m->addSpinner( "Constant value 2"          , VRBoostValue + 35 , 0.01);
+	m = menu.root.addSubmenu( "VRBoost values" );
+	m->addSpinner( "World FOV"                 , &config.WorldFOV                 , 0.01 )->callback = StoreVRBoostValues;
+	m->addSpinner( "Player FOV"                , &config.PlayerFOV                , 0.01 )->callback = StoreVRBoostValues;
+	m->addSpinner( "Far plane FOV"             , &config.FarPlaneFOV              , 0.01 )->callback = StoreVRBoostValues;
+	m->addSpinner( "Camera translate X"        , &config.CameraTranslateX         , 0.01 )->callback = StoreVRBoostValues;
+	m->addSpinner( "Camera translate Y"        , &config.CameraTranslateY         , 0.01 )->callback = StoreVRBoostValues;
+	m->addSpinner( "Camera tanslate Z"         , &config.CameraTranslateZ         , 0.01 )->callback = StoreVRBoostValues;
+	m->addSpinner( "Camera distance"           , &config.CameraDistance           , 0.01 )->callback = StoreVRBoostValues;
+	m->addSpinner( "Camera zoom"               , &config.CameraZoom               , 0.01 )->callback = StoreVRBoostValues;
+	m->addSpinner( "Camera horizon adjustment" , &config.CameraHorizonAdjustment  , 0.01 )->callback = StoreVRBoostValues;
+	m->addSpinner( "Constant value 1"          , &config.ConstantValue1           , 0.01 )->callback = StoreVRBoostValues;
+	m->addSpinner( "Constant value 2"          , &config.ConstantValue2           , 0.01 )->callback = StoreVRBoostValues;
+	m->addSpinner( "Constant value 2"          , &config.ConstantValue3           , 0.01 )->callback = StoreVRBoostValues;
+
+
+
+
+
+
+
 
 
 
@@ -268,27 +294,15 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 
 
 	i = m->addCheckbox( "Tracker movement" , &config.trackerPositionEnable );
-	i->callbackValueChanged = [this](){
+	i->callback = [this](){
 		if( !config.trackerPositionEnable ){
 			m_spShaderViewAdjustment->UpdatePosition(0.0f, 0.0f, 0.0f);
 		}
 	};
 
-	i = m->addSpinner( "X multiplier" , &config.trackerXMultiplier , 0.00001 );
-	i->callbackValueChanged = [this](){
-		BRASSA_UpdateConfigSettings();
-	};
-
-	i = m->addSpinner( "Y multiplier" , &config.trackerYMultiplier , 0.00001 );
-	i->callbackValueChanged = [this](){
-		BRASSA_UpdateConfigSettings();
-	};
-
-	i = m->addSpinner( "Z multiplier" , &config.trackerZMultiplier , 0.00001 );
-	i->callbackValueChanged = [this](){
-		BRASSA_UpdateConfigSettings();
-	};
-
+	m->addSpinner ( "X multiplier"           , &config.trackerXMultiplier , 0.00001 );
+	m->addSpinner ( "Y multiplier"           , &config.trackerYMultiplier , 0.00001 );
+	m->addSpinner ( "Z multiplier"           , &config.trackerZMultiplier , 0.00001 );
 
 	m->addCheckbox( "Mouse emulation"        , &config.trackerMouseEmulation );
 	m->addSpinner ( "Mouse yaw   multiplier" , &config.trackerMouseYawMultiplier   , 0.05 );
@@ -296,7 +310,7 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 
 
 	i = m->addAction( "Reset view"   );
-	i->callbackValueChanged = [this](){
+	i->callback = [this](){
 		if( tracker ){
 			tracker->reset();
 		}
@@ -307,32 +321,18 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 
 
 	i= menu.root.addAction ( "Restore configuration" );
-	i->callbackValueChanged = [this](){
+	i->callback = [this](){
 		config = configBackup;
 	};
 
 
 
 	i= menu.root.addAction ( "Save configuration" );
-	i->callbackValueChanged = [this](){
+	i->callback = [this](){
 		SaveConfiguration();
 	};
 
 
-	if( config.shaderAnalyzer ){
-
-		m = menu.root.addSubmenu( "Shader analyzer" );
-
-		i = m->addCheckbox( "Use transposed rules"          , &config.shaderAnalyzerTranspose       );
-
-		i = m->addCheckbox( "Detect use of transposed rules" , &config.shaderAnalyzerDetectTranspose );
-
-		shadersMenu = m->addSubmenu( "Shader list" );
-
-		shadersMenu->addCheckbox( "Show unused shaders" , &showUnusedShaders );
-		shadersMenu->addCheckbox( "Show pixel  shaders" , &showPixelShaders );
-	}
-	
 	
 	/*
 	i = m->addAction( "Create new shader rule" );
@@ -354,9 +354,15 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 		menu.show = false;
 	};*/
 
-
+	
 }
 
+
+void D3DProxyDevice::applyAllRules(){
+	for( cShader* s : shaders ){
+		s->applyRules();
+	}
+}
 
 
 
@@ -1560,8 +1566,10 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , BeginScene )
 
 		if( config.shaderAnalyzer ){
 			for( cShader* s : shaders ){
-				s->item->visible = (s->used || showUnusedShaders) && (s->vs || showPixelShaders);
-				s->used          = false;
+				if( s->item ){
+					s->item->visible = (s->used || config.shaderAnalyzerShowUnusedShaders) && (s->vs || config.shaderAnalyzerShowPixelShaders);
+				}
+				s->used = false;
 			}
 		}
 	}
@@ -3204,24 +3212,7 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_UpdateBorder )
 	}
 }
 
-/**
-* Updates the current config based on the current device settings.
-***/
-METHOD_IMPL( void , , D3DProxyDevice , BRASSA_UpdateConfigSettings )
-	config.WorldFOV = VRBoostValue[VRboostAxis::WorldFOV];
-	config.PlayerFOV = VRBoostValue[VRboostAxis::PlayerFOV];
-	config.FarPlaneFOV = VRBoostValue[VRboostAxis::FarPlaneFOV];
-	config.CameraTranslateX = VRBoostValue[VRboostAxis::CameraTranslateX];
-	config.CameraTranslateY = VRBoostValue[VRboostAxis::CameraTranslateY];
-	config.CameraTranslateZ = VRBoostValue[VRboostAxis::CameraTranslateZ];
-	config.CameraDistance = VRBoostValue[VRboostAxis::CameraDistance];
-	config.CameraZoom = VRBoostValue[VRboostAxis::CameraZoom];
-	config.CameraHorizonAdjustment = VRBoostValue[VRboostAxis::CameraHorizonAdjustment];
-	config.ConstantValue1 = VRBoostValue[VRboostAxis::ConstantValue1];
-	config.ConstantValue2 = VRBoostValue[VRboostAxis::ConstantValue2];
-	config.ConstantValue3 = VRBoostValue[VRboostAxis::ConstantValue3];
 
-}
 
 /**
 * Updates all device settings read from the current config.

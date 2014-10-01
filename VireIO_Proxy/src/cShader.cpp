@@ -10,9 +10,9 @@ cShader::cShader( D3DProxyDevice* d , IDirect3DVertexShader9* avs , IDirect3DPix
 	blink  = false;
 	hide   = false;
 	used   = true;
-	item   = 0;
 	vs     = avs;
 	ps     = aps;
+	item   = 0;
 
 	ID3DXConstantTable* table = 0;
 
@@ -27,39 +27,16 @@ cShader::cShader( D3DProxyDevice* d , IDirect3DVertexShader9* avs , IDirect3DPix
 
 	if( vs ){
 		vs->GetFunction( code.data() , &len );
+		name = "VS ";
 	}else{
 		ps->GetFunction( code.data() , &len );	
+		name = "PS ";
 	}
 
 	
-	hash = QCryptographicHash::hash( code , QCryptographicHash::Md5 ).toHex().toUpper();
-	
+	name += QCryptographicHash::hash( code , QCryptographicHash::Md5 ).toHex().toUpper();
+
 	D3DXGetShaderConstantTable( reinterpret_cast<DWORD*>(code.data()) , &table );
-
-
-	if( config.shaderAnalyzer ){
-		item = device->shadersMenu->addSubmenu( QString(vs?"Vertex":"Pixel") + " shader " + hash );
-
-		item->addCheckbox( "Do not draw" , &hide );
-	
-		item->addCheckbox( "Blink" , &blink ); 
-
-		cMenuItem* mi = item->addAction( "Save shader to \"" + hash + ".vs\"" ); 
-		mi->callbackValueChanged = [=](){
-			QFile file( hash + ".vs" );
-			if( file.open( QFile::WriteOnly ) ){
-
-				ID3DXBuffer* buf; 
-				D3DXDisassembleShader( reinterpret_cast<DWORD*>(code.data()) , false , 0 , &buf ); 
-
-				file.write( (char*)buf->GetBufferPointer() , std::max( buf->GetBufferSize()-1 , 0UL ) );
-
-				buf->Release();
-			}
-		};
-	}
-
-
 
 
 	if( table ){
@@ -93,7 +70,7 @@ cShader::cShader( D3DProxyDevice* d , IDirect3DVertexShader9* avs , IDirect3DPix
 
 				switch( desc.Class ){
 				case D3DXPC_VECTOR:
-					typeName = "D3DXPC_VECTOR";
+					typeName = "VECTOR";
 					break;
 
 				case D3DXPC_MATRIX_ROWS:
@@ -113,14 +90,68 @@ cShader::cShader( D3DProxyDevice* d , IDirect3DVertexShader9* avs , IDirect3DPix
 				
 				cShaderConstant* n = &constants.last();
 				*(D3DXCONSTANT_DESC*)n = desc;
-				n->name  = n->Name;
-				n->item  = 0;
-				n->rule  = 0;
+				n->name     = n->Name;
+				n->typeName = typeName;
+				n->item     = 0;
+			}
+		}
+		
+		SAFE_RELEASE(table)
+	}
 
+	applyRules();
+}
+
+
+
+void cShader::applyRules(){
+
+	for( cShaderConstant& c : constants ){
+		c.rules.clear();
+	}
+
+	for( cRule* rule : device->rules ){
+
+		if( !rule->shadersInclude.isEmpty() && !rule->shadersInclude.contains(name) ){
+			continue;
+		}
+
+		if( rule->shadersExclude.contains(name) ){
+			continue;
+		}
+
+		for( cShaderConstant& c : constants ){
+			if( rule->constantNames.contains(c.name) ){//&& rule->constantType==c.typeName ){
+				c.rules += rule;
+				break;
+			}
+		}
+	}
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
 
 				if( config.shaderAnalyzer ){
 					n->item = item->addSubmenu( "Constant \"" + n->name + "\"" );
-					/*
+
+					n->item->addAction( "Add rule" );
+					n->item->addAction( "Add rule for all constants like this" );
+					n->item->addAction( "Create rule" );
+					*
 					n->item->addCheckbox( "Apply rule" , &n->applyRule );
 					n->item->callbackValueChanged = [=](){
 						if( n->applyRule ){
@@ -133,29 +164,29 @@ cShader::cShader( D3DProxyDevice* d , IDirect3DVertexShader9* avs , IDirect3DPix
 							deleteRule( n->name.toStdString() );
 						}
 					};
-					*/
-				}
-			}
-		}
-		
-		SAFE_RELEASE(table)
-	}
-}
+					*
+				}*/
 
+		/*
+	if( config.shaderAnalyzer ){
+		item = device->shadersMenu->addSubmenu( QString(vs?"Vertex":"Pixel") + " shader " + name );
 
-
-/*
-
-
-
-*/
-
-
-
-
+		item->addCheckbox( "Do not draw" , &hide );
 	
-	/*
+		item->addCheckbox( "Blink" , &blink ); 
 
+		cMenuItem* mi = item->addAction( "Save shader to \"" + name + ".vs\"" ); 
+		mi->callbackValueChanged = [=](){
+			QFile file( name + ".vs" );
+			if( file.open( QFile::WriteOnly ) ){
 
+				ID3DXBuffer* buf; 
+				D3DXDisassembleShader( reinterpret_cast<DWORD*>(code.data()) , false , 0 , &buf ); 
 
+				file.write( (char*)buf->GetBufferPointer() , std::max( buf->GetBufferSize()-1 , 0UL ) );
+
+				buf->Release();
+			}
+		};
+	}
 	*/

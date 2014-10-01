@@ -158,6 +158,9 @@
     <ClCompile Include="..\src\cShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\cRule.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\D3D9ProxyCubeTexture.h">
@@ -344,6 +347,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\src\cShader.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\cRule.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

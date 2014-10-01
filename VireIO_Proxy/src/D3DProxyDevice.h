@@ -395,16 +395,13 @@ public:
 	D3D9ProxyVertexShader* currentVS;
 	
 	QList<cShader*>        shaders;
-	QList<cShaderRule*>    shaderRules;
+	QList<cRule*>          rules;
 	cMenuItem*             shadersMenu;
 	cMenuItem*             rulesMenu;
-	cMenuItem*             rulesMenu;
-	bool                   showUnusedShaders;
-	bool                   showPixelShaders;
-	
+	HWND                   windowHandle;
+
 	bool isDrawHide  ( );
-
-
+	void applyAllRules( );
 
 	/** Whether the calibrate tracker message is to be shown */
 	bool calibrate_tracker;
