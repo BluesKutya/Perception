@@ -99,6 +99,49 @@ cTracker* Vireio_Create_Tracker_Oculus();
 
 
 
+class cTimingHelper{
+public:
+	LARGE_INTEGER i1;
+	LARGE_INTEGER i2;
+	const char*   name;
+
+	static inline int& depth(){
+		static int i;
+		return i;
+	}
+
+	cTimingHelper( const char* n ){
+		if( config.logVerbose ){
+			name = n;
+			QueryPerformanceCounter( &i1 );
+
+			for( int c=0 ; c<depth() ; c++ ){
+				printf( " " , c );
+			}
+
+			printf( "Begin %s\n" , name );
+
+			depth()++;
+
+		}
+	}
+
+	~cTimingHelper( ){
+		if( config.logVerbose ){
+			QueryPerformanceCounter( &i2 );
+
+			depth()--;
+			
+			for( int c=0 ; c<depth() ; c++ ){
+				printf( " " , c );
+			}
+
+			printf( "End   %s - %lld\n" , name , i2.QuadPart - i1.QuadPart );
+		}
+	}
+};
+
+
 
 
 #define EXPAND(X) X
@@ -150,7 +193,7 @@ cTracker* Vireio_Create_Tracker_Oculus();
 
 
 //uncomment second to enable VERY verbose output (and comment first)
-#define METHOD_LOG(ret,spec,base,name,...)
+#define METHOD_LOG(ret,spec,base,name,...) cTimingHelper __vireio_timing_helper(#name);
 //#define METHOD_LOG(ret,spec,base,name,...) printf( #base "::" #name "\n" );
 
 

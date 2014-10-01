@@ -34,6 +34,7 @@ cMainWindow::cMainWindow( ){
 	ui.logToConsole    ->setChecked     ( config.logToConsole      );
 	ui.logToFile       ->setChecked     ( config.logToFile         );
 	ui.logHijack       ->setChecked     ( config.logHijack         );
+	ui.logVerbose      ->setChecked     ( config.logVerbose        );
 	ui.pauseOnLaunch   ->setChecked     ( config.pauseOnLaunch     );
 	ui.streamingEnable ->setChecked     ( config.streamingEnable   );
 	ui.streamingAddress->setText        ( config.streamingAddress  );
@@ -41,6 +42,8 @@ cMainWindow::cMainWindow( ){
 	ui.streamingCodec  ->setCurrentText ( config.streamingCodec    );
 	ui.streamingBitrate->setValue       ( config.streamingBitrate  );
 	ui.shaderAnalyzer  ->setChecked     ( config.shaderAnalyzer    );
+	
+	
 
 	LoadGames();
 }
@@ -68,6 +71,7 @@ void cMainWindow::on_saveSettings_clicked(){
 	config.logToConsole      = ui.logToConsole     ->isChecked();
 	config.logToFile         = ui.logToFile        ->isChecked();
 	config.logHijack         = ui.logHijack        ->isChecked();
+	config.logVerbose        = ui.logVerbose       ->isChecked();
 	config.pauseOnLaunch     = ui.pauseOnLaunch    ->isChecked();
 	config.streamingEnable   = ui.streamingEnable  ->isChecked();
 	config.streamingAddress  = ui.streamingAddress ->text();

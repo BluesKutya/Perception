@@ -149,7 +149,7 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 
 	cMenuItem* i;
 	cMenuItem* m;
-	/*
+	
 
 	m = menu.root.addSubmenu( "Stereoscopic 3D calibration" );
 	m->showCalibrator = true;
@@ -317,7 +317,6 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	i->callbackValueChanged = [this](){
 		SaveConfiguration();
 	};
-	*/
 
 
 	if( config.shaderAnalyzer ){
@@ -976,8 +975,7 @@ D3DProxyDevice::~D3DProxyDevice()
 	m_logFile.close();
 #endif
 
-	if(actual)
-		actual->Release();
+	SAFE_RELEASE(actual)
 }
 
 #define IF_GUID(riid,a,b,c,d,e,f,g,h,i,j,k) if ((riid.Data1==a)&&(riid.Data2==b)&&(riid.Data3==c)&&(riid.Data4[0]==d)&&(riid.Data4[1]==e)&&(riid.Data4[2]==f)&&(riid.Data4[3]==g)&&(riid.Data4[4]==h)&&(riid.Data4[5]==i)&&(riid.Data4[6]==j)&&(riid.Data4[7]==k))
