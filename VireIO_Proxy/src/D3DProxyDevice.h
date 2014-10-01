@@ -395,7 +395,9 @@ public:
 	D3D9ProxyVertexShader* currentVS;
 	
 	QList<cShader*>        shaders;
+	QList<cShaderRule*>    shaderRules;
 	cMenuItem*             shadersMenu;
+	cMenuItem*             rulesMenu;
 	cMenuItem*             rulesMenu;
 	bool                   showUnusedShaders;
 	bool                   showPixelShaders;
