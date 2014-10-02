@@ -1,0 +1,379 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Hijack">
+      <UniqueIdentifier>{97b0ffeb-902c-4637-9737-f5b418877d06}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Streaming">
+      <UniqueIdentifier>{794d60fa-d9cf-4096-b26a-3524efb90492}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tracking">
+      <UniqueIdentifier>{bb10da1a-16e6-4ef4-9419-a8829ad6c83d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Proxy">
+      <UniqueIdentifier>{5274dec3-5d96-419a-9caa-9ff23c3f2fd8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Common">
+      <UniqueIdentifier>{4d8c8be7-978f-45f9-a3da-188cccdf40c5}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\Hijack\hijack_launch.cpp">
+      <Filter>Hijack</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Hijack\hijack_list.cpp">
+      <Filter>Hijack</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Hijack\hijack_hook.cpp">
+      <Filter>Hijack</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Proxy\D3D9ProxyIndexBuffer.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Proxy\D3D9ProxyPixelShader.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Proxy\D3D9ProxyQuery.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Proxy\D3D9ProxyStateBlock.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Proxy\D3D9ProxySurface.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Proxy\D3D9ProxySwapChain.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Proxy\D3D9ProxyTexture.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Proxy\D3D9ProxyVertexBuffer.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Proxy\D3D9ProxyVertexDeclaration.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Proxy\D3D9ProxyVertexShader.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Proxy\D3D9ProxyVolume.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Proxy\D3D9ProxyVolumeTexture.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Proxy\D3DProxyDevice.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Proxy\D3DProxyDevice_rules.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Proxy\D3DProxyDeviceAdv.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Proxy\D3DProxyDeviceDebug.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Proxy\D3DProxyDeviceEgo.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Proxy\D3D9ProxyCubeTexture.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Proxy\D3D9ProxyDirect3D.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Streaming\Streamer.cpp">
+      <Filter>Streaming</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Streaming\Streamer-enc-ffmpeg.cpp">
+      <Filter>Streaming</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Streaming\Streamer-net-udp.cpp">
+      <Filter>Streaming</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Tracking\FreeSpaceTracker.cpp">
+      <Filter>Tracking</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Tracking\FreeTrackTracker.cpp">
+      <Filter>Tracking</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Tracking\OculusTracker.cpp">
+      <Filter>Tracking</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Tracking\SharedMemoryTracker.cpp">
+      <Filter>Tracking</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ShaderModificationRepository.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ShaderRegisters.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\StereoBackbuffer.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\StereoView.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ViewAdjustment.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Vireio.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\cConfig.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\cConfig_ovr.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\cMenu.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\cPropsFile.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\cRule.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\cShader.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\cTracker.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\DirectInput.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\GameHandler.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\InputControls.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Main.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\MatrixNoShowModification.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\MurmurHash3.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\pugixml.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\Proxy\D3D9ProxyIndexBuffer.h">
+      <Filter>Proxy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Proxy\D3D9ProxyPixelShader.h">
+      <Filter>Proxy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Proxy\D3D9ProxyQuery.h">
+      <Filter>Proxy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Proxy\D3D9ProxyStateBlock.h">
+      <Filter>Proxy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Proxy\D3D9ProxySurface.h">
+      <Filter>Proxy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Proxy\D3D9ProxySwapChain.h">
+      <Filter>Proxy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Proxy\D3D9ProxyTexture.h">
+      <Filter>Proxy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Proxy\D3D9ProxyVertexBuffer.h">
+      <Filter>Proxy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Proxy\D3D9ProxyVertexDeclaration.h">
+      <Filter>Proxy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Proxy\D3D9ProxyVertexShader.h">
+      <Filter>Proxy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Proxy\D3D9ProxyVolume.h">
+      <Filter>Proxy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Proxy\D3D9ProxyVolumeTexture.h">
+      <Filter>Proxy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Proxy\D3DProxyDevice.h">
+      <Filter>Proxy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Proxy\D3DProxyDeviceAdv.h">
+      <Filter>Proxy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Proxy\D3DProxyDeviceDebug.h">
+      <Filter>Proxy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Proxy\D3DProxyDeviceEgo.h">
+      <Filter>Proxy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Proxy\D3D9ProxyCubeTexture.h">
+      <Filter>Proxy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Proxy\D3D9ProxyDirect3D.h">
+      <Filter>Proxy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Streaming\Streamer.h">
+      <Filter>Streaming</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Streaming\inttypes.h">
+      <Filter>Streaming</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\ShaderConstantModification.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\ShaderConstantModificationFactory.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\ShaderMatrixModification.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\ShaderModificationRepository.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\ShaderRegisters.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\StereoBackbuffer.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\StereoShaderConstant.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\StereoView.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Vector4EyeShiftUnity.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Vector4SimpleTranslate.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Version.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\ViewAdjustment.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\VireIO.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\VRBoostEnums.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\cBase.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\cBaseTexture.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\cConfig.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\cMenu.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\cPropsFile.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\cRule.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\cRuleInfo.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\cShader.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\cTracker.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\cTracker_Udp.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\DirectInput.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\GameHandler.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\InputControls.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\MatrixConvOffsetAdjustment.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\MatrixDoNothing.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\MatrixGatheredOrhoSquash.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\MatrixGuiSquash.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\MatrixHudSlide.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\MatrixHudSquash.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\MatrixIgnoreOrtho.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\MatrixNoRoll.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\MatrixNoShowModification.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\MatrixOrthoSquash.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\MatrixOrthoSquashHud.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\MatrixOrthoSquashShifted.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\MatrixRollOnly.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\MatrixRollOnlyHalf.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\MatrixRollOnlyNegative.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\MatrixSurfaceRefractionTransform.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\MurmurHash3.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\pugiconfig.hpp">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\pugixml.hpp">
+      <Filter>Common</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\src\cConfig.inc">
+      <Filter>Common</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\src\notes.txt">
+      <Filter>Common</Filter>
+    </Text>
+  </ItemGroup>
+</Project>

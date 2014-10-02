@@ -134,11 +134,11 @@ pip-log.txt
 LibOVR
 *.rar
 
-StreamingClientAndroid/bin/*
-StreamingClientAndroid/libs/*
-StreamingClientAndroid/obj/*
+android/bin/*
+android/libs/*
+android/obj/*
 data/games/*
-data/bin/VireIO_Perception.exe
+data/bin/VireIO_GUI.exe
 data/bin/*.pdb
 data/bin/VireIO_Proxy.dll
 data/VRboost_rules/VRboostReferee.exe
