@@ -2,16 +2,11 @@
 #include "D3D9ProxyVertexShader.h"
 
 
-D3D9ProxyVertexShader::D3D9ProxyVertexShader(IDirect3DVertexShader9* pActualVertexShader, D3DProxyDevice *pOwningDevice, ShaderModificationRepository* pModLoader) :
+D3D9ProxyVertexShader::D3D9ProxyVertexShader(IDirect3DVertexShader9* pActualVertexShader, D3DProxyDevice *pOwningDevice) :
 	cBase( pActualVertexShader , pOwningDevice ) ,
 	cShader( pOwningDevice , pActualVertexShader , 0 )
 {
-	if( pModLoader ){
-		m_modifiedConstants = pModLoader->GetModifiedConstantsF(pActualVertexShader);
-		m_bSquishViewport = pModLoader->SquishViewportForShader(pActualVertexShader);
-	}else{
-		m_bSquishViewport = false;
-	}
+	m_bSquishViewport = false;
 }
 
 

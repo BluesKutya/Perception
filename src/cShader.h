@@ -11,9 +11,8 @@ class cShaderConstant : public D3DXCONSTANT_DESC {
 public:
 	QString       name;
 	QString       typeName;
-	QList<cRule*> rules;
 	cMenuItem*    item;
-	float         value[16];
+	bool          isMatrix();
 };
 
 
@@ -25,6 +24,7 @@ public:
 	QByteArray               code;
 	QString                  name;
 	QVector<cShaderConstant> constants;
+	QList<cRule*>            rules;
 	bool                     blink;
 	bool                     hide;
 	bool                     used;

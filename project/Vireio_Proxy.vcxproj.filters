@@ -105,19 +105,10 @@
     <ClCompile Include="..\src\Tracking\SharedMemoryTracker.cpp">
       <Filter>Tracking</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\ShaderModificationRepository.cpp">
-      <Filter>Common</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\ShaderRegisters.cpp">
-      <Filter>Common</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\StereoBackbuffer.cpp">
       <Filter>Common</Filter>
     </ClCompile>
     <ClCompile Include="..\src\StereoView.cpp">
-      <Filter>Common</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\ViewAdjustment.cpp">
       <Filter>Common</Filter>
     </ClCompile>
     <ClCompile Include="..\src\Vireio.cpp">
@@ -147,23 +138,23 @@
     <ClCompile Include="..\src\DirectInput.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\GameHandler.cpp">
-      <Filter>Common</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\InputControls.cpp">
       <Filter>Common</Filter>
     </ClCompile>
     <ClCompile Include="..\src\Main.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\MatrixNoShowModification.cpp">
-      <Filter>Common</Filter>
+    <ClCompile Include="..\src\Proxy\D3DProxyDevice_shaders.cpp">
+      <Filter>Proxy</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\MurmurHash3.cpp">
-      <Filter>Common</Filter>
+    <ClCompile Include="..\src\Proxy\cConstantBuffer.cpp">
+      <Filter>Proxy</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\pugixml.cpp">
-      <Filter>Common</Filter>
+    <ClCompile Include="..\src\Proxy\D3DProxyDevice_view.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\Proxy\D3DProxyDevice_game.cpp">
+      <Filter>Proxy</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -227,21 +218,6 @@
     <ClInclude Include="..\src\Streaming\inttypes.h">
       <Filter>Streaming</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\ShaderConstantModification.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\ShaderConstantModificationFactory.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\ShaderMatrixModification.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\ShaderModificationRepository.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\ShaderRegisters.h">
-      <Filter>Common</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\StereoBackbuffer.h">
       <Filter>Common</Filter>
     </ClInclude>
@@ -251,16 +227,7 @@
     <ClInclude Include="..\src\StereoView.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Vector4EyeShiftUnity.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\Vector4SimpleTranslate.h">
-      <Filter>Common</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\Version.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\ViewAdjustment.h">
       <Filter>Common</Filter>
     </ClInclude>
     <ClInclude Include="..\src\VireIO.h">
@@ -302,68 +269,11 @@
     <ClInclude Include="..\src\DirectInput.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\GameHandler.h">
-      <Filter>Common</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\InputControls.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\MatrixConvOffsetAdjustment.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\MatrixDoNothing.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\MatrixGatheredOrhoSquash.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\MatrixGuiSquash.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\MatrixHudSlide.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\MatrixHudSquash.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\MatrixIgnoreOrtho.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\MatrixNoRoll.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\MatrixNoShowModification.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\MatrixOrthoSquash.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\MatrixOrthoSquashHud.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\MatrixOrthoSquashShifted.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\MatrixRollOnly.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\MatrixRollOnlyHalf.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\MatrixRollOnlyNegative.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\MatrixSurfaceRefractionTransform.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\MurmurHash3.h">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\pugiconfig.hpp">
-      <Filter>Common</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\pugixml.hpp">
-      <Filter>Common</Filter>
+    <ClInclude Include="..\src\Proxy\cConstantBuffer.h">
+      <Filter>Proxy</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

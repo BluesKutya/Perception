@@ -4,6 +4,10 @@
 #include <qtextstream.h>
 
 
+bool cShaderConstant::isMatrix(){
+	return Class != D3DXPC_VECTOR;
+}
+
 cShader::cShader( D3DProxyDevice* d , IDirect3DVertexShader9* avs , IDirect3DPixelShader9* aps ){
 
 	device = d;
@@ -62,23 +66,26 @@ cShader::cShader( D3DProxyDevice* d , IDirect3DVertexShader9* avs , IDirect3DPix
 			for( int i=0 ; i<constantCount ; i++ ){
 				D3DXCONSTANT_DESC& desc = constantDesc[i];
 
+				
+
 				if( desc.RegisterSet != D3DXRS_FLOAT4 ){
 					continue;
 				}
-				
+
+
 				QString typeName;
 
 				switch( desc.Class ){
 				case D3DXPC_VECTOR:
-					typeName = "VECTOR";
+					typeName = "Vector";
 					break;
 
 				case D3DXPC_MATRIX_ROWS:
-					typeName = "D3DXPC_MATRIX_ROWS";
+					typeName = "MatrixR";
 					break;
 
 				case D3DXPC_MATRIX_COLUMNS:
-					typeName = "D3DXPC_MATRIX_COLUMNS";
+					typeName = "MatrixC";
 					break;
 				}
 
@@ -90,7 +97,7 @@ cShader::cShader( D3DProxyDevice* d , IDirect3DVertexShader9* avs , IDirect3DPix
 				
 				cShaderConstant* n = &constants.last();
 				*(D3DXCONSTANT_DESC*)n = desc;
-				n->name     = n->Name;
+				n->name     = n->Name;//QString("r%1 - %2").arg(n->RegisterIndex).arg(n->Name);
 				n->typeName = typeName;
 				n->item     = 0;
 			}
@@ -98,40 +105,7 @@ cShader::cShader( D3DProxyDevice* d , IDirect3DVertexShader9* avs , IDirect3DPix
 		
 		SAFE_RELEASE(table)
 	}
-
-	updateRules();
 }
-
-
-
-void cShader::updateRules(){
-
-	for( cShaderConstant& c : constants ){
-		c.rules.clear();
-	}
-
-	for( cRule* rule : device->rules ){
-
-		if( !rule->shadersInclude.isEmpty() && !rule->shadersInclude.contains(name) ){
-			continue;
-		}
-
-		if( rule->shadersExclude.contains(name) ){
-			continue;
-		}
-
-		for( cShaderConstant& c : constants ){
-			if( rule->constants.contains(c.name) ){//&& rule->constantType==c.typeName ){
-				c.rules += rule;
-				break;
-			}
-		}
-	}
-
-}
-
-
-
 
 
 

@@ -1,6 +1,5 @@
 #include "cRule.h"
 #include "D3DProxyDevice.h"
-#include "ViewAdjustment.h"
 #include <cPropsFile.h>
 
 
@@ -51,291 +50,297 @@ QStringList cRule::availableOperations(){
 }
 
 
-bool cRule::isMatrixOperation( ){
-	return operation > 2;
-}
+
+void cRule::applyTo( cConstantBuffer* buf , cConstantBuffer* bufLeft , cConstantBuffer* bufRight ){
+	int registerCount = isMatrixRule ? 4 : 1;
 
 
-void cRule::apply( float* src , float* dst , vireio::RenderPosition side ){
-	bool            matrixTransform = false;
-	ViewAdjustment* view            = device->m_spShaderViewAdjustment.get();
-	bool            left            = (side == vireio::Left);
-	float           separation      = view->SeparationInWorldUnits();;
-	D3DXMATRIX&     out             = *(D3DXMATRIX*)dst;
-	D3DXMATRIX      in;
+	for( int registerIndex : registerIndexes ){
+
+		float*          ptrData  = buf     ->data( registerIndex , registerCount );
+		float*          ptrLeft  = bufLeft ->data( registerIndex , registerCount );
+		float*          ptrRight = bufRight->data( registerIndex , registerCount );
+
+		bufLeft ->setModified( registerIndex , registerCount );
+		bufRight->setModified( registerIndex , registerCount );
+
+		if( !buf->isModified(registerIndex,registerCount) ){
+			continue;
+		}
+
+		if( !operation ){
+			memcpy( ptrLeft  , ptrData , registerCount * 4 * sizeof(float) );
+			memcpy( ptrRight , ptrData , registerCount * 4 * sizeof(float) );
+			continue;
+		}
+
+		if( !isMatrixRule ){
+			switch( operation ){
+			case 1: //Vector simple translate
+				ptrLeft[0] = ptrData[0] - device->separationInWorldUnits();
+				ptrLeft[1] = ptrData[1];
+				ptrLeft[2] = ptrData[2];
+				ptrLeft[3] = ptrData[3];
+
+				ptrRight[0] = ptrData[0] + device->separationInWorldUnits();
+				ptrRight[1] = ptrData[1];
+				ptrRight[2] = ptrData[2];
+				ptrRight[3] = ptrData[3];
+				break;
+
+			case 2://Vector eye shift (unity)
+				ptrLeft[0]  = ptrData[0] - device->separationInWorldUnits() * 5000;
+				ptrLeft[1]  = ptrData[1];
+				ptrLeft[2]  = ptrData[2];
+				ptrLeft[3]  = ptrData[3];
+
+				ptrRight[0] = ptrData[0] + device->separationInWorldUnits() * 5000;
+				ptrRight[1] = ptrData[1];
+				ptrRight[2] = ptrData[2];
+				ptrRight[3] = ptrData[3];
+				break;
+			}
+			continue;
+		}
+
+
+		bool matrixTransform = false;
+
+
+		D3DXMATRIX      in                       ( ptrData );
+		D3DXMATRIX&     outLeft  = *(D3DXMATRIX*)( ptrLeft );
+		D3DXMATRIX&     outRight = *(D3DXMATRIX*)( ptrRight );
 	
 	
-	if( left ){
-		separation = -separation;
-	}
-
-
-
-	if( operation > 2 && transpose ){
-		D3DXMatrixTranspose( &in , (D3DXMATRIX*)src );
-	}else{
-		in = *(D3DXMATRIX*)src;
-	}
-
-
-
-	switch( operation ){
-
-	case 0:
-		out = *(D3DXMATRIX*)src;
-		return;
-
-	case 1:
-		//Vector simple translate
-		dst[0] = src[0] + separation;
-		dst[1] = src[1];
-		dst[2] = src[2];
-		dst[3] = src[3];
-		break;
-
-	case 2:
-		//Vector eye shift (unity)
-		dst[0] = src[0] + separation * 5000;
-		dst[1] = src[1];
-		dst[2] = src[2];
-		dst[3] = src[3];
-		break;
-
-
-
-	case 3:
-		//Matrix simple translate
-		matrixTransform = true;
-		break;
-
-
-	case 8:
-		//Matrix gathered orthographic squash
-		//fall thru...
-
-	case 4:{
-		//Matrix orthographic squash
-		if( fabs(src[15]-1) > 0.00001 ){
-			matrixTransform = true;
-			break;
-		}
-
-		// add all translation and scale matrix entries 
-		// (for the GUI this should be 3.0f, for the HUD above)
-		float allAbs = abs(in(3, 0)); // transX
-		allAbs += abs(in(3, 1)); // transY
-		allAbs += abs(in(3, 2)); // transZ
-
-		allAbs += abs(in(0, 0)); // scaleX
-		allAbs += abs(in(1, 1)); // scaleY
-		allAbs += abs(in(2, 2)); // scaleZ
-
-		// HUD
-		if( allAbs > 3.0f ){
-			// separation -> distance translation
-			if( left ){
-				in = in * view->LeftHUDMatrix();
-			}else{
-				in = in * view->RightHUDMatrix();
+		/*printf("\n\nin:\n");
+		for( int c=0 ; c<16 ; c++ ){
+			printf("%12.4f " , in[c] );
+			if( (c&3)==3 ){
+				printf("\n");
 			}
-		}else{ // GUI
-			if ( config.guiBulletLabyrinth ){
-				D3DXMatrixTranspose( &in , &in );
-				in = view->BulletLabyrinth() * in;
-				D3DXMatrixTranspose( &in , &in );
-			}
-
-			if( left ){
-				in = in * view->LeftGUIMatrix();
-			}else{
-				in = in * view->RightGUIMatrix();
-			}
-
-		}
-		break;
-		}
+		}*/
 
 
-	case 5:
-		//Matrix hud slide
-		if( left ){
-			out = in * view->LeftHUDMatrix();
-		}else{
-			out = in * view->RightHUDMatrix();
-		}
-		break;
-
-
-	case 6:
-		//Matrix gui squash
-		if( left ){
-			out = in * view->LeftGUIMatrix();
-		}else{
-			out = in * view->RightGUIMatrix();
-		}
-		break;
-
-
-	case 7:{
-		//Matrix surface refraction transform
-		// get gathered matrices
-		D3DXMATRIX temp( left ? view->GatheredMatrixLeft() : view->GatheredMatrixRight() );
-
-		// matrix to be transposed ?
 		if( transpose ){
-			D3DXMatrixTranspose( &temp , &temp );
+			D3DXMatrixTranspose( &in , &in );
 		}
 
-		// use gathered matrices to be scaled and translated
-		out  = temp * scaleUV * translateUV;
 
-		// transpose back
-		if (transpose) {
-			D3DXMatrixTranspose( &temp , &temp );
-		}
+		switch( operation ){
+		case 3: //Matrix simple translate
+			matrixTransform = true;
+			break;
 
-		break;
-		}
+
+		case 8: //Matrix gathered orthographic squash
+			//fall thru...
+
+		case 4:{ //Matrix orthographic squash
+			//if( fabs(in[15]-1) > 0.00001 ){
+				matrixTransform = true;
+				break;
+			//}
+
+		
+
+			// add all translation and scale matrix entries 
+			// (for the GUI this should be 3.0f, for the HUD above)
+			float allAbs = abs(in(3, 0)); // transX
+			allAbs += abs(in(3, 1)); // transY
+			allAbs += abs(in(3, 2)); // transZ
+
+			allAbs += abs(in(0, 0)); // scaleX
+			allAbs += abs(in(1, 1)); // scaleY
+			allAbs += abs(in(2, 2)); // scaleZ
+
+			// HUD
+			if( allAbs > 3.0f ){
+				// separation -> distance translation
+				outLeft  = in * device->viewMatHudLeft;
+				outRight = in * device->viewMatHudRight;
+			}else{ // GUI
+				if ( config.guiBulletLabyrinth ){
+					D3DXMatrixTranspose( &in , &in );
+					in = device->viewMatBulletLabyrinth * in;
+					D3DXMatrixTranspose( &in , &in );
+				}
+
+				outLeft  = in * device->viewMatGuiLeft;
+				outRight = in * device->viewMatGuiRight;
+			}
+			break;
+			}
+
+
+		case 5:	//Matrix hud slide
+			outLeft  = in * device->viewMatHudLeft;
+			outRight = in * device->viewMatHudRight;
+			break;
+
+
+		case 6:	//Matrix gui squash
+			outLeft  = in * device->viewMatGuiLeft;
+			outRight = in * device->viewMatGuiRight;
+			break;
+
+
+		case 7:	//Matrix surface refraction transform
+			// get gathered matrices
+			outLeft  = device->viewMatGatheredLeft;
+			outRight = device->viewMatGatheredRight;
+
+			// matrix to be transposed ?
+			if( transpose ){
+				D3DXMatrixTranspose( &outLeft  , &outLeft  );
+				D3DXMatrixTranspose( &outRight , &outRight );
+			}
+
+			// use gathered matrices to be scaled and translated
+			outLeft  = outLeft  * scaleUV * translateUV;
+			outRight = outRight * scaleUV * translateUV;
+
+			// transpose back
+			if (transpose) {
+				D3DXMatrixTranspose( &outLeft  , &outLeft  );
+				D3DXMatrixTranspose( &outRight , &outRight );
+			}
+
+			break;
 
 
 	
-	case 9:{
-		//Matrix orthographic squash shifted
-		if( fabs(in[15]-1) > 0.00001f ){
-			matrixTransform = true;
-			break;
-		}
-		
-		// add all translation and scale matrix entries 
-		// (for the GUI this should be 3.0f, for the HUD above)
-		float allAbs = abs(in(3, 0)); // transX
-		allAbs += abs(in(3, 1)); // transY
-		allAbs += abs(in(3, 2)); // transZ
-
-		allAbs += abs(in(0, 0)); // scaleX
-		allAbs += abs(in(1, 1)); // scaleY
-		allAbs += abs(in(2, 2)); // scaleZ
-
-		// TODO !! compute these two following matrices in the ViewAdjustment class :
-
-		// HUD
-		if( allAbs > 3.0f ){
-			// separation -> distance translation
-			if( left ){
-				out = in * view->ProjectionInverse() * view->LeftHUD3DDepthShifted() * view->LeftViewTransform() * view->HUDDistance() *  view->Projection();
-			}else{
-				out = in * view->ProjectionInverse() * view->RightHUD3DDepthShifted() * view->RightViewTransform() * view->HUDDistance() * view->Projection();
+		case 9:{
+			//Matrix orthographic squash shifted
+			if( fabs(in[15]-1) > 0.00001f ){
+				matrixTransform = true;
+				break;
 			}
-		}else{ // GUI
-			if( config.guiBulletLabyrinth ){
-				D3DXMATRIX tempMatrix;
-				D3DXMatrixTranspose(&tempMatrix, &in);
-				tempMatrix = view->BulletLabyrinth() * tempMatrix;
-				D3DXMatrixTranspose(&tempMatrix, &tempMatrix);
+		
+			// add all translation and scale matrix entries 
+			// (for the GUI this should be 3.0f, for the HUD above)
+			float allAbs = abs(in(3, 0)); // transX
+			allAbs += abs(in(3, 1)); // transY
+			allAbs += abs(in(3, 2)); // transZ
 
-				if( left ){
-					out = tempMatrix * view->ProjectionInverse() * view->LeftGUI3DDepth() * view->Squash() * view->Projection();
-				}else{
-					out = tempMatrix * view->ProjectionInverse() * view->RightGUI3DDepth() * view->Squash() * view->Projection();
-				}
+			allAbs += abs(in(0, 0)); // scaleX
+			allAbs += abs(in(1, 1)); // scaleY
+			allAbs += abs(in(2, 2)); // scaleZ
+
+			// TODO !! compute these two following matrices in the ViewAdjustment class :
+
+			// HUD
+			if( allAbs > 3.0f ){
+				// separation -> distance translation
+				outLeft  = in * device->viewMatProjectionInv * device->viewMatLeftHud3DDepthShifted  * device->viewMatTransformLeft  * device->viewMatHudDistance * device->viewMatProjection;
+				outRight = in * device->viewMatProjectionInv * device->viewMatRightHud3DDepthShifted * device->viewMatTransformRight * device->viewMatHudDistance * device->viewMatProjection;
+			}else{ // GUI
+				if( config.guiBulletLabyrinth ){
+					D3DXMATRIX tempMatrix;
+					D3DXMatrixTranspose(&tempMatrix, &in);
+					tempMatrix = device->viewMatBulletLabyrinth * tempMatrix;
+					D3DXMatrixTranspose(&tempMatrix, &tempMatrix);
+
+					outLeft  = tempMatrix * device->viewMatProjectionInv * device->viewMatLeftGui3DDepth  * device->viewMatSquash * device->viewMatProjection;
+					outRight = tempMatrix * device->viewMatProjectionInv * device->viewMatRightGui3DDepth * device->viewMatSquash * device->viewMatProjection;
 				
-				// SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
-			}else{
-				// simple squash
-				if( left ){
-					out = in * view->ProjectionInverse() * view->LeftGUI3DDepth() * view->Squash() * view->Projection();
+					// SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
 				}else{
-					out = in * view->ProjectionInverse() * view->RightGUI3DDepth() * view->Squash() * view->Projection();
+					// simple squash
+					outLeft  = in * device->viewMatProjectionInv * device->viewMatLeftGui3DDepth  * device->viewMatSquash * device->viewMatProjection;
+					outRight = in * device->viewMatProjectionInv * device->viewMatRightGui3DDepth * device->viewMatSquash * device->viewMatProjection;
 				}
 			}
-		}
 
-		break;
-		}
-
-
-	case 10:
-		//Matrix orthographic squash hud
-		if( fabs(in[15]-1) > 0.00001f ){
-			matrixTransform = true;
 			break;
-		}
+			}
 
-		if( left ){
-			out = in * view->LeftHUDMatrix();
-		}else{
-			out = in * view->RightHUDMatrix();
-		}
-		break;
 
-	case 11:
-		//Matrix convergence offset
-		if( left ){
-			out = in * view->LeftView();
-		}else{
-			out = in * view->RightView();
-		}
-		break;
+		case 10:
+			//Matrix orthographic squash hud
+			if( fabs(in[15]-1) > 0.00001f ){
+				matrixTransform = true;
+				break;
+			}
 		
-	case 12:
-		//Matrix simple translate ignore ortho
-		if( fabs( in[15] - 1 ) < 0.00001f ){
-			out = *(D3DXMATRIX*)src;
-			return;
+			outLeft  = in * device->viewMatHudLeft;
+			outRight = in * device->viewMatHudRight;
+			break;
+
+		case 11:
+			//Matrix convergence offset
+			outLeft  = in * device->viewMatViewProjLeft;
+			outRight = in * device->viewMatViewProjRight;
+			break;
+		
+		case 12:
+			//Matrix simple translate ignore ortho
+			if( fabs( in[15] - 1 ) < 0.00001f ){
+				outLeft  = in;
+				outRight = in;
+			}else{
+				matrixTransform = true;
+			}
+			break;
+
+		case 13:
+			//Matrix roll only
+			outLeft  = in * device->viewMatProjectionInv * device->viewMatRoll * device->viewMatProjection;
+			outRight = outLeft;
+			break;
+
+		case 14:
+			//Matrix roll only negative
+			outLeft  = in * device->viewMatProjectionInv * device->viewMatRollNegative * device->viewMatProjection;
+			outRight = outLeft;
+			break;
+
+		case 15:
+			//Matrix roll only half
+			outLeft  = in * device->viewMatProjectionInv * device->viewMatRollHalf * device->viewMatProjection;
+			outRight = outLeft;
+			break;
+
+		case 16:
+			//Matrix no roll
+			outLeft  = in * device->viewMatViewProjTransformLeftNoRoll  * device->viewMatProjectionInv * device->viewMatPosition * device->viewMatProjection;
+			outRight = in * device->viewMatViewProjTransformRightNoRoll * device->viewMatProjectionInv * device->viewMatPosition * device->viewMatProjection;
+			break;
+
 		}
-		matrixTransform = true;
-		break;
 
-	case 13:
-		//Matrix roll only
-		out = in * view->ProjectionInverse() * view->RollMatrix() * view->Projection();
-		break;
 
-	case 14:
-		//Matrix roll only negative
-		out = in * view->ProjectionInverse() * view->RollMatrixNegative() * view->Projection();
-		break;
 
-	case 15:
-		//Matrix roll only half
-		out = in * view->ProjectionInverse() * view->RollMatrixHalf() * view->Projection();
-		break;
-
-	case 16:
-		//Matrix no roll
-		if( left ){
-			out = in * view->LeftAdjustmentMatrixNoRoll() * view->ProjectionInverse() * view->PositionMatrix() * view->Projection();
-		}else{
-			out = in * view->RightAdjustmentMatrixNoRoll() * view->ProjectionInverse() * view->PositionMatrix() * view->Projection();
+		if( matrixTransform ){
+			outLeft  = in * device->viewMatViewProjTransformLeft  * device->viewMatProjectionInv * device->viewMatPosition * device->viewMatProjection;
+			outRight = in * device->viewMatViewProjTransformRight * device->viewMatProjectionInv * device->viewMatPosition * device->viewMatProjection;
 		}
-		break;
 
+
+		if( transpose ){
+			D3DXMatrixTranspose( &outLeft , &outLeft );
+			D3DXMatrixTranspose( &outRight , &outRight );
+		}
+
+
+		if( operation == 8 ){
+			device->viewMatGatheredLeft  = outLeft;
+			device->viewMatGatheredRight = outRight;
+		}
+
+		buf->setModified( registerIndex , registerCount );
+	}
+
+	/*
+	printf("\n\nout:\n");
+	for( int c=0 ; c<16 ; c++ ){
+		printf("%12.4f " , out[c] );
+		if( (c&3)==3 ){
+			printf("\n");
+		}
 	}
 
 
-
-	if( operation > 2 && matrixTransform ){
-		if( left ){
-			out = in * view->LeftAdjustmentMatrix()  * view->ProjectionInverse() * view->PositionMatrix() * view->Projection();
-		}else{
-			out = in * view->RightAdjustmentMatrix() * view->ProjectionInverse() * view->PositionMatrix() * view->Projection();
-		}
-
-	}
-
-
-	if( operation > 2 && transpose ){
-		D3DXMatrixTranspose( &out , &out );
-	}
-
-
-	if( operation == 8 ){
-		if( left ){
-			view->matGatheredLeft = out;
-		}else{
-			view->matGatheredRight = out;
-		}
-	}
+	memcpy( dst , &out[0] , 4*4*sizeof(float) );*/
 }
 
 

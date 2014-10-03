@@ -90,12 +90,13 @@ bool cConfig::loadRules( ){
 		}
 
 		cRuleInfo rule;
-		prop.get( rule.name           , "name"           );
-		prop.get( rule.constants      , "constants"      );
-		prop.get( rule.shadersInclude , "shadersInclude" );
-		prop.get( rule.shadersExclude , "shadersExclude" );
-		prop.get( rule.operationName  , "operationName"  );
-		prop.get( rule.transpose      , "transpose"      );
+		prop.get( rule.name             , "name"             );
+		prop.get( rule.constantsInclude , "constantsInclude" );
+		prop.get( rule.shadersInclude   , "shadersInclude"   );
+		prop.get( rule.shadersExclude   , "shadersExclude"   );
+		prop.get( rule.operationName    , "operationName"    );
+		prop.get( rule.isMatrixRule     , "isMatrixRule"     );
+		prop.get( rule.transpose        , "transpose"        );
 
 		rules += rule;
 	}
@@ -115,12 +116,13 @@ bool cConfig::saveRules( ){
 	for( cRuleInfo& rule : rules ){
 		cPropsFile prop;
 
-		prop.set( rule.name           , "name"           );
-		prop.set( rule.constants      , "constants"      );
-		prop.set( rule.shadersInclude , "shadersInclude" );
-		prop.set( rule.shadersExclude , "shadersExclude" );
-		prop.set( rule.operationName  , "operationName"  );
-		prop.set( rule.transpose      , "transpose"      );
+		prop.set( rule.name             , "name"             );
+		prop.set( rule.constantsInclude , "constantsInclude" );
+		prop.set( rule.shadersInclude   , "shadersInclude"   );
+		prop.set( rule.shadersExclude   , "shadersExclude"   );
+		prop.set( rule.operationName    , "operationName"    );
+		prop.set( rule.isMatrixRule     , "isMatrixRule"     );
+		prop.set( rule.transpose        , "transpose"        );
 
 		prop.save( config.getRulesPath() + "/rule " + QString::number(index) + ".ini" );
 
@@ -235,6 +237,9 @@ bool cConfig::loadDevice( ){
 }
 
 
+QString cConfig::getShaderRulesPath(){
+	return vireioDir + "/shader_rules/" + shaderRule;
+}
 
 QString cConfig::getShaderPath(){
 	return vireioDir + "/devices/shaders/" + shader + ".fx";

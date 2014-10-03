@@ -4,10 +4,11 @@
 
 struct cRuleInfo{
 	QString         name;
-	QStringList     constants;
+	QStringList     constantsInclude;
 	QStringList     shadersInclude;
 	QStringList     shadersExclude;
 	QString         operationName;
+	bool            isMatrixRule;
 	bool            transpose;
 };
 

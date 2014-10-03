@@ -40,7 +40,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "D3D9ProxyPixelShader.h"
 #include "D3D9ProxyVertexShader.h"
 #include "D3D9ProxyVertexDeclaration.h"
-#include "StereoShaderConstant.h"
+
 
 class BaseDirect3DStateBlock9;
 class D3DProxyDevice;

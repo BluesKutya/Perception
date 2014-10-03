@@ -242,7 +242,7 @@ HRESULT WINAPI D3D9ProxyStateBlock::Apply()
 		}
 
 
-
+		/*
 		// Shader constants
 		switch (m_eCaptureMode) 
 		{			
@@ -273,7 +273,7 @@ HRESULT WINAPI D3D9ProxyStateBlock::Apply()
 			device->m_spManagedShaderRegisters->SetFromStateBlockData(NULL, &m_storedAllPSRegistersF);
 			break;
 		}
-
+		*/
 
 
 		// Apply stereo indexed states
@@ -679,18 +679,21 @@ void D3D9ProxyStateBlock::CaptureSelectedFromProxyDevice()
 				++itVB;
 			}
 
-
+			/*
 			// Vertex Shader constants
 			m_storedAllVSRegistersF = device->m_spManagedShaderRegisters->GetAllVSConstantRegistersF();
 			// Pixel Shader constants
 			m_storedAllPSRegistersF = device->m_spManagedShaderRegisters->GetAllPSConstantRegistersF();
+			*/
 			break;
 		}
 
 	case Cap_Type_Vertex:
 		{
+			/*
 			// Vertex Shader constants
 			m_storedAllVSRegistersF = device->m_spManagedShaderRegisters->GetAllVSConstantRegistersF();
+			*/
 
 			break;
 		}
@@ -698,7 +701,7 @@ void D3D9ProxyStateBlock::CaptureSelectedFromProxyDevice()
 	case Cap_Type_Pixel:
 		{
 			// Pixel Shader constants
-			m_storedAllPSRegistersF = device->m_spManagedShaderRegisters->GetAllPSConstantRegistersF();
+			//m_storedAllPSRegistersF = device->m_spManagedShaderRegisters->GetAllPSConstantRegistersF();
 			break;
 		}
 
@@ -751,7 +754,7 @@ void D3D9ProxyStateBlock::CaptureSelectedFromProxyDevice()
 			auto itSelectedVertexConstants = m_selectedVertexConstantRegistersF.begin();
 			while (itSelectedVertexConstants != m_selectedVertexConstantRegistersF.end()) {
 
-				device->m_spManagedShaderRegisters->GetVertexShaderConstantF(*itSelectedVertexConstants, currentRegister, 1);
+				//device->m_spManagedShaderRegisters->GetVertexShaderConstantF(*itSelectedVertexConstants, currentRegister, 1);
 
 				m_storedSelectedVSRegistersF.insert(std::pair<UINT, D3DXVECTOR4>(*itSelectedVertexConstants, currentRegister));
 
@@ -762,7 +765,7 @@ void D3D9ProxyStateBlock::CaptureSelectedFromProxyDevice()
 			auto itSelectedPixelConstants = m_selectedPixelConstantRegistersF.begin();
 			while (itSelectedPixelConstants != m_selectedPixelConstantRegistersF.end()) {
 
-				device->m_spManagedShaderRegisters->GetPixelShaderConstantF(*itSelectedPixelConstants, currentRegister, 1);
+				//device->m_spManagedShaderRegisters->GetPixelShaderConstantF(*itSelectedPixelConstants, currentRegister, 1);
 
 				m_storedSelectedPSRegistersF.insert(std::pair<UINT, D3DXVECTOR4>(*itSelectedPixelConstants, currentRegister));
 

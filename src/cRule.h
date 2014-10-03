@@ -1,15 +1,15 @@
 #pragma once
 #include <Vireio.h>
 #include "cRuleInfo.h"
-
+class cConstantBuffer;
 class cShader;
 class cMenuItem;
 class D3DProxyDevice;
 
 class cRule : public cRuleInfo{
 public:
-
-	int             operation;
+	QVector<int> registerIndexes;
+	int          operation;
 
 	D3DProxyDevice* device;
 	cMenuItem*      item;
@@ -23,8 +23,9 @@ public:
 
 	void updateConstantsMenu();
 	void updateShadersMenu  ();
-	void apply              ( float* src , float* dst , vireio::RenderPosition side );
-	bool isMatrixOperation  ( );
+	void applyTo            ( cConstantBuffer* buf , cConstantBuffer* bufLeft , cConstantBuffer* bufRight );
 	bool save               ( const QString& file );
 	bool load               ( const QString& file );
+
+
 };

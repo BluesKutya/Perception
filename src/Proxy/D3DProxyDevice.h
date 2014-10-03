@@ -1,36 +1,4 @@
-/********************************************************************
-Vireio Perception: Open-Source Stereoscopic 3D Driver
-Copyright (C) 2012 Andres Hernandez
-
-File <D3DProxyDevice.h> and
-Class <D3DProxyDevice> :
-Copyright (C) 2012 Andres Hernandez
-Modifications Copyright (C) 2013 Chris Drain
-
-Vireio Perception Version History:
-v1.0.0 2012 by Andres Hernandez
-v1.0.X 2013 by John Hicks, Neil Schneider
-v1.1.x 2013 by Primary Coding Author: Chris Drain
-Team Support: John Hicks, Phil Larkson, Neil Schneider
-v2.0.x 2013 by Denis Reischl, Neil Schneider, Joshua Brown
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Lesser General Public License for more details.
-
-You should have received a copy of the GNU Lesser General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-********************************************************************/
-
-#ifndef D3DPROXYDEVICE_H_INCLUDED
-#define D3DPROXYDEVICE_H_INCLUDED
-
+#pragma once
 #define MAX_VRBOOST_VALUES 256
 #define BRASSA_PIXEL_WIDTH 1920
 #define BRASSA_PIXEL_HEIGHT 1080
@@ -45,22 +13,121 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <cConfig.h>
 #include "cMenu.h"
 #include "cShader.h"
+#include "cConstantBuffer.h"
 
-#define _SAFE_RELEASE(x) if(x) { x->Release(); x = NULL; } 
-// Define SHOW_CALLS to have each method output a debug string when it is invoked
-//#define SHOW_CALLS
+
 class StereoView;
 class D3D9ProxySwapChain;
 class ShaderRegisters;
 class GameHandler;
 
-/**
-* Direct 3D proxy device class. 
-* Basically this class hosts all proxy wrappers accordingly to the methods called by the game.
-*/
-class D3DProxyDevice : public IDirect3DDevice9Ex
-{
+
+class D3DProxyDevice : public IDirect3DDevice9Ex {
 public:
+
+
+
+
+	D3D9ProxyPixelShader*  currentPS;
+	D3D9ProxyVertexShader* currentVS;
+	
+	QList<cShader*>        shaders;
+	cMenuItem*             shadersMenu;
+	HWND                   windowHandle;
+
+	bool isDrawHide    ( );
+	
+
+	cConstantBuffer vsConstantsOriginal;
+	cConstantBuffer vsConstantsLeft;
+	cConstantBuffer vsConstantsRight;
+	cConstantBuffer psConstants;
+
+	QList<cRule*>   rules;
+	cMenuItem*      rulesMenu;
+	cRule*          rulesAdd   ( );
+	void            rulesDelete( cRule* );
+	void            rulesInit  ( );
+	void            rulesFree  ( );
+	void            rulesSave  ( );
+	void            rulesLoad  ( );
+	void            rulesUpdate( );
+	void            rulesApply ( );
+
+	
+
+
+
+
+	float viewProjMinZ;
+	float viewProjMaxZ;
+	float viewProjMinX;
+	float viewProjMaxX;
+	float viewProjMinY;
+	float viewProjMaxY;
+
+	D3DXVECTOR3 viewVecPositionTransform;
+	D3DXVECTOR3 viewVecGameScale;
+	D3DXMATRIX  viewMatPosition;
+	D3DXMATRIX  viewMatProjection;
+	D3DXMATRIX  viewMatProjectionInv;
+	D3DXMATRIX  viewMatProjectLeft;
+	D3DXMATRIX  viewMatProjectRight;
+	D3DXMATRIX  viewMatRoll;
+	D3DXMATRIX  viewMatRollNegative;
+	D3DXMATRIX  viewMatRollHalf;
+	D3DXMATRIX  viewMatTransformLeft;
+	D3DXMATRIX  viewMatTransformRight;
+	D3DXMATRIX  viewMatViewProjLeft;
+	D3DXMATRIX  viewMatViewProjRight;
+	D3DXMATRIX  viewMatViewProjTransformLeft;
+	D3DXMATRIX  viewMatViewProjTransformRight;
+	D3DXMATRIX  viewMatViewProjTransformLeftNoRoll;
+	D3DXMATRIX  viewMatViewProjTransformRightNoRoll;
+	D3DXMATRIX  viewMatGatheredLeft;
+	D3DXMATRIX  viewMatGatheredRight;
+	D3DXMATRIX  viewMatHudLeft;
+	D3DXMATRIX  viewMatHudRight;
+	D3DXMATRIX  viewMatGuiLeft;
+	D3DXMATRIX  viewMatGuiRight;
+	D3DXMATRIX  viewMatSquash;
+	D3DXMATRIX  viewMatHudDistance;
+	D3DXMATRIX  viewMatLeftHud3DDepth;
+	D3DXMATRIX  viewMatRightHud3DDepth;
+	D3DXMATRIX  viewMatLeftHud3DDepthShifted;
+	D3DXMATRIX  viewMatRightHud3DDepthShifted;
+	D3DXMATRIX  viewMatLeftGui3DDepth;
+	D3DXMATRIX  viewMatRightGui3DDepth;
+	D3DXMATRIX  viewMatBulletLabyrinth;
+	
+	void  viewInit( );
+	void  viewUpdateProjectionMatrices( );
+	void  viewComputeTransforms       ( );
+	void  viewUpdateRotation          ( float pitch , float yaw , float roll );
+	void  viewUpdatePosition          ( float pitch , float yaw , float roll , float x , float y , float z );
+	void  viewComputeGui               ( );
+
+
+	float convergenceInWorldUnits( );
+	float separationInWorldUnits ( );
+	float separationIPDAdjustment( );
+
+
+	bool  gameShouldDuplicateRenderTarget(UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality,BOOL Lockable, bool isSwapChainBackBuffer);
+	bool  gameShouldDuplicateDepthStencilSurface(UINT Width,UINT Height,D3DFORMAT Format,D3DMULTISAMPLE_TYPE MultiSample,DWORD MultisampleQuality,BOOL Discard);
+	bool  gameShouldDuplicateTexture(UINT Width,UINT Height,UINT Levels,DWORD Usage,D3DFORMAT Format,D3DPOOL Pool);
+	bool  gameShouldDuplicateCubeTexture(UINT EdgeLength, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool);
+
+
+
+
+
+
+
+
+
+
+
 	D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDeviceEx, D3D9ProxyDirect3D* pCreatedBy );
 	virtual ~D3DProxyDevice();
 
@@ -390,31 +457,14 @@ public:
 	};
 	FPS_TYPE show_fps;
 
-
-
-	D3D9ProxyPixelShader*  currentPS;
-	D3D9ProxyVertexShader* currentVS;
 	
-	QList<cShader*>        shaders;
-	cMenuItem*             shadersMenu;
-	HWND                   windowHandle;
-
-	bool isDrawHide    ( );
 
 
-	QList<cRule*>  rules;
-	cMenuItem*     rulesMenu;
-	cRule*         rulesAdd   ( );
-	void           rulesDelete( cRule* );
-	void           rulesInit  ( );
-	void           rulesFree  ( );
-	void           rulesSave  ( );
-	void           rulesLoad  ( );
-	void           rulesUpdate( );
-	void           rulesApply ( );
 
 
-	
+
+
+
 
 
 
@@ -536,33 +586,12 @@ public:
 	typedef HRESULT (WINAPI *LPVRBOOST_ReleaseAllMemoryRules)( void );
 	typedef HRESULT (WINAPI *LPVRBOOST_ApplyMemoryRules)(UINT axisNumber, float** axis);
 
-	/**
-	* VRboost pointer function to load memory rules for a process.
-	***/
 	LPVRBOOST_LoadMemoryRules m_pVRboost_LoadMemoryRules;
-	/**
-	* VRboost pointer function to load memory rules for a process.
-	***/
 	LPVRBOOST_SaveMemoryRules m_pVRboost_SaveMemoryRules;
-	/**
-	* VRboost pointer function to create a float memory rule.
-	***/
 	LPVRBOOST_CreateFloatMemoryRule m_pVRboost_CreateFloatMemoryRule;
-	/**
-	* VRboost pointer function to load memory rules for a process.
-	***/
 	LPVRBOOST_SetProcess m_pVRboost_SetProcess;
-	/**
-	* VRboost pointer function to release all memory rules.
-	***/
 	LPVRBOOST_ReleaseAllMemoryRules m_pVRboost_ReleaseAllMemoryRules;
-	/**
-	* VRboost pointer function to apply memory rules to process memory.
-	***/
 	LPVRBOOST_ApplyMemoryRules m_pVRboost_ApplyMemoryRules;
-	/**
-	* Handle to VRboost library.
-	***/
 	HMODULE hmVRboost;
 
 	struct 
@@ -572,59 +601,16 @@ public:
 		bool VRBoost_ApplyRules;
 	} VRBoostStatus;
 
-	/**
-	* Managed shader register class.
-	* @see ShaderRegisters
-	**/
-	std::shared_ptr<ShaderRegisters> m_spManagedShaderRegisters;
-	/**
-	* View matrix adjustment class.
-	* @see ViewAdjustment
-	**/
-	std::shared_ptr<ViewAdjustment> m_spShaderViewAdjustment;
-	/**
-	* True if active viewport is the default one.
-	* @see isViewportDefaultForMainRT()
-	**/
+	ViewAdjustment* m_spShaderViewAdjustment;
 	bool m_bActiveViewportIsDefault;
-	/**
-	* True if viewport is currently squished.
-	***/
 	bool m_bViewportIsSquished;
-	/**
-	* True if VRboost rules are present.
-	**/
 	bool m_VRboostRulesPresent;
-	/**
-	* Last viewport backup.
-	**/
 	D3DVIEWPORT9 m_LastViewportSet;
-	/**
-	* The squished viewport.
-	***/
 	D3DVIEWPORT9 m_ViewportIfSquished;
-	/**
-	* Active stored proxy depth stencil.
-	**/
 	D3D9ProxySurface* m_pActiveStereoDepthStencil;
-	/**
-	* Active stored index buffer.
-	**/
 	D3D9ProxyIndexBuffer* m_pActiveIndicies;
-	/**
-	* Active stored vertex declaration.
-	**/
 	D3D9ProxyVertexDeclaration* m_pActiveVertexDeclaration;
-	/**
-	* Active stored proxy swap chains.
-	* The swap chains have to be released and then forcibly destroyed on reset or device destruction.
-	* This should be the very last thing done in both cases.
-	**/
 	std::vector<D3D9ProxySwapChain*> m_activeSwapChains;
-	/**
-	* Active stored proxy render targets.
-	* The render targets that are currently in use.
-	***/
 	std::vector<D3D9ProxySurface*> m_activeRenderTargets;	
 	/**
 	* Textures assigned to stages. 
@@ -702,14 +688,4 @@ public:
 	* Internal reference counter. 
 	***/
 	ULONG m_nRefCount;
-#ifdef _EXPORT_LOGFILE
-	/**
-	* The log file (.txt format).
-	* Outputs D3D device history.
-	* (define _EXPORT_LOGFILE to use this)
-	***/
-	std::ofstream m_logFile;
-#endif
 };
-
-#endif

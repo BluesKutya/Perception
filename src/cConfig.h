@@ -44,7 +44,7 @@ public:
 	QString     findProfileFileForExe( const QString& gameExePath );
 	QStringList getAvailableProfiles( );
 	QStringList getAvailableDevices ( );
-
+	QString     getShaderRulesPath  ( );
 	QString     getShaderPath   ( );
 	QString     getRulesPath    ( );
 };

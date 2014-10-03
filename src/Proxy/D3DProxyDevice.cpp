@@ -10,11 +10,7 @@
 #include "D3D9ProxyStateBlock.h" 
 #include "D3D9ProxyQuery.h"
 #include "VRBoostEnums.h"
-#include "StereoShaderConstant.h"
 #include "StereoBackBuffer.h"
-#include "GameHandler.h"
-#include "ShaderRegisters.h"
-#include "ViewAdjustment.h"
 #include "StereoView.h"
 #include <stdio.h>
 #include <iostream>
@@ -65,8 +61,6 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 
 	InitVRBoost();
 
-	m_spShaderViewAdjustment = std::make_shared<ViewAdjustment>( );
-	m_pGameHandler = new GameHandler();
 
 	// Check the maximum number of supported render targets
 	D3DCAPS9 capabilities;
@@ -79,19 +73,8 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	D3DXMatrixIdentity(&m_leftProjection);
 	D3DXMatrixIdentity(&m_rightProjection);	
 
-	m_currentRenderingSide = vireio::Left;
-	m_pCurrentMatViewTransform = &m_spShaderViewAdjustment->LeftAdjustmentMatrix(); 
-	m_pCurrentView = &m_leftView;
-	m_pCurrentProjection = &m_leftProjection;
+	
 
-	// get pixel shader max constants
-	auto major_ps=D3DSHADER_VERSION_MAJOR(capabilities.PixelShaderVersion);
-	auto minor_ps=D3DSHADER_VERSION_MINOR(capabilities.PixelShaderVersion);
-	DWORD MaxPixelShaderConst = MAX_PIXEL_SHADER_CONST_2_0;
-	if ((major_ps>=2) && (minor_ps>0)) MaxPixelShaderConst = MAX_PIXEL_SHADER_CONST_2_X;
-	if ((major_ps>=3) && (minor_ps>=0)) MaxPixelShaderConst = MAX_PIXEL_SHADER_CONST_3_0;
-
-	m_spManagedShaderRegisters = std::make_shared<ShaderRegisters>(MaxPixelShaderConst, capabilities.MaxVertexShaderConst, pDevice);	
 	m_pActiveStereoDepthStencil = NULL;
 	m_pActiveIndicies = NULL;
 	m_pActiveVertexDeclaration = NULL;
@@ -132,10 +115,11 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	m_bfloatingScreen = false;
 
 	// first time configuration
-	m_pGameHandler->Load(config, m_spShaderViewAdjustment);
 	stereoView                 = new StereoView();
 	stereoView->HeadYOffset    = 0;
 	
+	viewInit();
+
 	BRASSA_UpdateDeviceSettings();
 	OnCreateOrRestore();
 
@@ -172,14 +156,14 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	
 	i = m->addSpinner( "Separation" , &config.stereoScale , 0.0000001 , 100000 , 0.005 );
 	i->callback = [this](){
-		m_spShaderViewAdjustment->UpdateProjectionMatrices((float)stereoView->viewport.Width/(float)stereoView->viewport.Height);
-		m_spShaderViewAdjustment->ComputeViewTransforms();
+		viewUpdateProjectionMatrices( );
+		viewComputeTransforms       ( );
 	};
 
 	i = m->addSpinner( "Convergence" , &config.stereoConvergence , -100 , 100 , 0.01 );
 	i->callback = [this](){
-		m_spShaderViewAdjustment->UpdateProjectionMatrices((float)stereoView->viewport.Width/(float)stereoView->viewport.Height);
-		m_spShaderViewAdjustment->ComputeViewTransforms();
+		viewUpdateProjectionMatrices( );
+		viewComputeTransforms       ( );
 	};
 
 
@@ -227,22 +211,22 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	
 	i = m->addSpinner ( "GUI squash"             , &config.guiSquash  , 0.01 );
 	i->callback = [this](){
-		m_spShaderViewAdjustment->UpdateGui();
+		viewComputeGui();
 	};
 
 	i = m->addSpinner ( "GUI depth"                , &config.guiDepth     , 0.01 );
 	i->callback = [this](){
-		m_spShaderViewAdjustment->UpdateGui();
+		viewComputeGui();
 	};
 
 	i = m->addSpinner ( "HUD distance"             , &config.hudDistance  , 0.01 );
 	i->callback = [this](){
-		m_spShaderViewAdjustment->UpdateGui();
+		viewComputeGui();
 	};
 
 	i = m->addSpinner ( "HUD depth"                , &config.hudDepth     , 0.01 );
 	i->callback = [this](){
-		m_spShaderViewAdjustment->UpdateGui();
+		viewComputeGui();
 	};
 
 
@@ -291,7 +275,7 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	i = m->addCheckbox( "Tracker movement" , &config.trackerPositionEnable );
 	i->callback = [this](){
 		if( !config.trackerPositionEnable ){
-			m_spShaderViewAdjustment->UpdatePosition(0.0f, 0.0f, 0.0f);
+			viewUpdatePosition( 0 , 0 , 0 , 0 , 0 , 0 );
 		}
 	};
 
@@ -351,6 +335,50 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 
 	
 }
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -957,11 +985,6 @@ D3DProxyDevice::~D3DProxyDevice()
 
 	ReleaseEverything();
 
-	m_spShaderViewAdjustment.reset();
-
-	delete m_pGameHandler;
-	m_spManagedShaderRegisters.reset();
-
 	FreeLibrary(hmVRboost);
 
 	// always do this last
@@ -1114,7 +1137,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateTexture , UINT , Width , 
 	if (SUCCEEDED(creationResult = actual->CreateTexture(Width, Height, Levels, Usage, Format, Pool, &pLeftTexture, pSharedHandle))) {
 
 		// Does this Texture need duplicating?
-		if (m_pGameHandler->ShouldDuplicateTexture(Width, Height, Levels, Usage, Format, Pool)) {
+		if (gameShouldDuplicateTexture(Width, Height, Levels, Usage, Format, Pool)) {
 
 			if (FAILED(actual->CreateTexture(Width, Height, Levels, Usage, Format, Pool, &pRightTexture, pSharedHandle))) {
 				OutputDebugStringA("Failed to create right eye texture while attempting to create stereo pair, falling back to mono\n");
@@ -1162,7 +1185,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateCubeTexture , UINT , Edge
 	if (SUCCEEDED(creationResult = actual->CreateCubeTexture(EdgeLength, Levels, Usage, Format, Pool, &pLeftCubeTexture, pSharedHandle))) {
 
 		// Does this Texture need duplicating?
-		if (m_pGameHandler->ShouldDuplicateCubeTexture(EdgeLength, Levels, Usage, Format, Pool)) {
+		if (gameShouldDuplicateCubeTexture(EdgeLength, Levels, Usage, Format, Pool)) {
 
 			if (FAILED(actual->CreateCubeTexture(EdgeLength, Levels, Usage, Format, Pool, &pRightCubeTexture, pSharedHandle))) {
 				OutputDebugStringA("Failed to create right eye texture while attempting to create stereo pair, falling back to mono\n");
@@ -1668,8 +1691,8 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetTransform , D3DTRANSFORMSTAT
 			}
 			else {
 				// If the view matrix is modified we need to apply left/right adjustments (for stereo rendering)
-				tempLeft = sourceMatrix * m_spShaderViewAdjustment->LeftViewTransform();
-				tempRight = sourceMatrix * m_spShaderViewAdjustment->RightViewTransform();
+				tempLeft  = sourceMatrix * viewMatTransformLeft;
+				tempRight = sourceMatrix * viewMatTransformRight;
 
 				tempIsTransformSet = true;
 			}
@@ -1991,7 +2014,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawPrimitive , D3DPRIMITIVETYP
 		return S_OK;
 	}
 	
-	m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
+	//m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
 
 	rulesApply();
 
@@ -2013,7 +2036,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawIndexedPrimitive , D3DPRIMI
 		return S_OK;
 	}
 
-	m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
+	//m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
 	
 	rulesApply();
 
@@ -2038,7 +2061,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawPrimitiveUP , D3DPRIMITIVET
 		return S_OK;
 	}
 
-	m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
+	//m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
 	
 	rulesApply();
 
@@ -2060,7 +2083,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawIndexedPrimitiveUP , D3DPRI
 		return S_OK;
 	}
 
-	m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
+	//m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
 
 	rulesApply();
 
@@ -2080,7 +2103,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , ProcessVertices , UINT , SrcSta
 	if (!pDestBuffer)
 		return D3DERR_INVALIDCALL;
 
-	m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
+	//m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
 
 	rulesApply();
 
@@ -2169,194 +2192,6 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetVertexDeclaration , IDirect3
 * @param ppShader [in, out] The created proxy vertex shader.
 * @see D3D9ProxyVertexShader
 ***/
-METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateVertexShader , CONST DWORD* , pFunction , IDirect3DVertexShader9** , ppShader )
-	IDirect3DVertexShader9* pActualVShader = NULL;
-	HRESULT creationResult = actual->CreateVertexShader(pFunction, &pActualVShader);
-
-	if (SUCCEEDED(creationResult)) {
-		D3D9ProxyVertexShader* shader = new D3D9ProxyVertexShader(pActualVShader, this, m_pGameHandler->GetShaderModificationRepository());
-		*ppShader = shader;
-		shaders += shader;
-	}
-
-	return creationResult;
-}
-
-/**
-* Sets and updates stored proxy vertex shader.
-* @see D3D9ProxyVertexShader
-***/
-METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetVertexShader , IDirect3DVertexShader9* , pShader )
-	D3D9ProxyVertexShader* shader = static_cast<D3D9ProxyVertexShader*>(pShader);
-
-	HRESULT result;
-
-	if( shader ){
-		result = actual->SetVertexShader( shader->actual );
-	}else{
-		result = actual->SetVertexShader(NULL);
-	}
-
-	// Update stored proxy Vertex shader
-	if( SUCCEEDED(result) ){
-
-		// If in a Begin-End StateBlock pair update the block state rather than the current proxy device state
-		if (m_pCapturingStateTo) {
-			m_pCapturingStateTo->SelectAndCaptureState(shader);
-		}else{
-			if (currentVS) {
-				currentVS->Release();
-			}
-
-			currentVS = shader;
-
-			if (currentVS) {
-				currentVS->AddRef();
-			}
-
-			m_spManagedShaderRegisters->ActiveVertexShaderChanged( currentVS );
-		}
-	}
-
-	if( shader ){
-		if( shader->m_bSquishViewport ){
-			SetGUIViewport();
-		}else{
-			if( m_bViewportIsSquished ){
-				actual->SetViewport(&m_LastViewportSet);
-			}
-			m_bViewportIsSquished = false;
-		}
-
-		if( config.shaderAnalyzer ){
-			shader->used = true;
-
-			if( shader->blink ){
-				shader->hide = ((GetTickCount()%300)>150);
-			}
-		}
-	}
-
-	// increase vertex shader call count
-	++m_VertexShaderCount;
-	return result;
-}
-
-/**
-* Returns the stored and active proxy vertex shader.
-***/
-METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetVertexShader , IDirect3DVertexShader9** , ppShader )
-	if (!currentVS)
-		return D3DERR_INVALIDCALL;
-
-	*ppShader = currentVS;
-
-	return D3D_OK;
-}
-
-/**
-* Sets shader constants either at stored proxy state block or in managed shader register class.
-* @see D3D9ProxyStateBlock
-* @see ShaderRegisters
-***/
-METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetVertexShaderConstantF , UINT , StartRegister , CONST float* , pConstantData , UINT , Vector4fCount )
-	HRESULT result = D3DERR_INVALIDCALL;
-
-	
-	// Tests if the set constant is a transposed matrix and sets the relevant bool.
-	// Is Matrix transposed ?
-	// Affine transformation matrices have in the last row (0,0,0,1). World and view matrices are 
-	// usually affine, since they are a combination of affine transformations (rotation, scale, 
-	// translation ...).
-	// Perspective projection matrices have in the last column (0,0,1,0) if left-handed and 
-	// (0,0,-1,0) if right-handed.
-	// Orthographic projection matrices have in the last column (0,0,0,1).
-	// If those are transposed you find the entries in the last column/row.
-	if( config.shaderAnalyzer && config.shaderAnalyzerDetectTranspose ){
-		for( cShader* s : shaders ){
-			for( cShaderConstant& c : s->constants ){
-				if( s == currentVS ){
-					if( c.RegisterIndex >= StartRegister  &&
-						c.RegisterIndex < StartRegister + Vector4fCount
-					){
-
-						int i = 0;
-
-						if( c.Class == D3DXPARAMETER_CLASS::D3DXPC_MATRIX_ROWS ){
-							i = 14;
-						}
-
-						if( c.Class == D3DXPARAMETER_CLASS::D3DXPC_MATRIX_COLUMNS ){
-							i = 12;
-						}
-
-						if( i ){
-							D3DXMATRIX matrix = D3DXMATRIX( pConstantData + (c.RegisterIndex-StartRegister)*4*sizeof(float) );
-					
-							if( fabs( fabs(matrix[i]) - 1.0 ) > 0.00001 ){
-								config.shaderAnalyzerTranspose = true;
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	if( currentVS ){
-		for( cShaderConstant& c : currentVS->constants ){
-			int src1 = StartRegister;
-			int src2 = StartRegister + Vector4fCount;
-
-			int dst1 = c.RegisterIndex;
-			int dst2 = c.RegisterIndex + std::min( (int)c.RegisterCount , 4 );
-
-			if(  src2 > dst1  &&  src1 < dst2  ){
-				int copy1 = std::max( src1 , dst1 );
-				int copy2 = std::min( src2 , dst2 );
-
-				memcpy(
-					c.value       + (copy1 - c.RegisterIndex)*4 ,
-					pConstantData + (copy1 - StartRegister  )*4 ,
-					(copy2 - copy1) * 4 * sizeof(float)
-				);
-			}
-		}
-	}
-
-
-
-	//Write 0 count 9
-	//Constant 8 count 1
-	//Constant 7 count 1
-	//Constant 4 count 3
-	//Constant 0 count 4
-
-
-
-
-
-	if (m_pCapturingStateTo) {
-		result = m_pCapturingStateTo->SelectAndCaptureStateVSConst(StartRegister, pConstantData, Vector4fCount);
-	}
-	else { 
-		result = m_spManagedShaderRegisters->SetVertexShaderConstantF(StartRegister, pConstantData, Vector4fCount);
-	}
-
-	return result;
-}
-
-/**
-* Provides constant registers from managed shader register class.
-* @see ShaderRegisters
-* @see ShaderRegisters::GetVertexShaderConstantF()
-***/
-METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetVertexShaderConstantF , UINT , StartRegister , float* , pData , UINT , Vector4fCount )
-	return m_spManagedShaderRegisters->GetVertexShaderConstantF(StartRegister, pData, Vector4fCount);
-}
-
-
-
 
 
 
@@ -2502,7 +2337,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreatePixelShader , CONST DWORD
 	HRESULT creationResult = actual->CreatePixelShader(pFunction, &pActualPShader);
 
 	if (SUCCEEDED(creationResult)) {
-		D3D9ProxyPixelShader* shader = new D3D9ProxyPixelShader(pActualPShader, this, m_pGameHandler->GetShaderModificationRepository());
+		D3D9ProxyPixelShader* shader = new D3D9ProxyPixelShader(pActualPShader, this);
 		*ppShader = shader;
 		shaders += shader;
 	}
@@ -2544,7 +2379,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetPixelShader , IDirect3DPixel
 				currentPS->AddRef();
 			}
 
-			m_spManagedShaderRegisters->ActivePixelShaderChanged( shader );
+			//m_spManagedShaderRegisters->ActivePixelShaderChanged( shader );
 		}
 	}
 
@@ -2583,7 +2418,8 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetPixelShaderConstantF , UINT 
 		result = m_pCapturingStateTo->SelectAndCaptureStatePSConst(StartRegister, pConstantData, Vector4fCount);
 	}
 	else { 
-		result = m_spManagedShaderRegisters->SetPixelShaderConstantF(StartRegister, pConstantData, Vector4fCount);
+		actual->SetPixelShaderConstantF(StartRegister, pConstantData, Vector4fCount);
+		//result = m_spManagedShaderRegisters->SetPixelShaderConstantF(StartRegister, pConstantData, Vector4fCount);
 	}
 
 	return result;
@@ -2595,7 +2431,8 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetPixelShaderConstantF , UINT 
 * @see ShaderRegisters::GetPixelShaderConstantF()
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetPixelShaderConstantF , UINT , StartRegister , float* , pData , UINT , Vector4fCount )
-	return m_spManagedShaderRegisters->GetPixelShaderConstantF(StartRegister, pData, Vector4fCount);
+	//return m_spManagedShaderRegisters->GetPixelShaderConstantF(StartRegister, pData, Vector4fCount);
+	return actual->GetPixelShaderConstantF(StartRegister, pData, Vector4fCount);
 }
 
 
@@ -2606,7 +2443,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetPixelShaderConstantF , UINT 
 * @see switchDrawingSide()
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawRectPatch , UINT , Handle , CONST float* , pNumSegs , CONST D3DRECTPATCH_INFO* , pRectPatchInfo )
-	m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
+	//m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
 
 	rulesApply();
 
@@ -2624,7 +2461,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawRectPatch , UINT , Handle ,
 * @see switchDrawingSide() 
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawTriPatch , UINT , Handle , CONST float* , pNumSegs , CONST D3DTRIPATCH_INFO* , pTriPatchInfo )
-	m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
+	//m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
 
 	rulesApply();
 
@@ -2777,32 +2614,31 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 		);
 	}
 
-	if ( config.rollEnabled ) {
-		m_spShaderViewAdjustment->UpdateRoll(tracker->currentRoll);
-	}
-
 	if( config.trackerMouseEmulation ){
+		if( config.rollEnabled ){
+			viewUpdateRotation( 0 , 0, tracker->currentRoll );
+		}
 		return;
 	}
 
 	if( config.trackerRotationEnable ){
-		m_spShaderViewAdjustment->UpdatePitchYaw( tracker->currentPitch , tracker->currentYaw );
+		viewUpdateRotation( tracker->currentPitch , tracker->currentYaw , (config.rollEnabled ? tracker->currentRoll : 0) );
 	}else{
-		m_spShaderViewAdjustment->UpdatePitchYaw( 0 , 0 );
+		viewUpdateRotation( 0 , 0 , 0 );
 	}
 
 	if( config.trackerPositionEnable ){
-		m_spShaderViewAdjustment->UpdatePosition(
-			tracker->currentYaw,
+		viewUpdatePosition(
 			tracker->currentPitch,
+			tracker->currentYaw,
 			tracker->currentRoll,
-			(VRBoostValue[VRboostAxis::CameraTranslateX] / 20.0f) + tracker->currentX * config.trackerXMultiplier * config.stereoScale, 
+			(VRBoostValue[VRboostAxis::CameraTranslateX] / 20.0f) + tracker->currentX * config.trackerXMultiplier * config.stereoScale,
 			(VRBoostValue[VRboostAxis::CameraTranslateY] / 20.0f) + tracker->currentY * config.trackerYMultiplier * config.stereoScale,
 			(VRBoostValue[VRboostAxis::CameraTranslateZ] / 20.0f) + tracker->currentZ * config.trackerZMultiplier * config.stereoScale
 		);
 	}
 		
-	m_spShaderViewAdjustment->ComputeViewTransforms();
+	viewComputeTransforms();
 
 	m_isFirstBeginSceneOfFrame = false;
 
@@ -2896,10 +2732,10 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleUpdateExtern )
 * passed back to actual application by CreateDevice) and after a successful device Reset.
 ***/
 METHOD_IMPL( void , , D3DProxyDevice , OnCreateOrRestore )	
-	m_currentRenderingSide = vireio::Left;
-	m_pCurrentMatViewTransform = &m_spShaderViewAdjustment->LeftAdjustmentMatrix();
-	m_pCurrentView = &m_leftView;
-	m_pCurrentProjection = &m_leftProjection;
+	m_currentRenderingSide     = vireio::Left;
+	m_pCurrentMatViewTransform = &viewMatViewProjTransformLeft;
+	m_pCurrentView             = &m_leftView;
+	m_pCurrentProjection       = &m_leftProjection;
 
 	// Wrap the swap chain
 	IDirect3DSwapChain9* pActualPrimarySwapChain;
@@ -2940,8 +2776,8 @@ METHOD_IMPL( void , , D3DProxyDevice , OnCreateOrRestore )
 
 	stereoView->Init(getActual());
 
-	m_spShaderViewAdjustment->UpdateProjectionMatrices((float)stereoView->viewport.Width/(float)stereoView->viewport.Height);
-	m_spShaderViewAdjustment->ComputeViewTransforms();
+	viewUpdateProjectionMatrices( );
+	viewComputeTransforms       ( );
 
 	// set BRASSA main values
 	menu.viewportWidth  = stereoView->viewport.Width;
@@ -3065,14 +2901,13 @@ METHOD_IMPL( bool , , D3DProxyDevice , setDrawingSide , vireio::RenderPosition ,
 
 	// Updated computed view translation (used by several derived proxies - see: ComputeViewTranslation)
 	if (side == vireio::Left) {
-		m_pCurrentMatViewTransform = &m_spShaderViewAdjustment->LeftAdjustmentMatrix();
-	}
-	else {
-		m_pCurrentMatViewTransform = &m_spShaderViewAdjustment->RightAdjustmentMatrix();
+		m_pCurrentMatViewTransform = &viewMatViewProjTransformLeft;
+	}else{
+		m_pCurrentMatViewTransform = &viewMatViewProjTransformRight;
 	}
 
 	// Apply active stereo shader constants
-	m_spManagedShaderRegisters->ApplyAllStereoConstants(side);
+	//m_spManagedShaderRegisters->ApplyAllStereoConstants(side);
 
 	rulesApply();
 
@@ -3099,41 +2934,6 @@ METHOD_IMPL( bool , , D3DProxyDevice , switchDrawingSide )
 	return switched;
 }
 
-/**
-* Adds a default shader rule to the game configuration.
-* @return True if rule was added, false if rule already present.
-***/
-METHOD_IMPL( bool , , D3DProxyDevice , addRule , std::string , constantName , bool , allowPartialNameMatch , UINT , startRegIndex , D3DXPARAMETER_CLASS , constantType , UINT , operationToApply , bool , transpose )
-	return m_pGameHandler->AddRule(m_spShaderViewAdjustment, constantName, allowPartialNameMatch, startRegIndex, constantType, operationToApply, transpose);
-}
-
-/**
-* Adds a default shader rule to the game configuration.
-* @return True if rule was added, false if rule already present.
-***/
-METHOD_IMPL( bool , , D3DProxyDevice , modifyRule , std::string , constantName , UINT , operationToApply , bool , transpose )
-	return m_pGameHandler->ModifyRule(m_spShaderViewAdjustment, constantName, operationToApply, transpose);
-}
-
-/**
-* Delete rule.
-* @return True if rule was deleted, false if rule not present.
-***/
-METHOD_IMPL( bool , , D3DProxyDevice , deleteRule , std::string , constantName )
-	return m_pGameHandler->DeleteRule(m_spShaderViewAdjustment, constantName);
-}
-
-/**
-* Saves current game shader rules (and game configuration).
-***/
-METHOD_IMPL( void , , D3DProxyDevice , saveShaderRules ) 
-	m_pGameHandler->Save(config, m_spShaderViewAdjustment);
-
-	SaveConfiguration();
-}
-
-
-
 
 /**
 * BRASSA menu border velocity updated here
@@ -3158,7 +2958,7 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_UpdateBorder )
 ***/
 METHOD_IMPL( void , , D3DProxyDevice , BRASSA_UpdateDeviceSettings )
 
-	m_spShaderViewAdjustment->ComputeViewTransforms();
+	viewComputeTransforms();
 
 	// VRBoost
 	VRBoostValue[VRboostAxis::WorldFOV] = config.WorldFOV;
@@ -3280,7 +3080,7 @@ METHOD_IMPL( void , , D3DProxyDevice , ReleaseEverything )
 	menu.freeResources();
 
 
-	m_spManagedShaderRegisters->ReleaseResources();
+	//m_spManagedShaderRegisters->ReleaseResources();
 
 	if (m_pCapturingStateTo) {
 		m_pCapturingStateTo->Release();
@@ -3413,9 +3213,12 @@ METHOD_IMPL( void , , D3DProxyDevice , SetGUIViewport )
 	D3DXMatrixTranslation(&mRightShift, shiftInPixels, 0, 0);
 
 	// get matrix
-	D3DXMATRIX mVPSquash = mLeftShift * m_spShaderViewAdjustment->Squash();
-	if (m_currentRenderingSide != vireio::Left)
-		mVPSquash = mRightShift * m_spShaderViewAdjustment->Squash();
+	D3DXMATRIX mVPSquash;
+	if( m_currentRenderingSide == vireio::Left ){
+		mVPSquash = mLeftShift  * viewMatSquash;
+	}else{
+		mVPSquash = mRightShift * viewMatSquash;
+	}
 
 	// get viewport
 	actual->GetViewport(&m_ViewportIfSquished);
@@ -3529,7 +3332,7 @@ METHOD_IMPL( bool , , D3DProxyDevice , InitBrassa )
 	m_bVRBoostToggle = true;
 	m_fVRBoostIndicator = 0.0f;
 
-	m_spShaderViewAdjustment->ComputeViewTransforms();
+	viewComputeTransforms();
 
 	for (int i = 0; i < 16; i++)
 		controls.xButtonsStatus[i] = false;
@@ -3607,7 +3410,7 @@ METHOD_IMPL( HRESULT , , D3DProxyDevice , ProxyCreateDepthStencilSurface , UINT 
 	if( SUCCEEDED(resultLeft) ){
 
 		// TODO Should we always duplicated Depth stencils? I think yes, but there may be exceptions
-		if (m_pGameHandler->ShouldDuplicateDepthStencilSurface(Width, Height, Format, MultiSample, MultisampleQuality, Discard)) 
+		if (gameShouldDuplicateDepthStencilSurface(Width, Height, Format, MultiSample, MultisampleQuality, Discard)) 
 		{
 			if( useEx ){
 				resultRight = actualEx->CreateDepthStencilSurfaceEx( Width, Height, Format, MultiSample, MultisampleQuality, Discard, &right, pSharedHandle , Usage );
@@ -3658,7 +3461,7 @@ METHOD_IMPL( HRESULT , , D3DProxyDevice , ProxyCreateRenderTarget , UINT , Width
 		/* "If Needed" heuristic is the complicated part here.
 		Fixed heuristics (based on type, format, size, etc) + game specific overrides + isForcedMono + magic? */
 		// TODO Should we duplicate this Render Target? Replace "true" with heuristic
-		if (m_pGameHandler->ShouldDuplicateRenderTarget(Width, Height, Format, MultiSample, MultisampleQuality, Lockable, isSwapChainBackBuffer))
+		if (gameShouldDuplicateRenderTarget(Width, Height, Format, MultiSample, MultisampleQuality, Lockable, isSwapChainBackBuffer))
 		{
 			if( useEx ){
 				resultRight = actualEx->CreateRenderTargetEx(Width, Height, Format, MultiSample, MultisampleQuality, Lockable, &right, pSharedHandle , Usage );

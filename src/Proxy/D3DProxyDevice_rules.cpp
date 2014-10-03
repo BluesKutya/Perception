@@ -32,9 +32,10 @@ void D3DProxyDevice::rulesInit( ){
 
 cRule* D3DProxyDevice::rulesAdd( ){
 	cRule* r = new cRule(this);
-	r->name        = QString("Rule %1").arg( rules.count() );
-	r->operation   = 0;
-	r->transpose   = config.shaderAnalyzerTranspose;
+	r->name          = QString("Rule %1").arg( rules.count() );
+	r->operation     = 0;
+	r->isMatrixRule  = true;
+	r->transpose     = config.shaderAnalyzerTranspose;
 
 
 	if( config.shaderAnalyzer ){
@@ -50,10 +51,11 @@ cRule* D3DProxyDevice::rulesAdd( ){
 
 			for( cShader* s : shaders ){
 				for( cShaderConstant& c : s->constants ){
-					if( r->constants.contains(c.name) || s->visible ){
-						if( !allConstants.contains(c.name) ){
-							allConstants += c.name;
-						}
+					if( c.isMatrix() == r->isMatrixRule  &&
+					   (r->constantsInclude.contains(c.name) || s->visible) &&
+					    !allConstants.contains(c.name)
+					){
+						allConstants += c.name;
 					}
 				}
 			}
@@ -63,13 +65,13 @@ cRule* D3DProxyDevice::rulesAdd( ){
 			for( QString constant : allConstants ){
 				cMenuItem* cb = r->itemConstants->addCheckbox( constant , 0 );
 
-				cb->internalBool = r->constants.contains( constant );
+				cb->internalBool = r->constantsInclude.contains( constant );
 
 				cb->callback = [=](){
 					if( cb->internalBool ){
-						r->constants.append( constant );
+						r->constantsInclude.append( constant );
 					}else{
-						r->constants.removeAll( constant );
+						r->constantsInclude.removeAll( constant );
 					}
 					rulesUpdate();
 				};
@@ -119,6 +121,7 @@ cRule* D3DProxyDevice::rulesAdd( ){
 		};
 
 
+		r->item->addCheckbox ( "Type" , &r->isMatrixRule , "matrix" , "vector" );
 
 		r->item->addSelect  ( "Operation" , &r->operation , r->availableOperations() );
 
@@ -205,8 +208,34 @@ void D3DProxyDevice::rulesLoad( ){
 
 
 void D3DProxyDevice::rulesUpdate( ){
+	
+	for( cRule* r : rules ){
+		r->registerIndexes.clear();
+
+		for( cShader* s : shaders ){
+			for( cShaderConstant& c : s->constants ){
+				if( c.isMatrix() == r->isMatrixRule && r->constantsInclude.contains(c.Name) ){
+					r->registerIndexes += c.RegisterIndex;
+				}
+			}
+		}
+	}
+
 	for( cShader* s : shaders ){
-		s->updateRules();
+		s->rules.clear();
+
+		for( cRule* rule : rules ){
+
+			if( !rule->shadersInclude.isEmpty() && !rule->shadersInclude.contains(s->name) ){
+				continue;
+			}
+
+			if( rule->shadersExclude.contains(s->name) ){
+				continue;
+			}
+
+			s->rules += rule;
+		}
 	}
 }
 
@@ -216,27 +245,48 @@ void D3DProxyDevice::rulesApply( ){
 	if( !currentVS ){
 		return;
 	}
+
+	if( m_pCapturingStateTo ){
+		printf("CAPTURE!\n");
+		return;
+	}
 	
-	for( cShaderConstant& constant : currentVS->constants ){
-		bool applied = false;
+	QList<cRule*>* list;
 
-		for( cRule* rule : constant.rules ){
-			if( (constant.Class == D3DXPC_VECTOR) != rule->isMatrixOperation() ){
-				float d[16];
-				rule->apply( constant.value , d , m_currentRenderingSide );
-				actual->SetVertexShaderConstantF( constant.RegisterIndex , d , constant.RegisterCount );
-				applied = true;
-				break;
-			}
-		}
+	if( currentVS ){
+		list = &currentVS->rules;
+	}else{
+		list = &rules;
+	}
 
-		//if( !applied ){
-		//	actual->SetVertexShaderConstantF( constant.RegisterIndex , constant.value , constant.RegisterCount );
-		//}
-	}	
+	for( cRule* rule : *list ){
+		rule->applyTo( &vsConstantsOriginal , &vsConstantsLeft , &vsConstantsRight );
+	}
+
+	if( m_currentRenderingSide == vireio::Left ){
+		vsConstantsLeft.writeTo( actual );
+	}else{
+		vsConstantsRight.writeTo( actual );
+	}
 }
 
 
 
 
 
+			//float d[16];
+			//rule->apply( constant.value , d , m_currentRenderingSide );
+				
+			//actual->SetVertexShaderConstantF( constant.RegisterIndex , constant.value , std::min((int)constant.RegisterCount,4) );
+			//applied = true;
+
+			/*
+			printf("\n\nout:\n");
+			for( int c=0 ; c<16 ; c++ ){
+				printf("%12.4f " , constant.value[c] );
+				if( (c&3)==3 ){
+					printf("\n");
+				}
+			}*/
+
+			//break;
