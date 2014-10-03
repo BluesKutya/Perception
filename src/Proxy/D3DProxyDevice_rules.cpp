@@ -126,7 +126,8 @@ cRule* D3DProxyDevice::rulesAdd( ){
 
 		r->item->addSelect  ( "Operation" , &r->operation , r->availableOperations() );
 
-		r->item->addCheckbox( "Transpose" , &r->transpose );
+		r->item->addCheckbox( "Transpose" , &r->transpose      );
+		r->item->addCheckbox( "Squish VS" , &r->squishViewport );
 
 		i = r->item->addAction( "Delete" );
 		i->callback = [this,r](){
@@ -229,6 +230,7 @@ void D3DProxyDevice::rulesUpdate( ){
 
 	for( cShader* s : shaders ){
 		s->rules.clear();
+		s->squishViewport = false;
 
 		for( cRule* r : rules ){
 			if( !r->shadersInclude.isEmpty() && !r->shadersInclude.contains(s->name) ){
@@ -239,6 +241,10 @@ void D3DProxyDevice::rulesUpdate( ){
 				continue;
 			}
 
+			if( r->squishViewport ){
+				s->squishViewport = true;
+			}
+
 			s->rules += r;
 		}
 	}
@@ -247,12 +253,6 @@ void D3DProxyDevice::rulesUpdate( ){
 
 
 void D3DProxyDevice::rulesApply( ){
-	if( m_pCapturingStateTo ){
-		printf("CAPTURE!\n");
-		return;
-	}
-	
-
 	for( cRule* rule : rules ){
 		//todo optimize
 		if( (!vsCurrent || vsCurrent->rules.contains(rule)) ){

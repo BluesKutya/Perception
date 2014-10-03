@@ -132,80 +132,23 @@ protected:
 	virtual void SetAllRenderStatesDefault(LPDIRECT3DDEVICE9 pDevice);
 	virtual void RestoreAllRenderStates(LPDIRECT3DDEVICE9 pDevice);
 
-	/**
-	* The actual, unwrapped Direct3D Device. 
-	* Class cannot be initialized with wrapped device.
-	***/
-	IDirect3DDevice9* m_pActualDevice;
-	/**
-	* Saved game vertex shader to be restored after drawing stereoscopic.
-	***/
-	IDirect3DVertexShader9* lastVertexShader;
-	/**
-	* Saved game pixel shader to be restored after drawing stereoscopic.
-	***/
-	IDirect3DPixelShader9* lastPixelShader;
-	/**
-	* Saved game texture 0 to be restored after drawing stereoscopic.
-	***/
-	IDirect3DBaseTexture9* lastTexture;
-	/**
-	* Saved game texture 1 to be restored after drawing stereoscopic.
-	***/
-	IDirect3DBaseTexture9* lastTexture1;
-	/**
-	* Saved game vertex declaration to be restored after drawing stereoscopic.
-	***/
-	IDirect3DVertexDeclaration9* lastVertexDeclaration;
-	/**
-	* Saved game render target 0 to be restored after drawing stereoscopic.
-	***/
-	IDirect3DSurface9* lastRenderTarget0;
-	/**
-	* Saved game render target 1 to be restored after drawing stereoscopic.
-	***/
-	IDirect3DSurface9* lastRenderTarget1;
-	/**
-	* Left eye (or upper) target texture buffer.
-	* Surface data from D3D9ProxySurface is copied on that. To be swapped with right texture if swap_eyes set to true.
-	***/
-	IDirect3DTexture9* leftTexture;
-	/**
-	* Right eye (or lower) target texture buffer.
-	* Surface data from D3D9ProxySurface is copied on that. To be swapped with left texture if swap_eyes set to true.
-	***/
-	IDirect3DTexture9* rightTexture;
-	/**
-	* Current render target.
-	***/
-	IDirect3DSurface9* backBuffer;
-	/**
-	* Surface of the left eye texture.
-	***/
-	IDirect3DSurface9* leftSurface;
-	/**
-	* Surface of the right eye texture.
-	***/
-	IDirect3DSurface9* rightSurface;
-	/**
-	* Full screen render vertex buffer containing 4 vertices.
-	***/
-	IDirect3DVertexBuffer9* screenVertexBuffer;
-	/**
-	* Render state block.
-	* Stores all render states to be restored after drawing stereoscopic.
-	* To be renamed.
-	***/
-	IDirect3DStateBlock9* sb;
-	/**
-	* Stores render states.
-	* For games (Half Life 2?) that do not work with direct 3d state block for some reason.
-	***/
+	ComPtr<IDirect3DDevice9>            m_pActualDevice;
+	ComPtr<IDirect3DVertexShader9>      lastVertexShader;
+	ComPtr<IDirect3DPixelShader9>       lastPixelShader;
+	ComPtr<IDirect3DBaseTexture9>       lastTexture;
+	ComPtr<IDirect3DBaseTexture9>       lastTexture1;
+	ComPtr<IDirect3DVertexDeclaration9> lastVertexDeclaration;
+	ComPtr<IDirect3DSurface9>           lastRenderTarget0;
+	ComPtr<IDirect3DSurface9>           lastRenderTarget1;
+	ComPtr<IDirect3DTexture9>           leftTexture;
+	ComPtr<IDirect3DTexture9>           rightTexture;
+	ComPtr<IDirect3DSurface9>           backBuffer;
+	ComPtr<IDirect3DSurface9>           leftSurface;
+	ComPtr<IDirect3DSurface9>           rightSurface;
+	ComPtr<IDirect3DVertexBuffer9>      screenVertexBuffer;
+	ComPtr<IDirect3DStateBlock9>        sb;
+	ComPtr<ID3DXEffect>                 viewEffect;
 	DWORD renderStates[256];
-	/**
-	* View effect according to the stereo mode preset in stereo_mode.
-	***/
-	ID3DXEffect* viewEffect;
 
 	DWORD tssColorOp;            /**< Various states. */
 	DWORD tssColorArg1;          /**< Various states. */

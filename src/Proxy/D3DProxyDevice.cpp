@@ -55,7 +55,19 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	calibrate_tracker(false)
 {
 
-	tracker = 0;
+	tracker                     = 0;
+	m_pActiveStereoDepthStencil = NULL;
+	m_pActiveIndicies           = NULL;
+	m_pActiveVertexDeclaration  = NULL;
+	m_bActiveViewportIsDefault  = true;
+	m_bViewportIsSquished       = false;
+	m_bViewTransformSet         = false;
+	m_bProjectionTransformSet   = false;
+	m_bInBeginEndStateBlock     = false;
+	stateBlock                  = 0;
+	m_isFirstBeginSceneOfFrame  = true;
+	vsCurrent                   = 0;
+	psCurrent                   = 0;
 
 	menu.init( this );
 
@@ -66,7 +78,7 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	D3DCAPS9 capabilities;
 	actual->GetDeviceCaps(&capabilities);
 	DWORD maxRenderTargets = capabilities.NumSimultaneousRTs;
-	m_activeRenderTargets.resize(maxRenderTargets, NULL);
+	m_activeRenderTargets.resize(maxRenderTargets);
 
 	D3DXMatrixIdentity(&m_leftView);
 	D3DXMatrixIdentity(&m_rightView);
@@ -75,23 +87,20 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 
 	
 
-	m_pActiveStereoDepthStencil = NULL;
-	m_pActiveIndicies = NULL;
-	m_pActiveVertexDeclaration = NULL;
-	m_bActiveViewportIsDefault = true;
-	m_bViewportIsSquished = false;
-	m_bViewTransformSet = false;
-	m_bProjectionTransformSet = false;
-	m_bInBeginEndStateBlock = false;
-	m_pCapturingStateTo = NULL;
-	m_isFirstBeginSceneOfFrame = true;
+	screenshot = (int)false;
+	m_bVRBoostToggle = true;
+	m_fVRBoostIndicator = 0.0f;
+
+	viewComputeTransforms();
+
+	for (int i = 0; i < 16; i++){
+		controls.xButtonsStatus[i] = false;
+	}
+	
+	
 
 
-	vsCurrent = 0;
-	psCurrent = 0;
 
-
-	InitBrassa();
 	//Create Direct Input Mouse Device
 	bool directInputActivated = dinput.Init(GetModuleHandle(NULL), ::GetActiveWindow());
 	if(directInputActivated)
@@ -108,7 +117,6 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 		"See the GNU LGPL: http://www.gnu.org/licenses/ for more details. "
 	);*/
 
-	eyeShutter = 1;
 	m_bfloatingMenu = false;
 	m_bfloatingScreen = false;
 
@@ -968,16 +976,8 @@ void D3DProxyDevice::SaveConfiguration(){
 	config.save( config.getGameConfigFile(exe_path) , QList<int>() << cConfig::SAVE_GAME << cConfig::SAVE_PROFILE << cConfig::SAVE_USER );
 }
 
-/**
-* Destructor : calls ReleaseEverything() and releases swap chains.
-* @see ReleaseEverything()
-***/
-D3DProxyDevice::~D3DProxyDevice()
-{
 
-	#ifdef SHOW_CALLS
-		OutputDebugStringA("called ~D3DProxyDevice");
-	#endif
+D3DProxyDevice::~D3DProxyDevice(){
 
 	rulesFree();
 
@@ -985,29 +985,14 @@ D3DProxyDevice::~D3DProxyDevice()
 
 	FreeLibrary(hmVRboost);
 
-	// always do this last
-	auto it = m_activeSwapChains.begin();
-	while (it != m_activeSwapChains.end()) {
-
-		if ((*it) != NULL) {
-			(*it)->Release();
-			delete (*it);
-		}
-
-		it = m_activeSwapChains.erase(it);
-	}
-
-#ifdef _EXPORT_LOGFILE
-	m_logFile.close();
-#endif
-
-	SAFE_RELEASE(actual)
+	m_pCreatedBy->Release();
+	actual      ->Release();
 }
 
+
+
 #define IF_GUID(riid,a,b,c,d,e,f,g,h,i,j,k) if ((riid.Data1==a)&&(riid.Data2==b)&&(riid.Data3==c)&&(riid.Data4[0]==d)&&(riid.Data4[1]==e)&&(riid.Data4[2]==f)&&(riid.Data4[3]==g)&&(riid.Data4[4]==h)&&(riid.Data4[5]==i)&&(riid.Data4[6]==j)&&(riid.Data4[7]==k))
-/**
-* Catch QueryInterface calls and increment the reference counter if necesarry. 
-***/
+
 
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , QueryInterface , REFIID , riid , LPVOID* , ppv )
 
@@ -1060,64 +1045,47 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetCursorProperties , UINT , XH
 }
 
 
-/**
-* Creates a proxy (or wrapped) swap chain.
-* @param pSwapChain [in, out] Proxy (wrapped) swap chain to be returned.
-***/
-METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateAdditionalSwapChain , D3DPRESENT_PARAMETERS* , pPresentationParameters , IDirect3DSwapChain9** , pSwapChain )
-	IDirect3DSwapChain9* pActualSwapChain;
-	HRESULT result = actual->CreateAdditionalSwapChain(pPresentationParameters, &pActualSwapChain);
 
-	if (SUCCEEDED(result)) {
-		D3D9ProxySwapChain* wrappedSwapChain = new D3D9ProxySwapChain(pActualSwapChain, this, true);
-		*pSwapChain = wrappedSwapChain;
-		m_activeSwapChains.push_back(wrappedSwapChain);
+
+
+
+METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateAdditionalSwapChain , D3DPRESENT_PARAMETERS* , pPresentationParameters , IDirect3DSwapChain9** , pSwapChain )
+	IDirect3DSwapChain9* n;
+	HRESULT result = actual->CreateAdditionalSwapChain( pPresentationParameters , &n );
+
+	if( SUCCEEDED(result) ){
+		D3D9ProxySwapChain* proxy = new D3D9ProxySwapChain( n , this , true );
+		*pSwapChain = proxy;
+		m_activeSwapChains += proxy;
 	}
 
 	return result;
 }
 
-/**
-* Provides the swap chain from the intern vector of active proxy (wrapped) swap chains.
-* @param pSwapChain [in, out] The proxy (wrapped) swap chain to be returned.
-* @see D3D9ProxySwapChain
-***/
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetSwapChain , UINT , iSwapChain , IDirect3DSwapChain9** , pSwapChain )
-
-	try {
-		*pSwapChain = m_activeSwapChains.at(iSwapChain); 
-		//Device->GetSwapChain increases ref count on the chain (docs don't say this)
-		(*pSwapChain)->AddRef();
-	}
-	catch (std::out_of_range) {
-		OutputDebugStringA("GetSwapChain: out of range fetching swap chain");
-		return D3DERR_INVALIDCALL;
-	}
-
+	*pSwapChain = m_activeSwapChains[iSwapChain];
+	(*pSwapChain)->AddRef();
 	return D3D_OK;
 }
 
 
-
-
-
-
-/**
-* Calls the backbuffer using the stored active proxy (wrapped) swap chain.
-***/
-METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetBackBuffer , UINT , iSwapChain, UINT , iBackBuffer , D3DBACKBUFFER_TYPE , Type , IDirect3DSurface9** , ppBackBuffer )
-	HRESULT result;
-	try {
-		result = m_activeSwapChains.at(iSwapChain)->GetBackBuffer(iBackBuffer, Type, ppBackBuffer);
-		// ref count increase happens in the swapchain GetBackBuffer so we don't add another ref here as we are just passing the value through
-	}
-	catch (std::out_of_range) {
-		OutputDebugStringA("GetBackBuffer: out of range getting swap chain");
-		result = D3DERR_INVALIDCALL;
-	}
-
-	return result;
+METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetFrontBufferData , UINT , iSwapChain , IDirect3DSurface9* , pDestSurface )
+	return m_activeSwapChains[iSwapChain]->GetFrontBufferData(pDestSurface);
 }
+
+
+METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetBackBuffer , UINT , iSwapChain, UINT , iBackBuffer , D3DBACKBUFFER_TYPE , Type , IDirect3DSurface9** , ppBackBuffer )
+	return m_activeSwapChains[iSwapChain]->GetBackBuffer(iBackBuffer, Type, ppBackBuffer);
+}
+
+
+
+
+
+
+
+
 
 
 /**
@@ -1345,22 +1313,6 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetRenderTargetData , IDirect3D
 	return result;
 }
 
-/**
-* Gets the front buffer data from the internal stored active proxy (or wrapped) swap chain.
-* @see D3D9ProxySwapChain
-***/
-METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetFrontBufferData , UINT , iSwapChain , IDirect3DSurface9* , pDestSurface )
-	HRESULT result;
-	try {
-		result = m_activeSwapChains.at(iSwapChain)->GetFrontBufferData(pDestSurface);
-	}
-	catch (std::out_of_range) {
-		OutputDebugStringA("GetFrontBufferData: out of range fetching swap chain");
-		result = D3DERR_INVALIDCALL;
-	}
-
-	return result;
-}
 
 /**
 * Copy the contents of the source proxy (wrapped) surface rectangles to the destination proxy (wrapped) surface rectangles.
@@ -1568,13 +1520,11 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , BeginScene )
 			m_bViewportIsSquished = false;
 		}
 
-		// handle controls 
-		if ((m_deviceBehavior.whenToHandleHeadTracking == DeviceBehavior::WhenToDo::BEGIN_SCENE) || (m_deviceBehavior.whenToHandleHeadTracking == DeviceBehavior::WhenToDo::FIRST_BEGIN_SCENE))
+		if( whenToHandleHeadTracking == BEGIN_SCENE || whenToHandleHeadTracking == FIRST_BEGIN_SCENE ){
 			HandleTracking();
+		}
 
-		// draw BRASSA
-		if ((m_deviceBehavior.whenToRenderBRASSA == DeviceBehavior::WhenToDo::BEGIN_SCENE) || (m_deviceBehavior.whenToRenderBRASSA == DeviceBehavior::WhenToDo::FIRST_BEGIN_SCENE))
-		{
+		if( whenToRenderBRASSA == BEGIN_SCENE || whenToRenderBRASSA == FIRST_BEGIN_SCENE ){
 			menu.render();
 		}
 
@@ -1593,21 +1543,15 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , BeginScene )
 				s->used = false;
 			}
 		}
-	}
-	else
-	{
-		// handle controls 
-		if (m_deviceBehavior.whenToHandleHeadTracking == DeviceBehavior::WhenToDo::BEGIN_SCENE)
+	}else{
+		if( whenToHandleHeadTracking == BEGIN_SCENE ){
 			HandleTracking();
+		}
 
-		// draw BRASSA
-		if (m_deviceBehavior.whenToRenderBRASSA == DeviceBehavior::WhenToDo::BEGIN_SCENE)
-		{
+		if( whenToRenderBRASSA == BEGIN_SCENE ){
 			menu.render();
 		}
 	}
-
-	
 
 	return actual->BeginScene();
 }
@@ -1616,13 +1560,11 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , BeginScene )
 * BRASSA called here for source engine games.
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , EndScene )
-	// handle controls 
-	if (m_deviceBehavior.whenToHandleHeadTracking == DeviceBehavior::WhenToDo::END_SCENE) 
+	if( whenToHandleHeadTracking == END_SCENE ){ 
 		HandleTracking();
+	}
 
-	// draw BRASSA
-	if (m_deviceBehavior.whenToRenderBRASSA == DeviceBehavior::WhenToDo::END_SCENE) 
-	{
+	if( whenToRenderBRASSA ==  END_SCENE ){
 		menu.render();
 	}
 
@@ -1640,20 +1582,8 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , Clear , DWORD , Count , CONST D
 	HRESULT result;
 	if (SUCCEEDED(result = actual->Clear(Count, pRects, Flags, Color, Z, Stencil))) {
 		if (switchDrawingSide()) {
-
 			HRESULT hr;
 			if (FAILED(hr = actual->Clear(Count, pRects, Flags, Color, Z, Stencil))) {
-
-#ifdef _DEBUG
-				char buf[256];
-				sprintf_s(buf, "Error: %s error description: %s\n",
-				DXGetErrorString(hr), DXGetErrorDescription(hr));
-
-				OutputDebugStringA(buf);
-				OutputDebugStringA("Clear failed\n");
-
-#endif
-
 			}
 		}
 	}
@@ -1698,25 +1628,23 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetTransform , D3DTRANSFORMSTAT
 
 
 		// If capturing state block capture without updating proxy device
-		if (m_pCapturingStateTo) {
-			m_pCapturingStateTo->SelectAndCaptureViewTransform(tempLeft, tempRight);
+		if( stateBlock ){
+			stateBlock->captureViewTransform( tempLeft , tempRight );
+			
 			if (m_currentRenderingSide == vireio::Left) {
 				pViewToSet = &tempLeft;
-			}
-			else {
+			}else{
 				pViewToSet = &tempRight;
 			}
-		}
-		else { // otherwise update proxy device
+		}else{ // otherwise update proxy device
 
 			m_bViewTransformSet = tempIsTransformSet;
-			m_leftView = tempLeft;
-			m_rightView = tempRight;
+			m_leftView          = tempLeft;
+			m_rightView         = tempRight;
 
 			if (m_currentRenderingSide == vireio::Left) {
 				m_pCurrentView = &m_leftView;
-			}
-			else {
+			}else{
 				m_pCurrentView = &m_rightView;
 			}
 
@@ -1759,17 +1687,15 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetTransform , D3DTRANSFORMSTAT
 		}
 
 		// If capturing state block capture without updating proxy device
-		if (m_pCapturingStateTo) {
+		if (stateBlock) {
 
-			m_pCapturingStateTo->SelectAndCaptureProjectionTransform(tempLeft, tempRight);
+			stateBlock->captureProjTransform(tempLeft, tempRight);
 			if (m_currentRenderingSide == vireio::Left) {
 				pProjectionToSet = &tempLeft;
-			}
-			else {
+			}else{
 				pProjectionToSet = &tempRight;
 			}
-		}
-		else { // otherwise update proxy device
+		}else{ // otherwise update proxy device
 
 			m_bProjectionTransformSet = tempIsTransformSet;
 			m_leftProjection = tempLeft;
@@ -1777,8 +1703,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetTransform , D3DTRANSFORMSTAT
 
 			if (m_currentRenderingSide == vireio::Left) {
 				m_pCurrentProjection = &m_leftProjection;
-			}
-			else {
+			}else{
 				m_pCurrentProjection = &m_rightProjection;
 			}
 
@@ -1807,20 +1732,19 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetViewport , CONST D3DVIEWPORT
 	HRESULT result = actual->SetViewport(pViewport);
 
 	if (SUCCEEDED(result)) {
-
 		// If in a Begin-End StateBlock pair update the block state rather than the current proxy device state
-		if (m_pCapturingStateTo) {
-			m_pCapturingStateTo->SelectAndCaptureState(*pViewport);
-		}
-		else {
+		if (stateBlock) {
+			stateBlock->captureViewport( *pViewport );
+		}else{
 			m_bActiveViewportIsDefault = isViewportDefaultForMainRT(pViewport);
 			m_LastViewportSet = *pViewport;
 		}
 	}
 
 	
-	if (m_bViewportIsSquished)
+	if( m_bViewportIsSquished ){
 		SetGUIViewport();
+	}
 	
 	return result;
 }
@@ -1829,198 +1753,113 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetViewport , CONST D3DVIEWPORT
 
 
 
-/**
-* Creates proxy state block.
-* Also, selects capture type option according to state block type.
-* @param ppSB [in, out] The proxy (or wrapped) state block returned.
-* @see D3DProxyStateBlock
-***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateStateBlock , D3DSTATEBLOCKTYPE , Type , IDirect3DStateBlock9** , ppSB )
-	return D3DERR_INVALIDCALL;
+	IDirect3DStateBlock9* real;
 
-	IDirect3DStateBlock9* pActualStateBlock = NULL;
-	HRESULT creationResult = actual->CreateStateBlock(Type, &pActualStateBlock);
+	HRESULT result = actual->CreateStateBlock( Type , &real );
 
-	if (SUCCEEDED(creationResult)) {
-
-		D3D9ProxyStateBlock::CaptureType capType;
-
-		switch (Type) {
-		case D3DSBT_ALL: 
-			{
-				capType = D3D9ProxyStateBlock::Cap_Type_Full;
-				break;
-			}
-
-		case D3DSBT_PIXELSTATE: 
-			{
-				capType = D3D9ProxyStateBlock::Cap_Type_Pixel;
-				break;
-			}
-
-		case D3DSBT_VERTEXSTATE: 
-			{
-				capType = D3D9ProxyStateBlock::Cap_Type_Vertex;
-				break;
-			}
-
-		default:
-			{
-				capType = D3D9ProxyStateBlock::Cap_Type_Full;
-				break;
-			}    
-		}
-
-		*ppSB = new D3D9ProxyStateBlock(pActualStateBlock, this, capType, m_currentRenderingSide == vireio::Left);
-	}
-
-	return creationResult;
-}
-
-/**
-* Creates and stores proxy state block.
-* @see D3DProxyStateBlock
-***/
-METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , BeginStateBlock )
-	HRESULT result;
-	if (SUCCEEDED(result = actual->BeginStateBlock())) {
-		m_bInBeginEndStateBlock = true;
-		m_pCapturingStateTo = new D3D9ProxyStateBlock(NULL, this, D3D9ProxyStateBlock::Cap_Type_Selected, m_currentRenderingSide == vireio::Left);
+	if( SUCCEEDED(result) ){
+		D3D9ProxyStateBlock* proxy = new D3D9ProxyStateBlock( real , this );
+		proxy->type = Type;
+		*ppSB = proxy;
 	}
 
 	return result;
 }
 
-/**
-* Calls both super method and method from stored proxy state block.
-* @param [in, out] The returned proxy (or wrapped) state block.
-* @see D3D9ProxyStateBlock::EndStateBlock()
-***/
+
+
+METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , BeginStateBlock )
+	HRESULT result = actual->BeginStateBlock();
+
+	if( SUCCEEDED(result) ){
+		D3D9ProxyStateBlock* proxy = new D3D9ProxyStateBlock( 0 , this );
+		stateBlock = proxy;
+	}
+
+	return result;
+}
+
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , EndStateBlock , IDirect3DStateBlock9** , ppSB )
-	IDirect3DStateBlock9* pActualStateBlock = NULL;
-	HRESULT creationResult = actual->EndStateBlock(&pActualStateBlock);
+	IDirect3DStateBlock9* real = NULL;
+	HRESULT result = actual->EndStateBlock( &real );
 
-	if (SUCCEEDED(creationResult)) {
-		m_pCapturingStateTo->EndStateBlock(pActualStateBlock);
-		*ppSB = m_pCapturingStateTo;
-	}
-	else {
-		m_pCapturingStateTo->Release();
-		if (m_pCapturingStateTo) delete m_pCapturingStateTo;
+	if( SUCCEEDED(result) ){
+		stateBlock->actual = real;
+		*ppSB = stateBlock;
+	}else{
+		stateBlock.clear();
 	}
 
-	m_pCapturingStateTo = NULL;
 	m_bInBeginEndStateBlock = false;
 
-	return creationResult;
+	return result;
 }
 
 
 
-/**
-* Provides texture from stored active (mono) texture stages.
-* @see D3D9ProxyTexture
-***/
+
+
+
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetTexture , DWORD , Stage , IDirect3DBaseTexture9** , ppTexture )
-	if (m_activeTextureStages.count(Stage) != 1)
+	if( m_activeTextureStages.count(Stage) != 1 ){
 		return D3DERR_INVALIDCALL;
-	else {
-		*ppTexture = m_activeTextureStages[Stage];
-		if ((*ppTexture))
-			(*ppTexture)->AddRef();
-		return D3D_OK;
 	}
+
+	*ppTexture = m_activeTextureStages[Stage];
+
+	if( (*ppTexture) ){
+		(*ppTexture)->AddRef();
+	}
+	
+	return D3D_OK;
 }
 
-/**
-* Calls a helper function to unwrap the textures and calls the super method for both sides.
-* Update stored active (mono) texture stages if new texture was successfully set.
-*
-* @see vireio::UnWrapTexture() 
-***/
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetTexture , DWORD , Stage , IDirect3DBaseTexture9* , pTexture )
 	HRESULT result;
-	if (pTexture) {
+	if( pTexture ){
 
-		IDirect3DBaseTexture9* pActualLeftTexture = NULL;
+		IDirect3DBaseTexture9* pActualLeftTexture  = NULL;
 		IDirect3DBaseTexture9* pActualRightTexture = NULL;
 
-		vireio::UnWrapTexture(pTexture, &pActualLeftTexture, &pActualRightTexture);
+		vireio::UnWrapTexture( pTexture , &pActualLeftTexture , &pActualRightTexture );
 
-		// Try and Update the actual devices textures
-		if ((pActualRightTexture == NULL) || (m_currentRenderingSide == vireio::Left)) // use left (mono) if not stereo or one left side
+		if( !pActualRightTexture || m_currentRenderingSide == vireio::Left ){
 			result = actual->SetTexture(Stage, pActualLeftTexture);
-		else
+		}else{
 			result = actual->SetTexture(Stage, pActualRightTexture);
-
-	}
-	else {
-		result = actual->SetTexture(Stage, NULL);
-	}
-
-	// Update m_activeTextureStages if new texture was successfully set
-	if (SUCCEEDED(result)) {
-
-		// If in a Begin-End StateBlock pair update the block state rather than the current proxy device state
-		if (m_pCapturingStateTo) {
-			m_pCapturingStateTo->SelectAndCaptureState(Stage, pTexture);
 		}
-		else {
 
-			// remove existing texture that was active at Stage if there is one
-			if (m_activeTextureStages.count(Stage) == 1) { 
+	}else{
+		result = actual->SetTexture( Stage , 0 );
+	}
 
-				IDirect3DBaseTexture9* pOldTexture = m_activeTextureStages.at(Stage);
-				if (pOldTexture)
-					pOldTexture->Release();
-
-				m_activeTextureStages.erase(Stage);
-			}
-
-			// insert new texture (can be a NULL pointer, this is important for StateBlock tracking)
-			if(m_activeTextureStages.insert(std::pair<DWORD, IDirect3DBaseTexture9*>(Stage, pTexture)).second) {
-				//success
-				if (pTexture)
-					pTexture->AddRef();
-			}
-			else {
-				OutputDebugStringA(__FUNCTION__);
-				OutputDebugStringA("\n");
-				OutputDebugStringA("Unable to store active Texture Stage.\n");
-				assert(false);
-
-				//If we get here the state of the texture tracking is fubared and an implosion is imminent.
-
-				result = D3DERR_INVALIDCALL;
-			}
+	if (SUCCEEDED(result)) {
+		if (stateBlock) {
+			stateBlock->captureTextureSampler(Stage, pTexture);
+		}else {
+			m_activeTextureStages[Stage] = pTexture;
 		}
 	}
 
 	return result;
 }
 
-/**
-* Base GetTextureStageState functionality.
-***/
 
-
-
-/**
-* Applies all dirty shader registers, draws both stereo sides if switchDrawingSide() agrees.
-* @see switchDrawingSide()
-***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawPrimitive , D3DPRIMITIVETYPE , PrimitiveType , UINT , StartVertex , UINT , PrimitiveCount )
 	if( isDrawHide() ){
 		return S_OK;
 	}
 	
-	//m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
-
 	rulesApply();
 
-	HRESULT result;
-	if (SUCCEEDED(result = actual->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount))) {
-		if (switchDrawingSide())
+	HRESULT result = actual->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
+
+	if( SUCCEEDED(result) ){
+		if(switchDrawingSide() )
 			actual->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
 	}
 
@@ -2114,8 +1953,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , ProcessVertices , UINT , SrcSta
 	if (pVertexDecl) {
 		pCastVertexDeclaration = static_cast<D3D9ProxyVertexDeclaration*>(pVertexDecl);
 		result = actual->ProcessVertices(SrcStartIndex, DestIndex, VertexCount, pCastDestBuffer->actual, pCastVertexDeclaration->actual, Flags);
-	}
-	else {
+	}else{
 		result = actual->ProcessVertices(SrcStartIndex, DestIndex, VertexCount, pCastDestBuffer->actual, NULL, Flags);
 	}
 
@@ -2141,142 +1979,76 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateVertexDeclaration , CONST
 * @see D3D9ProxyStateBlock
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetVertexDeclaration , IDirect3DVertexDeclaration9* , pDecl )
-	D3D9ProxyVertexDeclaration* pWrappedVDeclarationData = static_cast<D3D9ProxyVertexDeclaration*>(pDecl);
+	D3D9ProxyVertexDeclaration* proxy = static_cast<D3D9ProxyVertexDeclaration*>(pDecl);
 
-	// Update actual Vertex Declaration
 	HRESULT result;
-	if (pWrappedVDeclarationData)
-		result = actual->SetVertexDeclaration(pWrappedVDeclarationData->actual);
-	else
-		result = actual->SetVertexDeclaration(NULL);
 
-	// Update stored proxy Vertex Declaration
-	if (SUCCEEDED(result)) {
+	if( proxy ){
+		result = actual->SetVertexDeclaration( proxy->actual );
+	}else{
+		result = actual->SetVertexDeclaration( 0 );
+	}
 
-		// If in a Begin-End StateBlock pair update the block state rather than the current proxy device state
-		if (m_pCapturingStateTo) {
-			m_pCapturingStateTo->SelectAndCaptureState(pWrappedVDeclarationData);
-		}
-		else {
-
-			if (m_pActiveVertexDeclaration) {
-				m_pActiveVertexDeclaration->Release();
-			}
-
-			m_pActiveVertexDeclaration = pWrappedVDeclarationData;
-			if (m_pActiveVertexDeclaration) {
-				m_pActiveVertexDeclaration->AddRef();
-			}
+	if( SUCCEEDED(result) ){
+		if (stateBlock) {
+			stateBlock->captureVertexDeclaration( proxy );
+		}else {
+			m_pActiveVertexDeclaration = proxy;
 		}
 	}
 
 	return result;
 }
 
-/**
-* Provides currently stored vertex declaration.
-***/
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetVertexDeclaration , IDirect3DVertexDeclaration9** , ppDecl )
-	if (!m_pActiveVertexDeclaration) 
+	if( !m_pActiveVertexDeclaration ) {
 		// TODO check this is the response if no declaration set
 		//In Response to TODO:  JB, Jan 12. I believe it crashes most times this happens, tested by simply nulling out the ppDecl pointer and passing it into the base d3d method
 		return D3DERR_INVALIDCALL; 
+	}
 
 	*ppDecl = m_pActiveVertexDeclaration;
 
 	return D3D_OK;
 }
 
-/**
-* Creates proxy (wrapped) vertex shader.
-* @param ppShader [in, out] The created proxy vertex shader.
-* @see D3D9ProxyVertexShader
-***/
 
 
-
-/**
-* Sets stream source and updates stored vertex buffers.
-* Also, it calls proxy state block to capture states.
-* @see D3D9ProxyStateBlock::SelectAndCaptureState()
-***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetStreamSource , UINT , StreamNumber , IDirect3DVertexBuffer9* , pStreamData , UINT , OffsetInBytes , UINT , Stride )	
-	D3D9ProxyVertexBuffer* pCastStreamData = static_cast<D3D9ProxyVertexBuffer*>(pStreamData);
+	D3D9ProxyVertexBuffer* proxy = static_cast<D3D9ProxyVertexBuffer*>(pStreamData);
+	
 	HRESULT result;
-	if (pStreamData) {		
-		result = actual->SetStreamSource(StreamNumber, pCastStreamData->actual, OffsetInBytes, Stride);
+	
+	if( proxy ){
+		result = actual->SetStreamSource( StreamNumber , proxy->actual , OffsetInBytes , Stride );
+	}else{
+		result = actual->SetStreamSource( StreamNumber , NULL , OffsetInBytes , Stride );
 	}
-	else {
-		result = actual->SetStreamSource(StreamNumber, NULL, OffsetInBytes, Stride);
-	}
 
-
-	// Update m_activeVertexBuffers if new vertex buffer was successfully set
-	if (SUCCEEDED(result)) {
-
-		// If in a Begin-End StateBlock pair update the block state rather than the current proxy device state
-		if (m_pCapturingStateTo) {
-			m_pCapturingStateTo->SelectAndCaptureState(StreamNumber, pCastStreamData);
-		}
-		else {
-			// remove existing vertex buffer that was active at StreamNumber if there is one
-			if (m_activeVertexBuffers.count(StreamNumber) == 1) { 
-
-				IDirect3DVertexBuffer9* pOldBuffer = m_activeVertexBuffers.at(StreamNumber);
-				if (pOldBuffer == pStreamData)
-					return result;
-
-				if (pOldBuffer)
-					pOldBuffer->Release();
-
-				m_activeVertexBuffers.erase(StreamNumber);
-			}
-
-			// insert new vertex buffer
-			if(m_activeVertexBuffers.insert(std::pair<UINT, D3D9ProxyVertexBuffer*>(StreamNumber, pCastStreamData)).second) {
-				//success
-				if (pStreamData)
-					pStreamData->AddRef();
-			}
-			else {
-				OutputDebugStringA(__FUNCTION__);
-				OutputDebugStringA("\n");
-				OutputDebugStringA("Unable to store active Texture Stage.\n");
-				assert(false);
-
-				//If we get here the state of the texture tracking is fubared and an implosion is imminent.
-
-				result = D3DERR_INVALIDCALL;
-			}
+	if( SUCCEEDED(result) ){
+		if (stateBlock) {
+			stateBlock->captureVertexStream( StreamNumber , proxy );
+		}else{
+			m_activeVertexBuffers[StreamNumber] = proxy;
 		}
 	}
-
+	
 	return result;
 }
 
-/**
-* Provides stream data from stored vertex buffers.
-* TODO ppStreamData is marked in and out in docs. Potentially it can be a get when the stream hasn't been set before???
-* Category of probleme: Worry about it if it breaks.
-***/
+
+// This whole methods implementation is highly questionable. Not sure exactly how GetStreamSource works
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetStreamSource , UINT , StreamNumber , IDirect3DVertexBuffer9** , ppStreamData , UINT* , pOffsetInBytes , UINT* , pStride )
-	// This whole methods implementation is highly questionable. Not sure exactly how GetStreamSource works
-	HRESULT result = D3DERR_INVALIDCALL;
-
-	if (m_activeVertexBuffers.count(StreamNumber) == 1) {
-
-		//IDirect3DVertexBuffer9* pCurrentActual = m_activeVertexBuffers[StreamNumber]->actual;
-
-		//IDirect3DVertexBuffer9* pActualResultBuffer = NULL;
-		//HRESULT result = actual->GetStreamSource(StreamNumber, &pCurrentActual, pOffsetInBytes, pStride);
-
+	if( m_activeVertexBuffers.count(StreamNumber) == 1 ){
 		*ppStreamData = m_activeVertexBuffers[StreamNumber];
-		if ((*ppStreamData))
+		if( (*ppStreamData) ){
 			(*ppStreamData)->AddRef();
-
-		result = D3D_OK;
+		}
+		return D3D_OK;
 	}
-	return result;
+
+	return D3DERR_INVALIDCALL;
 }
 
 
@@ -2287,43 +2059,32 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetStreamSource , UINT , Stream
 * @see D3D9ProxyStateBlock::SelectAndCaptureState()
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetIndices , IDirect3DIndexBuffer9* , pIndexData )
-	D3D9ProxyIndexBuffer* pWrappedNewIndexData = static_cast<D3D9ProxyIndexBuffer*>(pIndexData);
+	D3D9ProxyIndexBuffer* proxy = static_cast<D3D9ProxyIndexBuffer*>(pIndexData);
 
 	// Update actual index buffer
 	HRESULT result;
-	if (pWrappedNewIndexData)
-		result = actual->SetIndices(pWrappedNewIndexData->actual);
-	else
-		result = actual->SetIndices(NULL);
+	if( proxy ){
+		result = actual->SetIndices( proxy->actual );
+	}else{
+		result = actual->SetIndices( 0 );
+	}
 
-	if (SUCCEEDED(result)) {
-
-		// If in a Begin-End StateBlock pair update the block state rather than the current proxy device state
-		if (m_pCapturingStateTo) {
-			m_pCapturingStateTo->SelectAndCaptureState(pWrappedNewIndexData);
-		}
-		else {
-			// Update stored proxy index buffer
-			if (m_pActiveIndicies) {
-				m_pActiveIndicies->Release();
-			}
-
-			m_pActiveIndicies = pWrappedNewIndexData;
-			if (m_pActiveIndicies) {
-				m_pActiveIndicies->AddRef();
-			}
+	if( SUCCEEDED(result) ){
+		if (stateBlock) {
+			stateBlock->captureIndexBuffer( proxy );
+		}else{
+			m_pActiveIndicies = proxy;
 		}
 	}
 
 	return result;
 }
 
-/**
-* Provides stored indices.
-***/
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetIndices , IDirect3DIndexBuffer9** , ppIndexData )
-	if (!m_pActiveIndicies)
+	if( !m_pActiveIndicies ){
 		return D3DERR_INVALIDCALL;
+	}
 
 	*ppIndexData = m_pActiveIndicies;
 	m_pActiveIndicies->AddRef();
@@ -2543,7 +2304,7 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 		&& (m_VertexShaderCountLastFrame>(UINT)config.VRboostMinShaderCount)
 		&& (m_VertexShaderCountLastFrame<(UINT)config.VRboostMaxShaderCount) )
 	{
-		VRBoostStatus.VRBoost_Active = true;
+		VRBoost_Active = true;
 		// development bool
 		bool createNSave = false;
 
@@ -2554,7 +2315,7 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 
 		if (m_pVRboost_ApplyMemoryRules(MAX_VRBOOST_VALUES, (float**)&VRBoostValue) != S_OK)
 		{
-			VRBoostStatus.VRBoost_ApplyRules = false;
+			VRBoost_ApplyRules = false;
 			if (!createNSave)
 			{
 				// load VRboost rules
@@ -2562,31 +2323,31 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 				{
 					//OutputDebugStringA(std::string("config.VRboostPath: " + config.VRboostPath).c_str());
 					if (m_pVRboost_LoadMemoryRules(config.exeName.toStdString() , config.getVRBoostRuleFilePath().toStdString() ) != S_OK)
-						VRBoostStatus.VRBoost_LoadRules = false;
+						VRBoost_LoadRules = false;
 					else
-						VRBoostStatus.VRBoost_LoadRules = true;
+						VRBoost_LoadRules = true;
 				}
 			}
 		}
 		else
 		{
-			VRBoostStatus.VRBoost_ApplyRules = true;
+			VRBoost_ApplyRules = true;
 		}
 	}
 	else
 	{
-		VRBoostStatus.VRBoost_Active = false;
+		VRBoost_Active = false;
 	}
 
-	if( VRBoostStatus.VRBoost_Active ){
-		if( !VRBoostStatus.VRBoost_LoadRules ){
+	if( VRBoost_Active ){
+		if( !VRBoost_LoadRules ){
 			menu.showMessage(
 				"VRBoost LoadRules Failed!\n"
 				"To Enable head tracking, turn on tracker mouse emulation\n"
 				"in tracker configuration menu"
 			);
 		}else
-		if( !VRBoostStatus.VRBoost_ApplyRules ){
+		if( !VRBoost_ApplyRules ){
 			menu.showMessage(
 				"VRBoost rules loaded but could not be applied\n"
 				"To Enable head tracking, turn on tracker mouse emulation\n"
@@ -2744,28 +2505,27 @@ METHOD_IMPL( bool , , D3DProxyDevice , setDrawingSide , vireio::RenderPosition ,
 			result = actual->SetDepthStencilSurface(m_pActiveStereoDepthStencil->right);
 	}
 
+
+
 	// switch textures to new side
-	IDirect3DBaseTexture9* pActualLeftTexture = NULL;
-	IDirect3DBaseTexture9* pActualRightTexture = NULL;
+	for( int stage : m_activeTextureStages.keys() ){
+		ComPtr<IDirect3DBaseTexture9> tex = m_activeTextureStages[stage];
 
-	for(auto it = m_activeTextureStages.begin(); it != m_activeTextureStages.end(); ++it )
-	{
-		if (it->second) {
-			pActualLeftTexture = NULL;
-			pActualRightTexture = NULL;
-			vireio::UnWrapTexture(it->second, &pActualLeftTexture, &pActualRightTexture);
+		if( !tex ){
+			continue;
+		}
 
-			// if stereo texture
-			if (pActualRightTexture != NULL) { 
-				if (side == vireio::Left) 
-					result = actual->SetTexture(it->first, pActualLeftTexture); 
-				else 
-					result = actual->SetTexture(it->first, pActualRightTexture);
+		IDirect3DBaseTexture9* left  = NULL;
+		IDirect3DBaseTexture9* right = NULL;
+		vireio::UnWrapTexture( tex , &left , &right );
+
+		// if stereo texture
+		if( right ) { 
+			if( side == vireio::Left ){
+				result = actual->SetTexture( stage , left ); 
+			}else{
+				result = actual->SetTexture( stage , right );
 			}
-			// else the texture is mono and doesn't need changing. It will always be set initially and then won't need changing
-
-			if (result != D3D_OK)
-				OutputDebugStringA("Error trying to set one of the textures while switching between active eyes for drawing.\n");
 		}
 	}
 
@@ -2831,18 +2591,12 @@ METHOD_IMPL( bool , , D3DProxyDevice , switchDrawingSide )
 }
 
 
-/**
-* BRASSA menu border velocity updated here
-* Arrow up/down need to be done via call from Present().
-***/
 METHOD_IMPL( void , , D3DProxyDevice , BRASSA_UpdateBorder )
-	// handle controls 
-	if (m_deviceBehavior.whenToHandleHeadTracking == DeviceBehavior::PRESENT)
+	if( whenToHandleHeadTracking == PRESENT ){
 		HandleTracking();
+	}
 
-	// draw BRASSA
-	if (m_deviceBehavior.whenToRenderBRASSA == DeviceBehavior::PRESENT)
-	{
+	if( whenToRenderBRASSA == PRESENT ){
 		menu.render();
 	}
 }
@@ -2874,54 +2628,54 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_UpdateDeviceSettings )
 	switch(config.game_type)
 	{
 	case D3DProxyDevice::FIXED:
-		m_deviceBehavior.whenToHandleHeadTracking = DeviceBehavior::WhenToDo::BEGIN_SCENE;
-		m_deviceBehavior.whenToRenderBRASSA = DeviceBehavior::WhenToDo::PRESENT;
+		whenToHandleHeadTracking = BEGIN_SCENE;
+		whenToRenderBRASSA = PRESENT;
 		break;
 	case D3DProxyDevice::SOURCE:
 	case D3DProxyDevice::SOURCE_L4D:
 	case D3DProxyDevice::SOURCE_ESTER:
-		m_deviceBehavior.whenToHandleHeadTracking = DeviceBehavior::WhenToDo::END_SCENE;
-		m_deviceBehavior.whenToRenderBRASSA = DeviceBehavior::WhenToDo::END_SCENE;
+		whenToHandleHeadTracking = END_SCENE;
+		whenToRenderBRASSA = END_SCENE;
 		break;
 	case D3DProxyDevice::UNREAL:
 	case D3DProxyDevice::UNREAL_MIRROR:
 	case D3DProxyDevice::UNREAL_UT3:
 	case D3DProxyDevice::UNREAL_BIOSHOCK:
 	case D3DProxyDevice::UNREAL_BORDERLANDS:
-		m_deviceBehavior.whenToHandleHeadTracking = DeviceBehavior::WhenToDo::END_SCENE;
-		m_deviceBehavior.whenToRenderBRASSA = DeviceBehavior::WhenToDo::END_SCENE;
+		whenToHandleHeadTracking = END_SCENE;
+		whenToRenderBRASSA = END_SCENE;
 		break;
 	case D3DProxyDevice::EGO:
 	case D3DProxyDevice::EGO_DIRT:
-		m_deviceBehavior.whenToHandleHeadTracking = DeviceBehavior::WhenToDo::END_SCENE;
-		m_deviceBehavior.whenToRenderBRASSA = DeviceBehavior::WhenToDo::END_SCENE;
+		whenToHandleHeadTracking = END_SCENE;
+		whenToRenderBRASSA = END_SCENE;
 		break;
 	case D3DProxyDevice::REALV:
 	case D3DProxyDevice::REALV_ARMA:
-		m_deviceBehavior.whenToHandleHeadTracking = DeviceBehavior::WhenToDo::BEGIN_SCENE;
-		m_deviceBehavior.whenToRenderBRASSA = DeviceBehavior::WhenToDo::END_SCENE;
+		whenToHandleHeadTracking = BEGIN_SCENE;
+		whenToRenderBRASSA = END_SCENE;
 		break;
 	case D3DProxyDevice::UNITY:
 	case D3DProxyDevice::UNITY_SLENDER:
-		m_deviceBehavior.whenToHandleHeadTracking = DeviceBehavior::WhenToDo::BEGIN_SCENE;
-		m_deviceBehavior.whenToRenderBRASSA = DeviceBehavior::WhenToDo::END_SCENE;
+		whenToHandleHeadTracking = BEGIN_SCENE;
+		whenToRenderBRASSA = END_SCENE;
 		break;
 	case D3DProxyDevice::GAMEBRYO:
 	case D3DProxyDevice::GAMEBRYO_SKYRIM:
-		m_deviceBehavior.whenToHandleHeadTracking = DeviceBehavior::WhenToDo::BEGIN_SCENE;
-		m_deviceBehavior.whenToRenderBRASSA = DeviceBehavior::WhenToDo::END_SCENE;
+		whenToHandleHeadTracking = BEGIN_SCENE;
+		whenToRenderBRASSA = END_SCENE;
 		break;
 	case D3DProxyDevice::LFS:
-		m_deviceBehavior.whenToHandleHeadTracking = DeviceBehavior::WhenToDo::BEGIN_SCENE;
-		m_deviceBehavior.whenToRenderBRASSA = DeviceBehavior::WhenToDo::END_SCENE;
+		whenToHandleHeadTracking = BEGIN_SCENE;
+		whenToRenderBRASSA = END_SCENE;
 		break;
 	case D3DProxyDevice::CDC:
-		m_deviceBehavior.whenToHandleHeadTracking = DeviceBehavior::WhenToDo::END_SCENE;
-		m_deviceBehavior.whenToRenderBRASSA = DeviceBehavior::WhenToDo::END_SCENE;
+		whenToHandleHeadTracking = END_SCENE;
+		whenToRenderBRASSA = END_SCENE;
 		break;
 	default:
-		m_deviceBehavior.whenToHandleHeadTracking = DeviceBehavior::WhenToDo::BEGIN_SCENE;
-		m_deviceBehavior.whenToRenderBRASSA = DeviceBehavior::WhenToDo::PRESENT;
+		whenToHandleHeadTracking = BEGIN_SCENE;
+		whenToRenderBRASSA = PRESENT;
 		break;
 	}
 }
@@ -2974,49 +2728,11 @@ METHOD_IMPL( void , , D3DProxyDevice , ReleaseEverything )
 	// Fonts and any other D3DX interfaces should be released first.
 	// They frequently hold stateblocks which are holding further references to other resources.
 	menu.freeResources();
+	m_pCreatedBy->Release();
 
-
-	//m_spManagedShaderRegisters->ReleaseResources();
-
-	if (m_pCapturingStateTo) {
-		m_pCapturingStateTo->Release();
-		m_pCapturingStateTo = NULL;
-	}
-
-	// one of these will still have a count of 1 until the backbuffer is released
-	for(std::vector<D3D9ProxySurface*>::size_type i = 0; i != m_activeRenderTargets.size(); i++) 
-	{
-		if (m_activeRenderTargets[i] != NULL) {
-			m_activeRenderTargets[i]->Release();
-			m_activeRenderTargets[i] = NULL;
-		}
-	} 
-
-
-	auto it = m_activeTextureStages.begin();
-	while (it != m_activeTextureStages.end()) {
-		if (it->second)
-			it->second->Release();
-
-		it = m_activeTextureStages.erase(it);
-	}
-
-
-	auto itVB = m_activeVertexBuffers.begin();
-	while (itVB != m_activeVertexBuffers.end()) {
-		if (itVB->second)
-			itVB->second->Release();
-
-		itVB = m_activeVertexBuffers.erase(itVB);
-	}
-
-
-	SAFE_RELEASE( m_pActiveStereoDepthStencil )
-	SAFE_RELEASE( m_pActiveIndicies )
-	SAFE_RELEASE( vsCurrent )
-	SAFE_RELEASE( psCurrent )
-	SAFE_RELEASE( m_pActiveVertexDeclaration )
 }
+
+
 /**
 * Comparison made against active primary render target.
 *
@@ -3171,9 +2887,9 @@ METHOD_IMPL( bool , , D3DProxyDevice , InitVRBoost )
 	// explicit VRboost dll import
 	hmVRboost = LoadLibraryA("VRboost.dll");
 
-	VRBoostStatus.VRBoost_Active = false;
-	VRBoostStatus.VRBoost_LoadRules = false;
-	VRBoostStatus.VRBoost_ApplyRules = false;
+	VRBoost_Active = false;
+	VRBoost_LoadRules = false;
+	VRBoost_ApplyRules = false;
 
 	// get VRboost methods
 	if (hmVRboost != NULL)
@@ -3199,7 +2915,7 @@ METHOD_IMPL( bool , , D3DProxyDevice , InitVRBoost )
 		else
 		{
 			initSuccess = true;
-			VRBoostStatus.VRBoost_Active = true;
+			VRBoost_Active = true;
 			OutputDebugStringA("Success loading VRboost methods.");
 		}
 
@@ -3223,21 +2939,6 @@ METHOD_IMPL( bool , , D3DProxyDevice , InitVRBoost )
 	return initSuccess;
 }
 
-METHOD_IMPL( bool , , D3DProxyDevice , InitBrassa )
-	screenshot = (int)false;
-	m_bVRBoostToggle = true;
-	m_fVRBoostIndicator = 0.0f;
-
-	viewComputeTransforms();
-
-	for (int i = 0; i < 16; i++)
-		controls.xButtonsStatus[i] = false;
-	
-	
-	return true;
-}
-
-
 
 
 
@@ -3255,25 +2956,19 @@ METHOD_IMPL( bool , , D3DProxyDevice , InitBrassa )
 void D3DProxyDevice::ProxyPresent(){
  	IDirect3DSurface9* pWrappedBackBuffer;
 
-	try {
-		m_activeSwapChains.at(0)->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &pWrappedBackBuffer);
+	m_activeSwapChains[0]->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &pWrappedBackBuffer);
 
-		if (stereoView->initialized)
-			stereoView->Draw(static_cast<D3D9ProxySurface*>(pWrappedBackBuffer));
+	if( stereoView->initialized ){
+		stereoView->Draw(static_cast<D3D9ProxySurface*>(pWrappedBackBuffer));
+	}
 
-		pWrappedBackBuffer->Release();
-	}
-	catch (std::out_of_range) {
-		OutputDebugStringA("Present: No primary swap chain found. (Present probably called before device has been reset)");
-	}
+	pWrappedBackBuffer->Release();
+
 
 	// did set this now also in proxy swap chain ? solved ?
 	// (this can break if device present is followed by present on another swap chain... or not work well anyway)
 	m_isFirstBeginSceneOfFrame = true; 
-
 	BRASSA_UpdateBorder();
-
-	//Now calculate frames per second
 	fps = CalcFPS();
  }
 
@@ -3412,32 +3107,17 @@ METHOD_IMPL( HRESULT , , D3DProxyDevice , ProxyCreateOffscreenPlainSurface , UIN
 }
 
 
-/**
-* Calls release functions here and in stereo view class, releases swap chains and restores everything.
-* Subclasses which override this method must call through to super method at the end of the subclasses
-* implementation.
-* @see ReleaseEverything()
-* @see StereoView::ReleaseEverything()
-* @see OnCreateOrRestore()
-***/
+
 METHOD_IMPL( HRESULT , , D3DProxyDevice , ProxyReset , D3DPRESENT_PARAMETERS* , pPresentationParameters , D3DDISPLAYMODEEX* , pFullscreenDisplayMode , bool , useEx )
-	if(stereoView)
+	if( stereoView ){
 		stereoView->ReleaseEverything();
+	}
 
 	ReleaseEverything();
 
 	m_bInBeginEndStateBlock = false;
 
-	auto it = m_activeSwapChains.begin();
-	while (it != m_activeSwapChains.end()) {
-
-		if ((*it) != NULL)
-			(*it)->Release();
-
-		delete (*it);
-
-		it = m_activeSwapChains.erase(it);
-	}
+	m_activeSwapChains.clear();
 
 	HRESULT hr;
 	if( useEx ){
@@ -3446,20 +3126,9 @@ METHOD_IMPL( HRESULT , , D3DProxyDevice , ProxyReset , D3DPRESENT_PARAMETERS* , 
 		hr = actual->Reset(pPresentationParameters);
 	}
 
-	// if the device has been successfully reset we need to recreate any resources we created
-	if (hr == D3D_OK)  {
+	if( hr == D3D_OK ){
 		OnCreateOrRestore();
 		stereoView->PostReset();
-	}
-	else {
-#ifdef _DEBUG
-		char buf[256];
-		sprintf_s(buf, "Error: %s error description: %s\n",
-			DXGetErrorString(hr), DXGetErrorDescription(hr));
-
-		OutputDebugStringA(buf);				
-#endif
-		OutputDebugStringA("Device reset failed");
 	}
 
 	return hr;

@@ -41,8 +41,6 @@
     <ClCompile Include="..\src\Proxy\D3D9ProxyVolumeTexture.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDevice.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDeviceAdv.cpp" />
-    <ClCompile Include="..\src\Proxy\D3DProxyDeviceDebug.cpp" />
-    <ClCompile Include="..\src\Proxy\D3DProxyDeviceEgo.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDevice_game.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDevice_rules.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDevice_shaders.cpp" />
@@ -88,8 +86,6 @@
     <ClInclude Include="..\src\Proxy\D3D9ProxyVolumeTexture.h" />
     <ClInclude Include="..\src\Proxy\D3DProxyDevice.h" />
     <ClInclude Include="..\src\Proxy\D3DProxyDeviceAdv.h" />
-    <ClInclude Include="..\src\Proxy\D3DProxyDeviceDebug.h" />
-    <ClInclude Include="..\src\Proxy\D3DProxyDeviceEgo.h" />
     <ClInclude Include="..\src\StereoBackbuffer.h" />
     <ClInclude Include="..\src\StereoShaderConstant.h" />
     <ClInclude Include="..\src\StereoView.h" />

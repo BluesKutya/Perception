@@ -10,5 +10,6 @@ struct cRuleInfo{
 	QString         operationName;
 	bool            isMatrixRule;
 	bool            transpose;
+	bool            squishViewport;
 };
 

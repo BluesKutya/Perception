@@ -29,8 +29,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <VireIO.h>
 #include "D3D9ProxyDirect3D.h"
 #include "D3DProxyDevice.h"
-#include "D3DProxyDeviceDebug.h"
-#include "D3DProxyDeviceEgo.h"
 #include "D3DProxyDeviceAdv.h"
 /**
 * Constructor. 
@@ -163,9 +161,6 @@ METHOD_IMPL( HRESULT  , WINAPI , D3D9ProxyDirect3D , ProxyCreateDevice , UINT , 
 	// if game profile = game type + 10000 -> return DataGatherer (=shader analyzer)
 	if( config.game_type == D3DProxyDevice::GAMEBRYO ){
 		newDev = new D3DProxyDeviceAdv(dev, devEx , this );
-	}else
-	if( config.game_type == D3DProxyDevice::DEBUG_LOG_FILE ){
-		newDev = new D3DProxyDeviceDebug(dev, devEx , this );
 	}else{
 		newDev = new D3DProxyDevice(dev, devEx , this );
 	}

@@ -48,9 +48,6 @@
     <ClCompile Include="..\src\Proxy\D3D9ProxyTexture.cpp">
       <Filter>Proxy</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\Proxy\D3D9ProxyVertexBuffer.cpp">
-      <Filter>Proxy</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\Proxy\D3D9ProxyVertexDeclaration.cpp">
       <Filter>Proxy</Filter>
     </ClCompile>
@@ -70,12 +67,6 @@
       <Filter>Proxy</Filter>
     </ClCompile>
     <ClCompile Include="..\src\Proxy\D3DProxyDeviceAdv.cpp">
-      <Filter>Proxy</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\Proxy\D3DProxyDeviceDebug.cpp">
-      <Filter>Proxy</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\Proxy\D3DProxyDeviceEgo.cpp">
       <Filter>Proxy</Filter>
     </ClCompile>
     <ClCompile Include="..\src\Proxy\D3D9ProxyCubeTexture.cpp">
@@ -156,6 +147,9 @@
     <ClCompile Include="..\src\Proxy\D3DProxyDevice_game.cpp">
       <Filter>Proxy</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\Proxy\D3D9ProxyVertexBuffer.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\Proxy\D3D9ProxyIndexBuffer.h">
@@ -179,9 +173,6 @@
     <ClInclude Include="..\src\Proxy\D3D9ProxyTexture.h">
       <Filter>Proxy</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\Proxy\D3D9ProxyVertexBuffer.h">
-      <Filter>Proxy</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\Proxy\D3D9ProxyVertexDeclaration.h">
       <Filter>Proxy</Filter>
     </ClInclude>
@@ -198,12 +189,6 @@
       <Filter>Proxy</Filter>
     </ClInclude>
     <ClInclude Include="..\src\Proxy\D3DProxyDeviceAdv.h">
-      <Filter>Proxy</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\Proxy\D3DProxyDeviceDebug.h">
-      <Filter>Proxy</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\Proxy\D3DProxyDeviceEgo.h">
       <Filter>Proxy</Filter>
     </ClInclude>
     <ClInclude Include="..\src\Proxy\D3D9ProxyCubeTexture.h">
@@ -273,6 +258,9 @@
       <Filter>Common</Filter>
     </ClInclude>
     <ClInclude Include="..\src\Proxy\cConstantBuffer.h">
+      <Filter>Proxy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\Proxy\D3D9ProxyVertexBuffer.h">
       <Filter>Proxy</Filter>
     </ClInclude>
   </ItemGroup>

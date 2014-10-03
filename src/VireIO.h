@@ -39,9 +39,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // 64mm in meters
 #define IPD_DEFAULT 0.064f
 
-#define SAFE_RELEASE(x) if(x){  x->Release(); x=0; }
-
-
 namespace vireio {
 	enum RenderPosition
 	{
@@ -53,6 +50,67 @@ namespace vireio {
 	void UnWrapTexture(IDirect3DBaseTexture9* pWrappedTexture, IDirect3DBaseTexture9** ppActualLeftTexture, IDirect3DBaseTexture9** ppActualRightTexture);
 	bool AlmostSame(float a, float b, float epsilon);
 	void clamp(float* toClamp, float min, float max);
+};
+
+
+
+template<class T>
+class ComPtr{
+public:
+
+	ComPtr( ){
+		p = 0;
+	}
+
+	//TODO check where to release
+	ComPtr( T* ptr ){
+		p = ptr;
+		p->AddRef();
+	}
+
+	~ComPtr(){
+		clear();
+	}
+
+	T* operator->(){
+		return p;
+	}
+
+	operator T*(){
+		return p;
+	}
+
+	operator T**(){
+		return &p;
+	}
+
+	void operator = ( const ComPtr<T>& other ){
+		clear();
+
+		p = other.p;
+
+		if( p ){
+			p->AddRef();
+		}
+	}
+
+	T* get(){
+		return p;
+	}
+
+	void clear( ){
+		if( p ){
+			p->Release();
+			p = 0;
+		}
+	}
+
+	operator bool(){
+		return p;
+	}
+
+private:
+	T* p;
 };
 
 

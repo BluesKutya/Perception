@@ -25,6 +25,7 @@ public:
 	QString                  name;
 	QVector<cShaderConstant> constants;
 	QList<cRule*>            rules;
+	bool                     squishViewport;
 	bool                     blink;
 	bool                     hide;
 	bool                     used;

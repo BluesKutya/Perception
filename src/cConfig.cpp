@@ -26,7 +26,7 @@ cConfig::cConfig(){
 	guiBulletLabyrinth = false;
 	guiSquash    	   = 1;
 	guiDepth    	   = 0;
-	hudDistance 	   = 0;
+	hudDistance 	   = 1;
 	hudDepth           = 0;
 
 	shaderAnalyzerTranspose         = false;
@@ -97,6 +97,7 @@ bool cConfig::loadRules( ){
 		prop.get( rule.operationName    , "operationName"    );
 		prop.get( rule.isMatrixRule     , "isMatrixRule"     );
 		prop.get( rule.transpose        , "transpose"        );
+		prop.get( rule.squishViewport   , "squishViewport"   );
 
 		rules += rule;
 	}
@@ -123,6 +124,8 @@ bool cConfig::saveRules( ){
 		prop.set( rule.operationName    , "operationName"    );
 		prop.set( rule.isMatrixRule     , "isMatrixRule"     );
 		prop.set( rule.transpose        , "transpose"        );
+		prop.set( rule.squishViewport   , "squishViewport"   );
+		
 
 		prop.save( config.getRulesPath() + "/rule " + QString::number(index) + ".ini" );
 
@@ -215,7 +218,7 @@ QString cConfig::getProfileConfigFile( ){
 
 
 QString cConfig::getVRBoostRuleFilePath(){
-	return vireioDir + "/profiles/" + profileName + "/vrboost";
+	return vireioDir + "/profiles/" + profileName + "/vrboost.MTBS";
 }
 
 

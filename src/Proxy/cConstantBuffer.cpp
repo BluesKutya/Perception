@@ -90,3 +90,9 @@ void cConstantBuffer::writeTo( IDirect3DDevice9* device , bool vs ){
 		begin = end;
 	}
 }
+
+
+
+int cConstantBuffer::registerCount( ){
+	return modified.count();
+}
