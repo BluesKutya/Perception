@@ -1,5 +1,6 @@
 #include "D3DProxyDevice.h"
 #include "D3D9ProxyVertexShader.h"
+#include "D3D9ProxyPixelShader.h"
 #include <cPropsFile.h>
 #include <qdir.h>
 
@@ -210,12 +211,17 @@ void D3DProxyDevice::rulesLoad( ){
 void D3DProxyDevice::rulesUpdate( ){
 	
 	for( cRule* r : rules ){
-		r->registerIndexes.clear();
+		r->vsRegisters.clear();
+		r->psRegisters.clear();
 
 		for( cShader* s : shaders ){
 			for( cShaderConstant& c : s->constants ){
 				if( c.isMatrix() == r->isMatrixRule && r->constantsInclude.contains(c.Name) ){
-					r->registerIndexes += c.RegisterIndex;
+					if( s->vs ){
+						r->vsRegisters += c.RegisterIndex;
+					}else{
+						r->psRegisters += c.RegisterIndex;
+					}
 				}
 			}
 		}
@@ -224,17 +230,16 @@ void D3DProxyDevice::rulesUpdate( ){
 	for( cShader* s : shaders ){
 		s->rules.clear();
 
-		for( cRule* rule : rules ){
-
-			if( !rule->shadersInclude.isEmpty() && !rule->shadersInclude.contains(s->name) ){
+		for( cRule* r : rules ){
+			if( !r->shadersInclude.isEmpty() && !r->shadersInclude.contains(s->name) ){
 				continue;
 			}
 
-			if( rule->shadersExclude.contains(s->name) ){
+			if( r->shadersExclude.contains(s->name) ){
 				continue;
 			}
 
-			s->rules += rule;
+			s->rules += r;
 		}
 	}
 }
@@ -242,31 +247,33 @@ void D3DProxyDevice::rulesUpdate( ){
 
 
 void D3DProxyDevice::rulesApply( ){
-	if( !currentVS ){
-		return;
-	}
-
 	if( m_pCapturingStateTo ){
 		printf("CAPTURE!\n");
 		return;
 	}
 	
-	QList<cRule*>* list;
 
-	if( currentVS ){
-		list = &currentVS->rules;
-	}else{
-		list = &rules;
-	}
+	for( cRule* rule : rules ){
+		//todo optimize
+		if( (!vsCurrent || vsCurrent->rules.contains(rule)) ){
+			for( int index : rule->vsRegisters ){
+				rule->modify( index , &vsConstantsOriginal , &vsConstantsLeft , &vsConstantsRight );
+			}
+		}
 
-	for( cRule* rule : *list ){
-		rule->applyTo( &vsConstantsOriginal , &vsConstantsLeft , &vsConstantsRight );
+		if( (!psCurrent || psCurrent->rules.contains(rule) ) ){
+			for( int index : rule->psRegisters ){
+				rule->modify( index , &vsConstantsOriginal , &vsConstantsLeft , &vsConstantsRight );
+			}
+		}
 	}
 
 	if( m_currentRenderingSide == vireio::Left ){
-		vsConstantsLeft.writeTo( actual );
+		vsConstantsLeft.writeTo( actual , true  );
+		psConstantsLeft.writeTo( actual , false );
 	}else{
-		vsConstantsRight.writeTo( actual );
+		vsConstantsRight.writeTo( actual , true  );
+		psConstantsRight.writeTo( actual , false );
 	}
 }
 

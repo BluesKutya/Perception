@@ -33,5 +33,5 @@ public:
 	
 				          
 	cShader( D3DProxyDevice* d , IDirect3DVertexShader9* avs , IDirect3DPixelShader9* aps );
-	void updateRules();
+	~cShader();
 };

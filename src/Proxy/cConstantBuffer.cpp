@@ -61,7 +61,7 @@ bool cConstantBuffer::get( int registerIndex , float* ptr , int registerCount ){
 
 
 
-void cConstantBuffer::writeTo( IDirect3DDevice9* device ){
+void cConstantBuffer::writeTo( IDirect3DDevice9* device , bool vs ){
 	int begin = 0;
 	int end   = 0;
 
@@ -81,7 +81,11 @@ void cConstantBuffer::writeTo( IDirect3DDevice9* device ){
 			return;
 		}
 
-		device->SetVertexShaderConstantF( begin , registers.data() + begin*4 , end - begin);
+		if( vs ){
+			device->SetVertexShaderConstantF( begin , registers.data() + begin*4 , end - begin);
+		}else{
+			device->SetPixelShaderConstantF ( begin , registers.data() + begin*4 , end - begin);
+		}
 
 		begin = end;
 	}

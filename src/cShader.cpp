@@ -105,13 +105,16 @@ cShader::cShader( D3DProxyDevice* d , IDirect3DVertexShader9* avs , IDirect3DPix
 		
 		SAFE_RELEASE(table)
 	}
+
+	device->shaders += this;
+
+	device->rulesUpdate();
 }
 
 
-
-
-
-
+cShader::~cShader( ){
+	device->shaders.removeAll( this );
+}
 
 
 

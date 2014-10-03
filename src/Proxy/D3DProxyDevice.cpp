@@ -87,10 +87,8 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	m_isFirstBeginSceneOfFrame = true;
 
 
-	currentVS         = 0;
-	currentPS         = 0;
-
-
+	vsCurrent = 0;
+	psCurrent = 0;
 
 
 	InitBrassa();
@@ -388,7 +386,7 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 
 
 bool D3DProxyDevice::isDrawHide( ){
-	return config.shaderAnalyzer && ((currentVS && currentVS->hide) || (currentPS && currentPS->hide));
+	return config.shaderAnalyzer && ((vsCurrent && vsCurrent->hide) || (psCurrent && psCurrent->hide));
 }
 
 
@@ -1838,6 +1836,8 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetViewport , CONST D3DVIEWPORT
 * @see D3DProxyStateBlock
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateStateBlock , D3DSTATEBLOCKTYPE , Type , IDirect3DStateBlock9** , ppSB )
+	return D3DERR_INVALIDCALL;
+
 	IDirect3DStateBlock9* pActualStateBlock = NULL;
 	HRESULT creationResult = actual->CreateStateBlock(Type, &pActualStateBlock);
 
@@ -2329,110 +2329,6 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetIndices , IDirect3DIndexBuff
 	m_pActiveIndicies->AddRef();
 
 	return D3D_OK;
-}
-
-
-METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreatePixelShader , CONST DWORD* , pFunction , IDirect3DPixelShader9** , ppShader )
-	IDirect3DPixelShader9* pActualPShader = NULL;
-	HRESULT creationResult = actual->CreatePixelShader(pFunction, &pActualPShader);
-
-	if (SUCCEEDED(creationResult)) {
-		D3D9ProxyPixelShader* shader = new D3D9ProxyPixelShader(pActualPShader, this);
-		*ppShader = shader;
-		shaders += shader;
-	}
-
-	return creationResult;
-}
-
-/**
-* Sets pixel shader and calls proxy state block to capture states.
-* @see D3D9ProxyStateBlock::SelectAndCaptureState()
-***/
-METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetPixelShader , IDirect3DPixelShader9* , pShader )
-	D3D9ProxyPixelShader* shader = static_cast<D3D9ProxyPixelShader*>(pShader);
-
-	// Update actual pixel shader
-	HRESULT result;
-	if( shader ){
-		result = actual->SetPixelShader( shader->actual );
-	}else{
-		result = actual->SetPixelShader(NULL);
-		return result;
-	}
-
-	// Update stored proxy pixel shader
-	if( SUCCEEDED(result) ){
-
-		// If in a Begin-End StateBlock pair update the block state rather than the current proxy device state
-		if (m_pCapturingStateTo) {
-			m_pCapturingStateTo->SelectAndCaptureState( shader );
-		}else{
-
-			if( currentPS ){
-				currentPS->Release();
-			}
-
-			currentPS = shader;
-
-			if( currentPS ) {
-				currentPS->AddRef();
-			}
-
-			//m_spManagedShaderRegisters->ActivePixelShaderChanged( shader );
-		}
-	}
-
-	if( config.shaderAnalyzer && shader ){
-		shader->used = true;
-
-		if( shader->blink ){
-			shader->hide = ((GetTickCount()%300)>150);
-		}
-	}
-
-	return result;
-}
-
-/**
-* Provides stored pixel shader.
-***/
-METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetPixelShader , IDirect3DPixelShader9** , ppShader )
-	if (!currentPS)
-		return D3DERR_INVALIDCALL;
-
-	*ppShader = currentPS;
-
-	return D3D_OK;
-}
-
-/**
-* Sets shader constants either at stored proxy state block or in managed shader register class.
-* @see D3D9ProxyStateBlock
-* @see ShaderRegisters
-***/
-METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetPixelShaderConstantF , UINT , StartRegister , CONST float* , pConstantData , UINT , Vector4fCount )
-	HRESULT result = D3DERR_INVALIDCALL;
-
-	if (m_pCapturingStateTo) {
-		result = m_pCapturingStateTo->SelectAndCaptureStatePSConst(StartRegister, pConstantData, Vector4fCount);
-	}
-	else { 
-		actual->SetPixelShaderConstantF(StartRegister, pConstantData, Vector4fCount);
-		//result = m_spManagedShaderRegisters->SetPixelShaderConstantF(StartRegister, pConstantData, Vector4fCount);
-	}
-
-	return result;
-}
-
-/**
-* Provides constant registers from managed shader register class.
-* @see ShaderRegisters
-* @see ShaderRegisters::GetPixelShaderConstantF()
-***/
-METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetPixelShaderConstantF , UINT , StartRegister , float* , pData , UINT , Vector4fCount )
-	//return m_spManagedShaderRegisters->GetPixelShaderConstantF(StartRegister, pData, Vector4fCount);
-	return actual->GetPixelShaderConstantF(StartRegister, pData, Vector4fCount);
 }
 
 
@@ -3117,8 +3013,8 @@ METHOD_IMPL( void , , D3DProxyDevice , ReleaseEverything )
 
 	SAFE_RELEASE( m_pActiveStereoDepthStencil )
 	SAFE_RELEASE( m_pActiveIndicies )
-	SAFE_RELEASE( currentPS )
-	SAFE_RELEASE( currentVS )
+	SAFE_RELEASE( vsCurrent )
+	SAFE_RELEASE( psCurrent )
 	SAFE_RELEASE( m_pActiveVertexDeclaration )
 }
 /**

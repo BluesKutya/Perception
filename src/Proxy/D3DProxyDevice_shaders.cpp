@@ -6,14 +6,20 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateVertexShader , CONST DWOR
 	IDirect3DVertexShader9* pActualVShader = NULL;
 	HRESULT creationResult = actual->CreateVertexShader(pFunction, &pActualVShader);
 
-	printf("Craete shader\n");
+	if (SUCCEEDED(creationResult)) {
+		*ppShader = new D3D9ProxyVertexShader(pActualVShader, this);
+	}
+
+	return creationResult;
+}
+
+
+METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreatePixelShader , CONST DWORD* , pFunction , IDirect3DPixelShader9** , ppShader )
+	IDirect3DPixelShader9* pActualPShader = NULL;
+	HRESULT creationResult = actual->CreatePixelShader(pFunction, &pActualPShader);
 
 	if (SUCCEEDED(creationResult)) {
-		D3D9ProxyVertexShader* shader = new D3D9ProxyVertexShader(pActualVShader, this);
-		*ppShader = shader;
-		shaders += shader;
-
-		rulesUpdate();
+		*ppShader = new D3D9ProxyPixelShader(pActualPShader, this);
 	}
 
 	return creationResult;
@@ -36,22 +42,18 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetVertexShader , IDirect3DVert
 
 	// Update stored proxy Vertex shader
 	if( SUCCEEDED(result) ){
-
-		// If in a Begin-End StateBlock pair update the block state rather than the current proxy device state
 		if (m_pCapturingStateTo) {
 			m_pCapturingStateTo->SelectAndCaptureState(shader);
 		}else{
-			if (currentVS) {
-				currentVS->Release();
+			if( vsCurrent ){
+				vsCurrent->Release();
 			}
 
-			currentVS = shader;
+			vsCurrent = shader;
 
-			if (currentVS) {
-				currentVS->AddRef();
+			if( vsCurrent ){
+				vsCurrent->AddRef();
 			}
-
-			//m_spManagedShaderRegisters->ActiveVertexShaderChanged( currentVS );
 		}
 	}
 
@@ -80,14 +82,81 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetVertexShader , IDirect3DVert
 }
 
 
+
+
+
+METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetPixelShader , IDirect3DPixelShader9* , pShader )
+	D3D9ProxyPixelShader* shader = static_cast<D3D9ProxyPixelShader*>(pShader);
+
+	// Update actual pixel shader
+	HRESULT result;
+	if( shader ){
+		result = actual->SetPixelShader( shader->actual );
+	}else{
+		result = actual->SetPixelShader(NULL);
+		return result;
+	}
+
+	// Update stored proxy pixel shader
+	if( SUCCEEDED(result) ){
+
+		// If in a Begin-End StateBlock pair update the block state rather than the current proxy device state
+		if (m_pCapturingStateTo) {
+			m_pCapturingStateTo->SelectAndCaptureState( shader );
+		}else{
+
+			if( psCurrent ){
+				psCurrent->Release();
+			}
+
+			psCurrent = shader;
+
+			if( psCurrent ) {
+				psCurrent->AddRef();
+			}
+
+			//m_spManagedShaderRegisters->ActivePixelShaderChanged( shader );
+		}
+	}
+
+	if( config.shaderAnalyzer && shader ){
+		shader->used = true;
+
+		if( shader->blink ){
+			shader->hide = ((GetTickCount()%300)>150);
+		}
+	}
+
+	return result;
+}
+
+
+
+
+
+
+
+
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetVertexShader , IDirect3DVertexShader9** , ppShader )
-	if( !currentVS ){
+	if( !vsCurrent ){
 		return D3DERR_INVALIDCALL;
 	}
 
-	*ppShader = currentVS;
+	*ppShader = vsCurrent;
 	return D3D_OK;
 }
+
+
+METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetPixelShader , IDirect3DPixelShader9** , ppShader )
+	if( !psCurrent ){
+		return D3DERR_INVALIDCALL;
+	}
+
+	*ppShader = psCurrent;
+	return D3D_OK;
+}
+
 
 
 
@@ -99,10 +168,42 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetVertexShaderConstantF , UINT
 }
 
 
-METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetVertexShaderConstantF , UINT , StartRegister , float* , pData , UINT , Vector4fCount )
-	vsConstantsOriginal.get(StartRegister, pData, Vector4fCount);
+METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetPixelShaderConstantF , UINT , StartRegister , CONST float* , pConstantData , UINT , Vector4fCount )
+	psConstantsOriginal.set( StartRegister , pConstantData , Vector4fCount );
+	psConstantsLeft    .set( StartRegister , pConstantData , Vector4fCount );
+	psConstantsRight   .set( StartRegister , pConstantData , Vector4fCount );
 	return D3D_OK;
 }
+
+
+
+
+METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetVertexShaderConstantF , UINT , StartRegister , float* , pData , UINT , Vector4fCount )
+	vsConstantsOriginal.get( StartRegister , pData , Vector4fCount );
+	return D3D_OK;
+}
+
+
+METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetPixelShaderConstantF , UINT , StartRegister , float* , pData , UINT , Vector4fCount )
+	psConstantsOriginal.get( StartRegister , pData , Vector4fCount );
+	return D3D_OK;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -28,8 +28,8 @@ public:
 
 
 
-	D3D9ProxyPixelShader*  currentPS;
-	D3D9ProxyVertexShader* currentVS;
+	
+	
 	
 	QList<cShader*>        shaders;
 	cMenuItem*             shadersMenu;
@@ -37,11 +37,15 @@ public:
 
 	bool isDrawHide    ( );
 	
+	D3D9ProxyVertexShader* vsCurrent;
+	cConstantBuffer        vsConstantsOriginal;
+	cConstantBuffer        vsConstantsLeft;
+	cConstantBuffer        vsConstantsRight;
 
-	cConstantBuffer vsConstantsOriginal;
-	cConstantBuffer vsConstantsLeft;
-	cConstantBuffer vsConstantsRight;
-	cConstantBuffer psConstants;
+	D3D9ProxyPixelShader*  psCurrent;
+	cConstantBuffer        psConstantsOriginal;
+	cConstantBuffer        psConstantsLeft;
+	cConstantBuffer        psConstantsRight;
 
 	QList<cRule*>   rules;
 	cMenuItem*      rulesMenu;

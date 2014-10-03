@@ -801,7 +801,7 @@ void D3D9ProxyStateBlock::CaptureSelectedFromProxyDevice()
 ***/
 void D3D9ProxyStateBlock::Capture(CaptureableState toCap)
 {
-	switch (toCap) 
+	/*switch (toCap) 
 	{
 	case IndexBuffer: 
 		{
@@ -864,7 +864,7 @@ void D3D9ProxyStateBlock::Capture(CaptureableState toCap)
 			OutputDebugStringA("SelectAndCaptureState: Unknown CaptureableState in ProxyStateBlock\n");
 			break;
 		}
-	}
+	}*/
 }
 
 /**
@@ -928,6 +928,7 @@ void D3D9ProxyStateBlock::ClearCapturedData()
 ***/
 void D3D9ProxyStateBlock::Apply(CaptureableState toApply, bool reApplyStereo)
 {
+/*
 	switch (toApply) 
 	{
 	case IndexBuffer: 
@@ -1005,7 +1006,7 @@ void D3D9ProxyStateBlock::Apply(CaptureableState toApply, bool reApplyStereo)
 			OutputDebugStringA("SelectAndCaptureState: Unknown CaptureableState in ProxyStateBlock\n");
 			break;
 		}
-	}
+	}*/
 }
 
 /**
