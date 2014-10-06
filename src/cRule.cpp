@@ -61,8 +61,9 @@ void cRule::modify( int registerIndex , cConstantBuffer* buf , cConstantBuffer* 
 	bufRight->setModified( registerIndex , registerCount );
 
 	if( !buf->isModified(registerIndex,registerCount) ){
-		return;
+		//return;
 	}
+
 
 	if( !operation ){
 		memcpy( ptrLeft  , ptrData , registerCount * 4 * sizeof(float) );
@@ -132,10 +133,10 @@ void cRule::modify( int registerIndex , cConstantBuffer* buf , cConstantBuffer* 
 		//fall thru...
 
 	case 4:{ //Matrix orthographic squash
-		//if( fabs(in[15]-1) > 0.00001 ){
+		if( fabs(in[15]-1) > 0.00001 ){
 			matrixTransform = true;
 			break;
-		//}
+		}
 
 		
 

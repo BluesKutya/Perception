@@ -36,7 +36,7 @@ P( QString , profileName				, )
 C( PROFILE )
 P( QString , exeName                    , )// Game executable name
 P( QString , shaderRule                 , )// Name of shader rule file for this game
-P( QString , VRboostRule                , )// Name of VRboost rule file for this game
+P( bool    , VRboostEnable              , )
 P( int     , VRboostMinShaderCount      , )// Minimum Vertex Shader Count to apply VRboost (security)
 P( int     , VRboostMaxShaderCount      , )// Maximum Vertex Shader Count to apply VRboost (security)
 P( int     , game_type                  , )// Game type enumeration. Matching D3DProxyDevice::ProxyTypes

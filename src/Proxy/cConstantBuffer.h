@@ -1,6 +1,7 @@
 #pragma once
 #include <Vireio.h>
-#include <qvector.h>
+#include <vector>
+
 class IDirect3DDevice9;
 class cRule;
 
@@ -15,8 +16,8 @@ public:
 	int                   registerCount  ( );
 
 private:
-	QVector<float> registers;
-	QVector<bool>  modified;
+	std::vector<float>               registers;
+	std::vector<std::pair<int,int>>  modified;
 
 	void resize( int registerCount , bool mod );
 

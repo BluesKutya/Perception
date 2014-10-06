@@ -9,7 +9,6 @@
 #include "D3D9ProxyIndexBuffer.h"
 #include "D3D9ProxyStateBlock.h" 
 #include "D3D9ProxyQuery.h"
-#include "VRBoostEnums.h"
 #include "StereoBackBuffer.h"
 #include "StereoView.h"
 #include <stdio.h>
@@ -34,7 +33,6 @@
 #define MAX_PIXEL_SHADER_CONST_2_X 32
 #define MAX_PIXEL_SHADER_CONST_3_0 224
 
-using namespace VRBoost;
 
 
 /**
@@ -55,7 +53,9 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 
 	menu.init( this );
 
-	InitVRBoost();
+	if( config.VRboostEnable ){
+		vrbInit();
+	}
 
 
 	// Check the maximum number of supported render targets
@@ -183,16 +183,18 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 
 	m->addCheckbox( "Chromatic aberration correction" , &config.chromaticAberrationCorrection );
 	
-	i = m->addCheckbox( "VRboost" , &m_bVRBoostToggle );
+	i = m->addCheckbox( "VRboost" , &config.VRboostEnable );
 	i->callback = [this](){
-		if (hmVRboost!=NULL){
-			m_pVRboost_ReleaseAllMemoryRules();
+		if( config.VRboostEnable ){
+			vrbInit();
+		}else{
+			vrbFree();
 			if( tracker ){
 				tracker->reset();
 			}
 		}
 	};
-	
+
 
 	i = m->addAction ( "Take screenshot" );
 	i->callback = [this](){
@@ -975,15 +977,11 @@ void D3DProxyDevice::SaveConfiguration(){
 D3DProxyDevice::~D3DProxyDevice()
 {
 
-	#ifdef SHOW_CALLS
-		OutputDebugStringA("called ~D3DProxyDevice");
-	#endif
-
 	rulesFree();
 
 	ReleaseEverything();
 
-	FreeLibrary(hmVRboost);
+	vrbFree();
 
 	// always do this last
 	for( cPtr<D3D9ProxySwapChain>& ptr : activeSwapChains ){
@@ -2273,10 +2271,6 @@ METHOD_IMPL( void , , D3DProxyDevice, HandleControls )
 ***/
 METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 	if( !tracker ){
- 		// VRboost rules present ?
- 		m_VRboostRulesPresent = !config.VRboostRule.isEmpty();
-
-
 		switch(config.trackerMode){
 		case 10:
 			tracker = Vireio_Create_Tracker_FreeSpace();
@@ -2393,83 +2387,26 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 			tracker->currentPitch,
 			tracker->currentYaw,
 			tracker->currentRoll,
-			(VRBoostValue[VRboostAxis::CameraTranslateX] / 20.0f) + tracker->currentX * config.trackerXMultiplier * config.stereoScale,
-			(VRBoostValue[VRboostAxis::CameraTranslateY] / 20.0f) + tracker->currentY * config.trackerYMultiplier * config.stereoScale,
-			(VRBoostValue[VRboostAxis::CameraTranslateZ] / 20.0f) + tracker->currentZ * config.trackerZMultiplier * config.stereoScale
+			
+			//VRboost value here?
+			tracker->currentX * config.trackerXMultiplier * config.stereoScale,
+			tracker->currentY * config.trackerYMultiplier * config.stereoScale,
+			tracker->currentZ * config.trackerZMultiplier * config.stereoScale
 		);
 	}
 		
 	viewComputeTransforms();
 
+	vrbUpdate();
+
 	m_isFirstBeginSceneOfFrame = false;
-
-	// update vrboost, if present, tracker available and shader count higher than the minimum
-	if( hmVRboost && m_VRboostRulesPresent && m_bVRBoostToggle
-		&& (m_VertexShaderCountLastFrame>(UINT)config.VRboostMinShaderCount)
-		&& (m_VertexShaderCountLastFrame<(UINT)config.VRboostMaxShaderCount) )
-	{
-		VRBoost_Active = true;
-		// development bool
-		bool createNSave = false;
-
-		// apply VRboost memory rules if present
-		VRBoostValue[VRboostAxis::TrackerYaw]   = tracker->currentYaw;
-		VRBoostValue[VRboostAxis::TrackerPitch] = tracker->currentPitch;
-		VRBoostValue[VRboostAxis::TrackerRoll]  = tracker->currentRoll;
-
-		if (m_pVRboost_ApplyMemoryRules(MAX_VRBOOST_VALUES, (float**)&VRBoostValue) != S_OK)
-		{
-			VRBoost_ApplyRules = false;
-			if (!createNSave)
-			{
-				// load VRboost rules
-				if (config.VRboostRule != "")
-				{
-					//OutputDebugStringA(std::string("config.VRboostPath: " + config.VRboostPath).c_str());
-					if (m_pVRboost_LoadMemoryRules(config.exeName.toStdString() , config.getVRBoostRuleFilePath().toStdString() ) != S_OK)
-						VRBoost_LoadRules = false;
-					else
-						VRBoost_LoadRules = true;
-				}
-			}
-		}
-		else
-		{
-			VRBoost_ApplyRules = true;
-		}
-	}
-	else
-	{
-		VRBoost_Active = false;
-	}
-
-	if( VRBoost_Active ){
-		if( !VRBoost_LoadRules ){
-			menu.showMessage(
-				"VRBoost LoadRules Failed!\n"
-				"To Enable head tracking, turn on tracker mouse emulation\n"
-				"in tracker configuration menu"
-			);
-		}else
-		if( !VRBoost_ApplyRules ){
-			menu.showMessage(
-				"VRBoost rules loaded but could not be applied\n"
-				"To Enable head tracking, turn on tracker mouse emulation\n"
-				"in tracker configuration menu"
-			);
-		}
-	}
 }
 
 /**
 * Handles all updates if Present() is called in an extern swap chain.
 ***/
 METHOD_IMPL( void , , D3DProxyDevice , HandleUpdateExtern )
-	#ifdef SHOW_CALLS
-		OutputDebugStringA("called HandleUpdateExtern");
-	#endif
 	m_isFirstBeginSceneOfFrame = true;
-
 	BRASSA_UpdateBorder();
 }
 
@@ -2720,20 +2657,7 @@ METHOD_IMPL( void , , D3DProxyDevice , BRASSA_UpdateBorder )
 METHOD_IMPL( void , , D3DProxyDevice , BRASSA_UpdateDeviceSettings )
 
 	viewComputeTransforms();
-
-	// VRBoost
-	VRBoostValue[VRboostAxis::WorldFOV] = config.WorldFOV;
-	VRBoostValue[VRboostAxis::PlayerFOV] = config.PlayerFOV;
-	VRBoostValue[VRboostAxis::FarPlaneFOV] = config.FarPlaneFOV;
-	VRBoostValue[VRboostAxis::CameraTranslateX] = config.CameraTranslateX;
-	VRBoostValue[VRboostAxis::CameraTranslateY] = config.CameraTranslateY;
-	VRBoostValue[VRboostAxis::CameraTranslateZ] = config.CameraTranslateZ;
-	VRBoostValue[VRboostAxis::CameraDistance] = config.CameraDistance;
-	VRBoostValue[VRboostAxis::CameraZoom] = config.CameraZoom;
-	VRBoostValue[VRboostAxis::CameraHorizonAdjustment] = config.CameraHorizonAdjustment;
-	VRBoostValue[VRboostAxis::ConstantValue1] = config.ConstantValue1;
-	VRBoostValue[VRboostAxis::ConstantValue2] = config.ConstantValue2;
-	VRBoostValue[VRboostAxis::ConstantValue3] = config.ConstantValue3;
+	vrbLoadValues();
 
 	// set behavior accordingly to game type
 	switch(config.game_type)
@@ -3004,66 +2928,6 @@ METHOD_IMPL( void , , D3DProxyDevice , SetGUIViewport )
 METHOD_IMPL( float , , D3DProxyDevice , RoundBrassaValue , float , val )
 	return (float)floor(val * 1000.0f + 0.5f) / 1000.0f;
 }
-
-
-METHOD_IMPL( bool , , D3DProxyDevice , InitVRBoost )
-	bool initSuccess = false;
-
-	// explicit VRboost dll import
-	hmVRboost = LoadLibraryA("VRboost.dll");
-
-	VRBoost_Active = false;
-	VRBoost_LoadRules = false;
-	VRBoost_ApplyRules = false;
-
-	// get VRboost methods
-	if (hmVRboost != NULL)
-	{
-		OutputDebugStringA("VR Boost Loaded\n");
-		// get methods explicit
-		m_pVRboost_LoadMemoryRules = (LPVRBOOST_LoadMemoryRules)GetProcAddress(hmVRboost, "VRboost_LoadMemoryRules");
-		m_pVRboost_SaveMemoryRules = (LPVRBOOST_SaveMemoryRules)GetProcAddress(hmVRboost, "VRboost_SaveMemoryRules");
-		m_pVRboost_CreateFloatMemoryRule = (LPVRBOOST_CreateFloatMemoryRule)GetProcAddress(hmVRboost, "VRboost_CreateFloatMemoryRule");
-		m_pVRboost_SetProcess = (LPVRBOOST_SetProcess)GetProcAddress(hmVRboost, "VRboost_SetProcess");
-		m_pVRboost_ReleaseAllMemoryRules = (LPVRBOOST_ReleaseAllMemoryRules)GetProcAddress(hmVRboost, "VRboost_ReleaseAllMemoryRules");
-		m_pVRboost_ApplyMemoryRules = (LPVRBOOST_ApplyMemoryRules)GetProcAddress(hmVRboost, "VRboost_ApplyMemoryRules");
-		if ((!m_pVRboost_LoadMemoryRules) || 
-			(!m_pVRboost_SaveMemoryRules) || 
-			(!m_pVRboost_CreateFloatMemoryRule) || 
-			(!m_pVRboost_SetProcess) || 
-			(!m_pVRboost_ReleaseAllMemoryRules) || 
-			(!m_pVRboost_ApplyMemoryRules))
-		{
-			hmVRboost = NULL;
-			FreeLibrary(hmVRboost);
-		}
-		else
-		{
-			initSuccess = true;
-			VRBoost_Active = true;
-			OutputDebugStringA("Success loading VRboost methods.");
-		}
-
-		m_VRboostRulesPresent = false;
-		m_VertexShaderCount = 0;
-		m_VertexShaderCountLastFrame = 0;
-
-		// set common default VRBoost values
-		ZeroMemory(&VRBoostValue[0], MAX_VRBOOST_VALUES*sizeof(float));
-		VRBoostValue[VRboostAxis::Zero] = 0.0f;
-		VRBoostValue[VRboostAxis::One] = 1.0f;
-		VRBoostValue[VRboostAxis::WorldFOV] = 95.0f;
-		VRBoostValue[VRboostAxis::PlayerFOV] = 125.0f;
-		VRBoostValue[VRboostAxis::FarPlaneFOV] = 95.0f;
-	}
-	else
-	{
-		initSuccess = false;
-	}
-
-	return initSuccess;
-}
-
 
 
 

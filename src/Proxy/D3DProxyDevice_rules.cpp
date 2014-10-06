@@ -217,7 +217,7 @@ void D3DProxyDevice::rulesUpdate( ){
 
 		for( cShader* s : shaders ){
 			for( cShaderConstant& c : s->constants ){
-				if( c.isMatrix() == r->isMatrixRule && r->constantsInclude.contains(c.Name) ){
+				if( c.isMatrix() == r->isMatrixRule && r->constantsInclude.contains(c.name) ){
 					if( s->vs ){
 						r->vsRegisters += c.RegisterIndex;
 					}else{
@@ -255,17 +255,17 @@ void D3DProxyDevice::rulesUpdate( ){
 void D3DProxyDevice::rulesApply( ){
 	for( cRule* rule : rules ){
 		//todo optimize
-		if( (!activeVertexShader || activeVertexShader->rules.contains(rule)) ){
+		//if( (!activeVertexShader || activeVertexShader->rules.contains(rule)) ){
 			for( int index : rule->vsRegisters ){
 				rule->modify( index , &vsConstantsOriginal , &vsConstantsLeft , &vsConstantsRight );
 			}
-		}
+		//}
 
-		if( (!activePixelShader || activePixelShader->rules.contains(rule) ) ){
+		//if( (!activePixelShader || activePixelShader->rules.contains(rule) ) ){
 			for( int index : rule->psRegisters ){
-				rule->modify( index , &vsConstantsOriginal , &vsConstantsLeft , &vsConstantsRight );
+				rule->modify( index , &psConstantsOriginal , &psConstantsLeft , &psConstantsRight );
 			}
-		}
+		//}
 	}
 
 	if( m_currentRenderingSide == vireio::Left ){

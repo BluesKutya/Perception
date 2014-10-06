@@ -45,6 +45,7 @@
     <ClCompile Include="..\src\Proxy\D3DProxyDevice_rules.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDevice_shaders.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDevice_view.cpp" />
+    <ClCompile Include="..\src\Proxy\D3DProxyDevice_vrboost.cpp" />
     <ClCompile Include="..\src\StereoBackbuffer.cpp" />
     <ClCompile Include="..\src\StereoView.cpp" />
     <ClCompile Include="..\src\Streaming\Streamer-enc-ffmpeg.cpp" />
@@ -141,11 +142,13 @@
     <PreBuildEvent>
       <Command>del "$(TargetPath)"</Command>
     </PreBuildEvent>
+    <ClCompile />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Link>
       <SubSystem>Windows</SubSystem>
       <AdditionalDependencies>dbghelp.lib;psapi.lib;d3dx9.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <PreBuildEvent>
       <Command>del "$(TargetPath)"</Command>

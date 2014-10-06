@@ -6,6 +6,7 @@ static void GetConstants( QMap<int,D3DXVECTOR4>* map , cConstantBuffer* buf , bo
 	if( onlyExisting ){
 		indexes = map->keys();
 	}else{
+		map->clear();
 		for( int c=0 ; c<buf->registerCount() ; c++ ){
 			indexes += c;
 		}

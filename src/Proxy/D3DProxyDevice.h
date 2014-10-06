@@ -24,13 +24,6 @@ class GameHandler;
 
 class D3DProxyDevice : public IDirect3DDevice9Ex {
 public:
-	/*** VRboost function pointer typedefs ***/
-	typedef HRESULT (WINAPI *LPVRBOOST_LoadMemoryRules)(std::string processName, std::string rulesPath);
-	typedef HRESULT (WINAPI *LPVRBOOST_SaveMemoryRules)(std::string rulesPath);
-	typedef HRESULT (WINAPI *LPVRBOOST_CreateFloatMemoryRule)(DWORD ruleType, UINT axisIndex, D3DXVECTOR4 constantVector, DWORD pointerAddress, DWORD* offsets, DWORD minValue, DWORD maxValue, DWORD comparisationPointer1, DWORD* comparisationOffsets1, int pointerDifference1, DWORD comparisationPointer2, DWORD* comparisationOffsets2, int pointerDifference2);
-	typedef HRESULT (WINAPI *LPVRBOOST_SetProcess)(std::string processName, std::string moduleName);
-	typedef HRESULT (WINAPI *LPVRBOOST_ReleaseAllMemoryRules)( void );
-	typedef HRESULT (WINAPI *LPVRBOOST_ApplyMemoryRules)(UINT axisNumber, float** axis);
 
 
 	enum WhenToDo{
@@ -77,11 +70,6 @@ public:
 	WhenToDo       whenToRenderBRASSA;
 	WhenToDo       whenToHandleHeadTracking;
 
-	bool           VRBoost_Active;
-	bool           VRBoost_LoadRules;
-	bool           VRBoost_ApplyRules;
-	float          VRBoostValue[MAX_VRBOOST_VALUES];
-
 	StereoView*    stereoView;
 	cTracker*      tracker;
 
@@ -99,7 +87,6 @@ public:
 	
 	bool                                      m_bActiveViewportIsDefault;
 	bool                                      m_bViewportIsSquished;
-	bool                                      m_VRboostRulesPresent;
 	D3DVIEWPORT9                              m_LastViewportSet;
 	D3DVIEWPORT9                              m_ViewportIfSquished;
 
@@ -127,13 +114,6 @@ public:
 	float                           fps;
 	
 
-	LPVRBOOST_LoadMemoryRules       m_pVRboost_LoadMemoryRules;
-	LPVRBOOST_SaveMemoryRules       m_pVRboost_SaveMemoryRules;
-	LPVRBOOST_CreateFloatMemoryRule m_pVRboost_CreateFloatMemoryRule;
-	LPVRBOOST_SetProcess            m_pVRboost_SetProcess;
-	LPVRBOOST_ReleaseAllMemoryRules m_pVRboost_ReleaseAllMemoryRules;
-	LPVRBOOST_ApplyMemoryRules      m_pVRboost_ApplyMemoryRules;
-	HMODULE                         hmVRboost;
 	
 
 	bool                            m_bInBeginEndStateBlock;
@@ -191,6 +171,24 @@ public:
 	void            rulesApply ( );
 
 	
+	/****    VRBoost ****/
+	
+	FARPROC  vrbFuncLoadMemoryRules;
+	FARPROC  vrbFuncSaveMemoryRules;
+	FARPROC  vrbFuncCreateFloatMemoryRule;
+	FARPROC  vrbFuncSetProcess;
+	FARPROC  vrbFuncReleaseAllMemoryRules;
+	FARPROC  vrbFuncApplyMemoryRules;
+	HMODULE  vrbLib;
+	bool     vrbRulesLoaded;
+	float    vrbValues[MAX_VRBOOST_VALUES];
+
+	void     vrbInit();
+	void     vrbFree();
+	void     vrbUpdate();
+	void     vrbLoadValues( );
+	void     vrbSaveValues( );
+
 
 
 	/****    View modification   ****/

@@ -3,24 +3,18 @@
 
 
 void cConstantBuffer::resize( int registerCount , bool mod ){
-	if( registerCount > modified.size() ){
-		int oldCount = modified.count();
-
-		modified.resize( registerCount );
-
-		for( int c=oldCount ; c<registerCount ; c++ ){
-			modified[c] = mod;
-		}
-
-		registers.resize( modified.count() * 4 );
+	if( registerCount*4 > registers.size() ){
+		registers.resize( registerCount*4 );
 	}
 }
 
 
 
 bool cConstantBuffer::isModified( int registerIndex , int registerCount ){
-	for( int c=0 ; c<registerCount ; c++ ){
-		if( modified[registerIndex+c] ){
+	int r1 = registerIndex;
+	int r2 = registerIndex + registerCount;
+	for( auto& range : modified ){
+		if( r1 < range.second  &&  r2 > range.first ){
 			return true;
 		}
 	}
@@ -30,9 +24,17 @@ bool cConstantBuffer::isModified( int registerIndex , int registerCount ){
 
 
 void cConstantBuffer::setModified( int registerIndex , int registerCount ){
-	for( int c=0 ; c<registerCount ; c++ ){
-		modified[registerIndex+c] = true;
+	int r1 = registerIndex;
+	int r2 = registerIndex + registerCount;
+	for( auto& range : modified ){
+		if( r1 < range.second  &&  r2 > range.first ){
+			range.first  = std::min( r1 , range.first  );
+			range.second = std::max( r2 , range.second );
+			return;
+		}
 	}
+
+	modified.push_back( std::pair<int,int>( r1 , r2 ) );
 }
 
 
@@ -62,37 +64,18 @@ bool cConstantBuffer::get( int registerIndex , float* ptr , int registerCount ){
 
 
 void cConstantBuffer::writeTo( IDirect3DDevice9* device , bool vs ){
-	int begin = 0;
-	int end   = 0;
-
-	for(;;){
-		while( begin < modified.size() && !modified[begin] ){
-			begin++;
-		}
-
-		end = begin;
-
-		while( end < modified.size() && modified[end] ){
-			modified[end] = false;
-			end++;
-		}
-
-		if( begin >= modified.size() ){
-			return;
-		}
-
+	for( auto& range : modified ){
 		if( vs ){
-			device->SetVertexShaderConstantF( begin , registers.data() + begin*4 , end - begin);
+			device->SetVertexShaderConstantF( range.first , registers.data() + range.first*4 , range.second - range.first );
 		}else{
-			device->SetPixelShaderConstantF ( begin , registers.data() + begin*4 , end - begin);
+			device->SetPixelShaderConstantF ( range.first , registers.data() + range.first*4 , range.second - range.first );
 		}
-
-		begin = end;
 	}
+	modified.clear();
 }
 
 
 
 int cConstantBuffer::registerCount( ){
-	return modified.count();
+	return registers.size() / 4;
 }
