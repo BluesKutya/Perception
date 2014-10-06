@@ -255,13 +255,13 @@ void D3DProxyDevice::rulesUpdate( ){
 void D3DProxyDevice::rulesApply( ){
 	for( cRule* rule : rules ){
 		//todo optimize
-		if( (!vsCurrent || vsCurrent->rules.contains(rule)) ){
+		if( (!activeVertexShader || activeVertexShader->rules.contains(rule)) ){
 			for( int index : rule->vsRegisters ){
 				rule->modify( index , &vsConstantsOriginal , &vsConstantsLeft , &vsConstantsRight );
 			}
 		}
 
-		if( (!psCurrent || psCurrent->rules.contains(rule) ) ){
+		if( (!activePixelShader || activePixelShader->rules.contains(rule) ) ){
 			for( int index : rule->psRegisters ){
 				rule->modify( index , &vsConstantsOriginal , &vsConstantsLeft , &vsConstantsRight );
 			}

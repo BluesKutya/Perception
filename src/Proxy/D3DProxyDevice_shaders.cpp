@@ -45,13 +45,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetVertexShader , IDirect3DVert
 		if (stateBlock) {
 			stateBlock->captureVertexShader(shader);
 		}else{
-			SAFE_RELEASE( vsCurrent );
-
-			vsCurrent = shader;
-
-			if( vsCurrent ){
-				vsCurrent->AddRef();
-			}
+			activeVertexShader = shader;
 		}
 	}
 
@@ -102,15 +96,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetPixelShader , IDirect3DPixel
 		if (stateBlock) {
 			stateBlock->capturePixelShader( shader );
 		}else{
-			SAFE_RELEASE( psCurrent );
-
-			psCurrent = shader;
-
-			if( psCurrent ) {
-				psCurrent->AddRef();
-			}
-
-			//m_spManagedShaderRegisters->ActivePixelShaderChanged( shader );
+			activePixelShader = shader;
 		}
 	}
 
@@ -134,21 +120,25 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetPixelShader , IDirect3DPixel
 
 
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetVertexShader , IDirect3DVertexShader9** , ppShader )
-	if( !vsCurrent ){
+	if( !activeVertexShader ){
 		return D3DERR_INVALIDCALL;
 	}
 
-	*ppShader = vsCurrent;
+	*ppShader = activeVertexShader;
+	(*ppShader)->AddRef();
+
 	return D3D_OK;
 }
 
 
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetPixelShader , IDirect3DPixelShader9** , ppShader )
-	if( !psCurrent ){
+	if( !activePixelShader ){
 		return D3DERR_INVALIDCALL;
 	}
 
-	*ppShader = psCurrent;
+	*ppShader = activePixelShader;
+	(*ppShader)->AddRef();
+
 	return D3D_OK;
 }
 

@@ -23,8 +23,6 @@ class D3D9ProxyStateBlock : public cBase<IDirect3DStateBlock9> {
 public: 
 
 	D3D9ProxyStateBlock( IDirect3DStateBlock9* pActualStateBlock, D3DProxyDevice* pOwningDevice );
-	~D3D9ProxyStateBlock();
-
 	void init();
 
 	// IDirect3DStateBlock9 methods
@@ -45,19 +43,19 @@ public:
 	bool                                 selectVertexShader;
 	bool                                 selectVertexDeclaration;
 
-	QMap< int , IDirect3DBaseTexture9* > storedTextureStages;
-	QMap< int , D3D9ProxyVertexBuffer* > storedVertexStreams;
-	QMap< int , D3DXVECTOR4 >            storedVsConstants;
-	QMap< int , D3DXVECTOR4 >            storedPsConstants;
-	D3D9ProxyIndexBuffer*                storedIndexBuffer;
-	D3D9ProxyVertexShader*               storedVertexShader;
-	D3D9ProxyPixelShader*                storedPixelShader;
-	D3D9ProxyVertexDeclaration*          storedVertexDeclaration;
-	D3DVIEWPORT9                         storedViewport;
-	D3DXMATRIX                           storedLeftView;
-	D3DXMATRIX                           storedRightView;
-	D3DXMATRIX                           storedLeftProjection;
-	D3DXMATRIX                           storedRightProjection;
+	QMap< int , D3DXVECTOR4 >                 storedVsConstants;
+	QMap< int , D3DXVECTOR4 >                 storedPsConstants;
+	QMap< int , cPtr<IDirect3DBaseTexture9> > storedTextureStages;
+	QMap< int , cPtr<D3D9ProxyVertexBuffer> > storedVertexStreams;
+	cPtr<D3D9ProxyIndexBuffer>                storedIndexBuffer;
+	cPtr<D3D9ProxyVertexShader>               storedVertexShader;
+	cPtr<D3D9ProxyPixelShader>                storedPixelShader;
+	cPtr<D3D9ProxyVertexDeclaration>          storedVertexDeclaration;
+	D3DVIEWPORT9                              storedViewport;
+	D3DXMATRIX                                storedLeftView;
+	D3DXMATRIX                                storedRightView;
+	D3DXMATRIX                                storedLeftProjection;
+	D3DXMATRIX                                storedRightProjection;
 
 	void captureSelected( );
 	void captureIndexBuffer           ( D3D9ProxyIndexBuffer* ib );

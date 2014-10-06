@@ -87,6 +87,91 @@ void SAFE_ASSIGN( QMap<K,T>& x , const QMap<K,T>& n ){
 }
 
 
+template<class T>
+class cPtr{
+public:
+
+	cPtr( ){
+		p = 0;
+	}
+
+	cPtr( T* ptr ){
+		p = 0;
+		(*this) = ptr;
+	}
+
+	cPtr( const cPtr<T>& other ){
+		p = 0;
+		(*this) = other;
+	}
+
+	~cPtr(){
+		clear();
+	}
+
+	T* operator->(){
+		return p;
+	}
+
+	operator T*(){
+		return p;
+	}
+
+
+	void operator = ( T* ptr ){
+		if( ptr ){
+			ptr->AddRef();
+		}
+
+		clear();
+
+		p = ptr;
+	}
+
+
+	void operator = (  const cPtr<T>& other ){
+		(*this) = other.p;
+	}
+
+
+	void clear( ){
+		if( p ){
+			p->Release();
+			p = 0;
+		}
+	}
+
+	void releaseAndDelete( ){
+		if( p ){
+			p->Release();
+			delete p;
+			p = 0;
+		}
+	}
+
+	void detach( ){
+		p = 0;
+	}
+
+	operator bool(){
+		return p;
+	}
+
+private:
+	T* p;
+};
+
+
+
+
+
+
+
+
+
+
+
+
 namespace vireio {
 	enum RenderPosition
 	{

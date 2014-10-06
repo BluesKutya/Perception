@@ -31,12 +31,6 @@ static void SetConstants( QMap<int,D3DXVECTOR4>* map , cConstantBuffer* buf ){
 D3D9ProxyStateBlock::D3D9ProxyStateBlock( IDirect3DStateBlock9* pActualStateBlock , D3DProxyDevice *pOwningDevice ) :
 	cBase( pActualStateBlock , pOwningDevice )
 {
-
-	storedIndexBuffer	    = nullptr;
-	storedVertexShader	    = nullptr;
-	storedPixelShader	    = nullptr;
-	storedVertexDeclaration = nullptr;
-
 	type				    = 0;
 	sideLeft			    = false;
 	sideRight			    = false;
@@ -79,14 +73,6 @@ void D3D9ProxyStateBlock::init(){
 	}
 }
 
-D3D9ProxyStateBlock::~D3D9ProxyStateBlock(){
-	SAFE_RELEASE( storedTextureStages );
-	SAFE_RELEASE( storedVertexStreams );
-	SAFE_RELEASE( storedIndexBuffer );
-	SAFE_RELEASE( storedVertexShader );
-	SAFE_RELEASE( storedPixelShader );
-	SAFE_RELEASE( storedVertexDeclaration );
-}
 
 
 
@@ -117,7 +103,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3D9ProxyStateBlock , Apply )
 	bool reApplyStereo = sideLeft && sideRight;
 
 	if( selectIndexBuffer ){
-		SAFE_ASSIGN( device->m_pActiveIndicies , storedIndexBuffer );
+		device->activeIndicies = storedIndexBuffer;
 	}
 
 	if( selectViewport ){
@@ -135,22 +121,18 @@ METHOD_IMPL( HRESULT , WINAPI , D3D9ProxyStateBlock , Apply )
 	}
 
 	if( selectPixelShader ){
-		SAFE_ASSIGN( device->psCurrent , storedPixelShader );
+		device->activePixelShader = storedPixelShader;
 	}
 
 	if( selectVertexShader ){
-		SAFE_ASSIGN( device->vsCurrent , storedVertexShader );
+		device->activeVertexShader = storedVertexShader;
 	}
 
 	if( selectVertexDeclaration ){
-		SAFE_ASSIGN( device->m_pActiveVertexDeclaration , storedVertexDeclaration );
+		device->activeVertexDeclaration = storedVertexDeclaration;
 	}
 
-	SAFE_RELEASE( device->m_activeVertexBuffers.values() );
-	device->m_activeVertexBuffers.clear();
-	for( int key : storedVertexStreams.keys() ){
-		device->m_activeVertexBuffers[key] = storedVertexStreams[key];
-	}
+	device->activeVertexBuffers = storedVertexStreams;
 
 	SetConstants( &storedVsConstants , &device->vsConstantsOriginal );
 	SetConstants( &storedPsConstants , &device->psConstantsOriginal );
@@ -160,7 +142,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3D9ProxyStateBlock , Apply )
 			device->SetTexture( id , storedTextureStages[id] );
 		}
 	}else{
-		SAFE_ASSIGN( device->m_activeTextureStages , storedTextureStages );
+		device->activeTextureStages = storedTextureStages;
 	}
 
 	return D3D_OK;
@@ -201,31 +183,30 @@ void D3D9ProxyStateBlock::captureProjTransform( D3DXMATRIX left , D3DXMATRIX rig
 
 void D3D9ProxyStateBlock::capturePixelShader( D3D9ProxyPixelShader* shader ){
 	selectPixelShader |= selectAuto;
-
-	SAFE_ASSIGN( storedPixelShader , shader );
+	storedPixelShader  = shader;
 }
 
 
 void D3D9ProxyStateBlock::captureVertexShader( D3D9ProxyVertexShader* shader ){
 	selectVertexShader |= selectAuto;
-	SAFE_ASSIGN( storedVertexShader , shader );
+	storedVertexShader  = shader;
 }
 
 
 void D3D9ProxyStateBlock::captureVertexDeclaration ( D3D9ProxyVertexDeclaration* decl ){
 	selectVertexDeclaration |= selectAuto;
-	SAFE_ASSIGN( storedVertexDeclaration , decl );
+	storedVertexDeclaration  = decl;
 }
 
 
 void D3D9ProxyStateBlock::captureTextureSampler( int stage , IDirect3DBaseTexture9* texture ){
-	SAFE_ASSIGN( storedTextureStages[stage] , texture );
+	storedTextureStages[stage] = texture;
 	updateCaptureSideTracking();
 }
 
 
 void D3D9ProxyStateBlock::captureVertexStream( int stream , D3D9ProxyVertexBuffer* buffer ){
-	SAFE_ASSIGN( storedVertexStreams[stream]  , buffer );
+	 storedVertexStreams[stream] = buffer;
 }
 
 
@@ -249,7 +230,7 @@ void D3D9ProxyStateBlock::capturePixelShaderConstant( int index , const float* d
 void D3D9ProxyStateBlock::captureSelected( ){
 
 	if( selectIndexBuffer ){
-		SAFE_ASSIGN( storedIndexBuffer , device->m_pActiveIndicies );
+		storedIndexBuffer = device->activeIndicies;
 	}
 
 	if( selectViewport ){
@@ -267,25 +248,20 @@ void D3D9ProxyStateBlock::captureSelected( ){
 	}
 
 	if( selectPixelShader ){
-		SAFE_ASSIGN( storedPixelShader , device->psCurrent );
+		storedPixelShader = device->activePixelShader;
 	}
 
 	if( selectVertexShader ){
-		SAFE_ASSIGN( storedVertexShader , device->vsCurrent );
+		storedVertexShader = device->activeVertexShader;
 	}
 
 	if( selectVertexDeclaration ){
-		SAFE_ASSIGN( storedVertexDeclaration , device->m_pActiveVertexDeclaration );
+		storedVertexDeclaration = device->activeVertexDeclaration;
 	}
 
 	if( type == D3DSBT_ALL ){
-		for( int key : device->m_activeTextureStages.keys() ){
-			SAFE_ASSIGN( storedTextureStages[key] , device->m_activeTextureStages[key] );
-		}
-
-		for( int key : device->m_activeVertexBuffers.keys() ){
-			SAFE_ASSIGN( storedVertexStreams[key] , device->m_activeVertexBuffers[key] );
-		}
+		storedTextureStages = device->activeTextureStages;
+		storedVertexStreams = device->activeVertexBuffers;
 	}
 
 	if( type == D3DSBT_ALL || type == D3DSBT_VERTEXSTATE ){
@@ -301,11 +277,11 @@ void D3D9ProxyStateBlock::captureSelected( ){
 		float vec[4];
 
 		for( int c : storedTextureStages.keys() ){
-			SAFE_ASSIGN( storedTextureStages[c] , device->m_activeTextureStages[c] );
+			storedTextureStages[c] = device->activeTextureStages[c];
 		}
 
 		for( int c : storedVertexStreams.keys() ){
-			SAFE_ASSIGN( storedVertexStreams[c] , device->m_activeVertexBuffers[c] );
+			storedVertexStreams[c] = device->activeVertexBuffers[c];
 		}
 
 		GetConstants( &storedVsConstants , &device->vsConstantsOriginal , true );

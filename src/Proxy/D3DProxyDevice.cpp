@@ -45,10 +45,6 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	actualEx(pDeviceEx),
 	m_pCreatedBy(pCreatedBy),
 	m_nRefCount(1),
-	m_activeRenderTargets (1, NULL),
-	m_activeTextureStages(),
-	m_activeVertexBuffers(),
-	m_activeSwapChains(),
 	controls(),
 	dinput(),
 	show_fps(FPS_NONE),
@@ -66,9 +62,8 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	D3DCAPS9 capabilities;
 	actual->GetDeviceCaps(&capabilities);
 
-	DWORD maxRenderTargets = capabilities.NumSimultaneousRTs;
-	m_activeRenderTargets.resize(maxRenderTargets);
-	m_activeRenderTargets.fill  ( 0 );
+	activeRenderTargets.resize( capabilities.NumSimultaneousRTs );
+	activeRenderTargets.fill  ( 0 );
 
 
 	D3DXMatrixIdentity(&m_leftView);
@@ -77,10 +72,6 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	D3DXMatrixIdentity(&m_rightProjection);	
 
 	
-
-	m_pActiveStereoDepthStencil = NULL;
-	m_pActiveIndicies = NULL;
-	m_pActiveVertexDeclaration = NULL;
 	m_bActiveViewportIsDefault = true;
 	m_bViewportIsSquished = false;
 	m_bViewTransformSet = false;
@@ -88,10 +79,6 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	m_bInBeginEndStateBlock = false;
 	stateBlock = NULL;
 	m_isFirstBeginSceneOfFrame = true;
-
-
-	vsCurrent = 0;
-	psCurrent = 0;
 
 
 	screenshot = (int)false;
@@ -399,7 +386,7 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 
 
 bool D3DProxyDevice::isDrawHide( ){
-	return config.shaderAnalyzer && ((vsCurrent && vsCurrent->hide) || (psCurrent && psCurrent->hide));
+	return config.shaderAnalyzer && ((activeVertexShader && activeVertexShader->hide) || (activePixelShader && activePixelShader->hide));
 }
 
 
@@ -999,18 +986,9 @@ D3DProxyDevice::~D3DProxyDevice()
 	FreeLibrary(hmVRboost);
 
 	// always do this last
-	auto it = m_activeSwapChains.begin();
-	while (it != m_activeSwapChains.end()) {
-
-		if ((*it) != NULL) {
-			(*it)->Release();
-			delete (*it);
-		}
-
-		it = m_activeSwapChains.erase(it);
+	for( cPtr<D3D9ProxySwapChain>& ptr : activeSwapChains ){
+		ptr.releaseAndDelete();
 	}
-
-
 
 	SAFE_RELEASE(actual);
 }
@@ -1082,7 +1060,10 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateAdditionalSwapChain , D3D
 	if (SUCCEEDED(result)) {
 		D3D9ProxySwapChain* wrappedSwapChain = new D3D9ProxySwapChain(pActualSwapChain, this, true);
 		*pSwapChain = wrappedSwapChain;
-		m_activeSwapChains.push_back(wrappedSwapChain);
+		activeSwapChains += wrappedSwapChain;
+		
+		//since ref added in cPtr of activeSwapChains list
+		wrappedSwapChain->Release();
 	}
 
 	return result;
@@ -1094,17 +1075,12 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateAdditionalSwapChain , D3D
 * @see D3D9ProxySwapChain
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetSwapChain , UINT , iSwapChain , IDirect3DSwapChain9** , pSwapChain )
-
-	try {
-		*pSwapChain = m_activeSwapChains.at(iSwapChain); 
-		//Device->GetSwapChain increases ref count on the chain (docs don't say this)
-		(*pSwapChain)->AddRef();
-	}
-	catch (std::out_of_range) {
-		OutputDebugStringA("GetSwapChain: out of range fetching swap chain");
+	if( iSwapChain >= activeSwapChains.count() ){
 		return D3DERR_INVALIDCALL;
 	}
 
+	*pSwapChain = activeSwapChains[iSwapChain]; 
+	(*pSwapChain)->AddRef();
 	return D3D_OK;
 }
 
@@ -1117,17 +1093,11 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetSwapChain , UINT , iSwapChai
 * Calls the backbuffer using the stored active proxy (wrapped) swap chain.
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetBackBuffer , UINT , iSwapChain, UINT , iBackBuffer , D3DBACKBUFFER_TYPE , Type , IDirect3DSurface9** , ppBackBuffer )
-	HRESULT result;
-	try {
-		result = m_activeSwapChains.at(iSwapChain)->GetBackBuffer(iBackBuffer, Type, ppBackBuffer);
-		// ref count increase happens in the swapchain GetBackBuffer so we don't add another ref here as we are just passing the value through
-	}
-	catch (std::out_of_range) {
-		OutputDebugStringA("GetBackBuffer: out of range getting swap chain");
-		result = D3DERR_INVALIDCALL;
+	if( iSwapChain >= activeSwapChains.count() ){
+		return D3DERR_INVALIDCALL;
 	}
 
-	return result;
+	return activeSwapChains[iSwapChain]->GetBackBuffer(iBackBuffer, Type, ppBackBuffer);
 }
 
 
@@ -1361,16 +1331,11 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetRenderTargetData , IDirect3D
 * @see D3D9ProxySwapChain
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetFrontBufferData , UINT , iSwapChain , IDirect3DSurface9* , pDestSurface )
-	HRESULT result;
-	try {
-		result = m_activeSwapChains.at(iSwapChain)->GetFrontBufferData(pDestSurface);
-	}
-	catch (std::out_of_range) {
-		OutputDebugStringA("GetFrontBufferData: out of range fetching swap chain");
-		result = D3DERR_INVALIDCALL;
+	if( iSwapChain >= activeSwapChains.count() ){
+		return D3DERR_INVALIDCALL;
 	}
 
-	return result;
+	return activeSwapChains[iSwapChain]->GetFrontBufferData(pDestSurface);
 }
 
 /**
@@ -1466,19 +1431,9 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetRenderTarget , DWORD , Rende
 		}
 	}
 
-	//// update proxy collection of stereo render targets to reflect new actual render target ////
 	if (result == D3D_OK) {		
-		// changing rendertarget resets viewport to fullsurface
 		m_bActiveViewportIsDefault = true;
-
-		// release old render target
-		if (m_activeRenderTargets[RenderTargetIndex] != NULL)
-			m_activeRenderTargets[RenderTargetIndex]->Release();
-
-		// replace with new render target (may be NULL)
-		m_activeRenderTargets[RenderTargetIndex] = newRenderTarget;
-		if (m_activeRenderTargets[RenderTargetIndex] != NULL)
-			m_activeRenderTargets[RenderTargetIndex]->AddRef();
+		activeRenderTargets[RenderTargetIndex] = newRenderTarget;
 	}
 
 	return result;
@@ -1488,18 +1443,18 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetRenderTarget , DWORD , Rende
 * Provides render target from the internally stored active proxy (wrapped) render targets.
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetRenderTarget , DWORD , RenderTargetIndex , IDirect3DSurface9** , ppRenderTarget )
-	if ((RenderTargetIndex >= m_activeRenderTargets.capacity()) || (RenderTargetIndex < 0)) {
+	if( RenderTargetIndex < 0 || RenderTargetIndex >= activeRenderTargets.count() ){
 		return D3DERR_INVALIDCALL;
 	}
 
-	IDirect3DSurface9* targetToReturn = m_activeRenderTargets[RenderTargetIndex];
-	if (!targetToReturn)
+	IDirect3DSurface9* targetToReturn = activeRenderTargets[RenderTargetIndex];
+	if( !targetToReturn ){
 		return D3DERR_NOTFOUND;
-	else {
-		*ppRenderTarget = targetToReturn;
-		targetToReturn->AddRef();
-		return D3D_OK;
 	}
+
+	*ppRenderTarget = targetToReturn;
+	targetToReturn->AddRef();
+	return D3D_OK;
 }
 
 /**
@@ -1522,14 +1477,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetDepthStencilSurface , IDirec
 
 	// Update stored proxy depth stencil
 	if (SUCCEEDED(result)) {
-		if (m_pActiveStereoDepthStencil) {
-			m_pActiveStereoDepthStencil->Release();
-		}
-
-		m_pActiveStereoDepthStencil = pNewDepthStencil;
-		if (m_pActiveStereoDepthStencil) {
-			m_pActiveStereoDepthStencil->AddRef();
-		}
+		activeStereoDepthStencil = pNewDepthStencil;
 	}
 
 	return result;
@@ -1539,10 +1487,11 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetDepthStencilSurface , IDirec
 * Provides the active proxy (wrapped) depth stencil.
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetDepthStencilSurface , IDirect3DSurface9** , ppZStencilSurface )
-	if (!m_pActiveStereoDepthStencil)
+	if( !activeStereoDepthStencil ){
 		return D3DERR_NOTFOUND;
+	}
 
-	*ppZStencilSurface = m_pActiveStereoDepthStencil;
+	*ppZStencilSurface = activeStereoDepthStencil;
 	(*ppZStencilSurface)->AddRef();
 
 	return D3D_OK;
@@ -1911,14 +1860,16 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , EndStateBlock , IDirect3DStateB
 * @see D3D9ProxyTexture
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetTexture , DWORD , Stage , IDirect3DBaseTexture9** , ppTexture )
-	if (m_activeTextureStages.count(Stage) != 1)
+	if( !activeTextureStages.contains(Stage) ){
 		return D3DERR_INVALIDCALL;
-	else {
-		*ppTexture = m_activeTextureStages[Stage];
-		if ((*ppTexture))
-			(*ppTexture)->AddRef();
-		return D3D_OK;
 	}
+
+	*ppTexture = activeTextureStages[Stage];
+	if( (*ppTexture) ){
+		(*ppTexture)->AddRef();
+	}
+
+	return D3D_OK;
 }
 
 /**
@@ -1955,30 +1906,16 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetTexture , DWORD , Stage , ID
 			stateBlock->captureTextureSampler(Stage, pTexture);
 		}
 		else {
+			activeTextureStages[Stage] = pTexture;
 
-			// remove existing texture that was active at Stage if there is one
-			if (m_activeTextureStages.contains(Stage)) { 
-
-				IDirect3DBaseTexture9* pOldTexture = m_activeTextureStages[Stage];
-				if (pOldTexture)
-					pOldTexture->Release();
-
-				m_activeTextureStages.remove( Stage );
-			}
-
-			m_activeTextureStages[Stage] = pTexture;
-			if (pTexture)
+			if( pTexture ){
 				pTexture->AddRef();
+			}
 		}
 	}
 
 	return result;
 }
-
-/**
-* Base GetTextureStageState functionality.
-***/
-
 
 
 /**
@@ -2132,17 +2069,8 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetVertexDeclaration , IDirect3
 		// If in a Begin-End StateBlock pair update the block state rather than the current proxy device state
 		if (stateBlock) {
 			stateBlock->captureVertexDeclaration(pWrappedVDeclarationData);
-		}
-		else {
-
-			if (m_pActiveVertexDeclaration) {
-				m_pActiveVertexDeclaration->Release();
-			}
-
-			m_pActiveVertexDeclaration = pWrappedVDeclarationData;
-			if (m_pActiveVertexDeclaration) {
-				m_pActiveVertexDeclaration->AddRef();
-			}
+		}else{
+			activeVertexDeclaration = pWrappedVDeclarationData;
 		}
 	}
 
@@ -2153,12 +2081,16 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetVertexDeclaration , IDirect3
 * Provides currently stored vertex declaration.
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetVertexDeclaration , IDirect3DVertexDeclaration9** , ppDecl )
-	if (!m_pActiveVertexDeclaration) 
+	if( !activeVertexDeclaration ){
 		// TODO check this is the response if no declaration set
 		//In Response to TODO:  JB, Jan 12. I believe it crashes most times this happens, tested by simply nulling out the ppDecl pointer and passing it into the base d3d method
 		return D3DERR_INVALIDCALL; 
+	}
 
-	*ppDecl = m_pActiveVertexDeclaration;
+	*ppDecl = activeVertexDeclaration;
+	if( *ppDecl ){
+		(*ppDecl)->AddRef();
+	}
 
 	return D3D_OK;
 }
@@ -2181,8 +2113,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetStreamSource , UINT , Stream
 	HRESULT result;
 	if (pStreamData) {		
 		result = actual->SetStreamSource(StreamNumber, pCastStreamData->actual, OffsetInBytes, Stride);
-	}
-	else {
+	}else {
 		result = actual->SetStreamSource(StreamNumber, NULL, OffsetInBytes, Stride);
 	}
 
@@ -2193,28 +2124,8 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetStreamSource , UINT , Stream
 		// If in a Begin-End StateBlock pair update the block state rather than the current proxy device state
 		if (stateBlock) {
 			stateBlock->captureVertexStream(StreamNumber, pCastStreamData);
-		}
-		else {
-			// remove existing vertex buffer that was active at StreamNumber if there is one
-			if (m_activeVertexBuffers.contains(StreamNumber) ) { 
-
-				IDirect3DVertexBuffer9* pOldBuffer = m_activeVertexBuffers[StreamNumber];
-				if (pOldBuffer == pStreamData)
-					return result;
-
-				if (pOldBuffer)
-					pOldBuffer->Release();
-
-				m_activeVertexBuffers.remove(StreamNumber);
-			}
-
-			// insert new vertex buffer
-			m_activeVertexBuffers[StreamNumber] = pCastStreamData;
-			
-			//success
-			if (pStreamData){
-				pStreamData->AddRef();
-			}
+		}else{
+			activeVertexBuffers[StreamNumber] = pCastStreamData;
 		}
 	}
 
@@ -2228,22 +2139,16 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetStreamSource , UINT , Stream
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetStreamSource , UINT , StreamNumber , IDirect3DVertexBuffer9** , ppStreamData , UINT* , pOffsetInBytes , UINT* , pStride )
 	// This whole methods implementation is highly questionable. Not sure exactly how GetStreamSource works
-	HRESULT result = D3DERR_INVALIDCALL;
-
-	if (m_activeVertexBuffers.contains(StreamNumber) ) {
-
-		//IDirect3DVertexBuffer9* pCurrentActual = m_activeVertexBuffers[StreamNumber]->actual;
-
-		//IDirect3DVertexBuffer9* pActualResultBuffer = NULL;
-		//HRESULT result = actual->GetStreamSource(StreamNumber, &pCurrentActual, pOffsetInBytes, pStride);
-
-		*ppStreamData = m_activeVertexBuffers[StreamNumber];
-		if ((*ppStreamData))
-			(*ppStreamData)->AddRef();
-
-		result = D3D_OK;
+	if( !activeVertexBuffers.contains(StreamNumber) ) {
+		return D3DERR_INVALIDCALL;
 	}
-	return result;
+
+	*ppStreamData = activeVertexBuffers[StreamNumber];
+	if( *ppStreamData ){
+		(*ppStreamData)->AddRef();
+	}
+
+	return D3D_OK;
 }
 
 
@@ -2264,21 +2169,11 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetIndices , IDirect3DIndexBuff
 		result = actual->SetIndices(NULL);
 
 	if (SUCCEEDED(result)) {
-
 		// If in a Begin-End StateBlock pair update the block state rather than the current proxy device state
 		if (stateBlock) {
 			stateBlock->captureIndexBuffer(pWrappedNewIndexData);
-		}
-		else {
-			// Update stored proxy index buffer
-			if (m_pActiveIndicies) {
-				m_pActiveIndicies->Release();
-			}
-
-			m_pActiveIndicies = pWrappedNewIndexData;
-			if (m_pActiveIndicies) {
-				m_pActiveIndicies->AddRef();
-			}
+		}else{
+			activeIndicies = pWrappedNewIndexData;
 		}
 	}
 
@@ -2289,11 +2184,14 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetIndices , IDirect3DIndexBuff
 * Provides stored indices.
 ***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetIndices , IDirect3DIndexBuffer9** , ppIndexData )
-	if (!m_pActiveIndicies)
+	if( !activeIndicies ){
 		return D3DERR_INVALIDCALL;
+	}
 
-	*ppIndexData = m_pActiveIndicies;
-	m_pActiveIndicies->AddRef();
+	*ppIndexData = activeIndicies;
+	if( *ppIndexData ){
+		(*ppIndexData)->AddRef();
+	}
 
 	return D3D_OK;
 }
@@ -2607,13 +2505,13 @@ METHOD_IMPL( void , , D3DProxyDevice , OnCreateOrRestore )
 		exit(1); 
 	}
 
-	assert (m_activeSwapChains.size() == 0);
-	m_activeSwapChains.push_back(new D3D9ProxySwapChain(pActualPrimarySwapChain, this, false));
-	assert (m_activeSwapChains.size() == 1);
+	activeSwapChains.clear();
+
+	activeSwapChains += new D3D9ProxySwapChain(pActualPrimarySwapChain, this, false);
 
 	// Set the primary rendertarget to the first stereo backbuffer
 	IDirect3DSurface9* pWrappedBackBuffer;
-	m_activeSwapChains[0]->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &pWrappedBackBuffer);
+	activeSwapChains[0]->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &pWrappedBackBuffer);
 	SetRenderTarget(0, pWrappedBackBuffer);
 	pWrappedBackBuffer->Release();
 	pWrappedBackBuffer = NULL;
@@ -2665,7 +2563,7 @@ METHOD_IMPL( bool , , D3DProxyDevice , setDrawingSide , vireio::RenderPosition ,
 	}
 
 	// should never try and render for the right eye if there is no render target for the main render targets right side
-	if (!m_activeRenderTargets[0]->right && (side == vireio::Right)) {
+	if (!activeRenderTargets[0]->right && (side == vireio::Right)) {
 		return false;
 	}
 
@@ -2677,9 +2575,9 @@ METHOD_IMPL( bool , , D3DProxyDevice , setDrawingSide , vireio::RenderPosition ,
 	bool renderTargetChanged = false;
 	HRESULT result;
 	D3D9ProxySurface* pCurrentRT;
-	for(std::vector<D3D9ProxySurface*>::size_type i = 0; i != m_activeRenderTargets.size(); i++) 
+	for(std::vector<D3D9ProxySurface*>::size_type i = 0; i != activeRenderTargets.size(); i++) 
 	{
-		if ((pCurrentRT = m_activeRenderTargets[i]) != NULL) {
+		if ((pCurrentRT = activeRenderTargets[i]) != NULL) {
 
 			if (side == vireio::Left) 
 				result = actual->SetRenderTarget(i, pCurrentRT->actual); 
@@ -2704,19 +2602,19 @@ METHOD_IMPL( bool , , D3DProxyDevice , setDrawingSide , vireio::RenderPosition ,
 		SetGUIViewport();
 
 	// switch depth stencil to new side
-	if (m_pActiveStereoDepthStencil != NULL) { 
+	if (activeStereoDepthStencil != NULL) { 
 		if (side == vireio::Left) 
-			result = actual->SetDepthStencilSurface(m_pActiveStereoDepthStencil->actual); 
+			result = actual->SetDepthStencilSurface(activeStereoDepthStencil->actual); 
 		else 
-			result = actual->SetDepthStencilSurface(m_pActiveStereoDepthStencil->right);
+			result = actual->SetDepthStencilSurface(activeStereoDepthStencil->right);
 	}
 
 	// switch textures to new side
 	IDirect3DBaseTexture9* pActualLeftTexture = NULL;
 	IDirect3DBaseTexture9* pActualRightTexture = NULL;
 
-	for( int stage : m_activeTextureStages.keys() ){
-		IDirect3DBaseTexture9* tex = m_activeTextureStages[stage];
+	for( int stage : activeTextureStages.keys() ){
+		IDirect3DBaseTexture9* tex = activeTextureStages[stage];
 		if( tex ){
 			pActualLeftTexture = NULL;
 			pActualRightTexture = NULL;
@@ -2948,35 +2846,24 @@ METHOD_IMPL( void , , D3DProxyDevice , ReleaseEverything )
 	SAFE_RELEASE( stateBlock );
 
 	// one of these will still have a count of 1 until the backbuffer is released
-	for( D3D9ProxySurface*& rt : m_activeRenderTargets ){
-		SAFE_RELEASE(rt);
-	} 
+	activeRenderTargets.clear();
+	activeTextureStages.clear();
+	activeVertexBuffers.clear();
 
 
-	for( int key : m_activeTextureStages.keys() ){
-		SAFE_RELEASE( m_activeTextureStages[key] );
-	}
-	m_activeTextureStages.clear();
-
-
-	for( int key : m_activeVertexBuffers.keys() ){
-		SAFE_RELEASE( m_activeVertexBuffers[key] );
-	}
-	m_activeVertexBuffers.clear();
-
-
-	SAFE_RELEASE( m_pActiveStereoDepthStencil );
-	SAFE_RELEASE( m_pActiveIndicies );
-	SAFE_RELEASE( vsCurrent );
-	SAFE_RELEASE( psCurrent );
-	SAFE_RELEASE( m_pActiveVertexDeclaration );
+	activeStereoDepthStencil.clear();
+	activeIndicies          .clear();
+	activeVertexDeclaration .clear();
+	activeVertexShader      .clear();
+	activePixelShader       .clear();
+	
 }
 /**
 * Comparison made against active primary render target.
 *
 ***/
 METHOD_IMPL( bool , , D3DProxyDevice , isViewportDefaultForMainRT , CONST D3DVIEWPORT9* , pViewport )
-	D3D9ProxySurface* pPrimaryRenderTarget = m_activeRenderTargets[0];
+	D3D9ProxySurface* pPrimaryRenderTarget = activeRenderTargets[0];
 	D3DSURFACE_DESC pRTDesc;
 	pPrimaryRenderTarget->GetDesc(&pRTDesc);
 
@@ -3193,19 +3080,21 @@ METHOD_IMPL( bool , , D3DProxyDevice , InitVRBoost )
 * All other final screen output is also done here.
 ***/
 void D3DProxyDevice::ProxyPresent(){
+	if( activeSwapChains.isEmpty() ){
+		printf( "Present: No primary swap chain found. (Present probably called before device has been reset)\n" );
+		return;
+	}
+
  	IDirect3DSurface9* pWrappedBackBuffer;
 
-	try {
-		m_activeSwapChains.at(0)->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &pWrappedBackBuffer);
+	activeSwapChains[0]->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &pWrappedBackBuffer);
 
-		if (stereoView->initialized)
-			stereoView->Draw(static_cast<D3D9ProxySurface*>(pWrappedBackBuffer));
+	if( stereoView->initialized ){
+		stereoView->Draw(static_cast<D3D9ProxySurface*>(pWrappedBackBuffer));
+	}
 
-		pWrappedBackBuffer->Release();
-	}
-	catch (std::out_of_range) {
-		OutputDebugStringA("Present: No primary swap chain found. (Present probably called before device has been reset)");
-	}
+	pWrappedBackBuffer->Release();
+
 
 	// did set this now also in proxy swap chain ? solved ?
 	// (this can break if device present is followed by present on another swap chain... or not work well anyway)
@@ -3368,16 +3257,12 @@ METHOD_IMPL( HRESULT , , D3DProxyDevice , ProxyReset , D3DPRESENT_PARAMETERS* , 
 
 	m_bInBeginEndStateBlock = false;
 
-	auto it = m_activeSwapChains.begin();
-	while (it != m_activeSwapChains.end()) {
-
-		if ((*it) != NULL)
-			(*it)->Release();
-
-		delete (*it);
-
-		it = m_activeSwapChains.erase(it);
+	for( cPtr<D3D9ProxySwapChain>& ptr : activeSwapChains ){
+		ptr.releaseAndDelete();
 	}
+	activeSwapChains.clear();
+
+
 
 	HRESULT hr;
 	if( useEx ){
@@ -3390,15 +3275,8 @@ METHOD_IMPL( HRESULT , , D3DProxyDevice , ProxyReset , D3DPRESENT_PARAMETERS* , 
 	if (hr == D3D_OK)  {
 		OnCreateOrRestore();
 		stereoView->PostReset();
-	}
-	else {
-#ifdef _DEBUG
-		char buf[256];
-		sprintf_s(buf, "Error: %s error description: %s\n",
-			DXGetErrorString(hr), DXGetErrorDescription(hr));
+	}else {
 
-		OutputDebugStringA(buf);				
-#endif
 		OutputDebugStringA("Device reset failed");
 	}
 
