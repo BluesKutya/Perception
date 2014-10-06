@@ -39,6 +39,54 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 // 64mm in meters
 #define IPD_DEFAULT 0.064f
 
+
+template<class T>
+void SAFE_RELEASE( T& x ){
+	if(x){
+		x->Release();
+		x=0;
+	}
+}
+
+
+
+template<class T>
+void SAFE_RELEASE( QList<T>& x ){
+	for( T& v : x ){
+		SAFE_RELEASE( v );
+	}
+}
+
+template<class T,class K>
+void SAFE_RELEASE( QMap<K,T>& x ){
+	for( T& v : x.values() ){
+		SAFE_RELEASE( v );
+	}
+	x.clear();
+}
+
+
+template<class T>
+void SAFE_ASSIGN( T& x , T n ){
+	SAFE_RELEASE( x );
+	x = n;
+	if( x ){
+		x->AddRef();
+	}
+}
+
+template<class T,class K>
+void SAFE_ASSIGN( QMap<K,T>& x , const QMap<K,T>& n ){
+	SAFE_RELEASE( x );
+	for( K k : n.keys() ){
+		x[k] = n[k];
+		if( x[k] ){
+			x[k]->AddRef();
+		}
+	}
+}
+
+
 namespace vireio {
 	enum RenderPosition
 	{
@@ -50,67 +98,6 @@ namespace vireio {
 	void UnWrapTexture(IDirect3DBaseTexture9* pWrappedTexture, IDirect3DBaseTexture9** ppActualLeftTexture, IDirect3DBaseTexture9** ppActualRightTexture);
 	bool AlmostSame(float a, float b, float epsilon);
 	void clamp(float* toClamp, float min, float max);
-};
-
-
-
-template<class T>
-class ComPtr{
-public:
-
-	ComPtr( ){
-		p = 0;
-	}
-
-	//TODO check where to release
-	ComPtr( T* ptr ){
-		p = ptr;
-		p->AddRef();
-	}
-
-	~ComPtr(){
-		clear();
-	}
-
-	T* operator->(){
-		return p;
-	}
-
-	operator T*(){
-		return p;
-	}
-
-	operator T**(){
-		return &p;
-	}
-
-	void operator = ( const ComPtr<T>& other ){
-		clear();
-
-		p = other.p;
-
-		if( p ){
-			p->AddRef();
-		}
-	}
-
-	T* get(){
-		return p;
-	}
-
-	void clear( ){
-		if( p ){
-			p->Release();
-			p = 0;
-		}
-	}
-
-	operator bool(){
-		return p;
-	}
-
-private:
-	T* p;
 };
 
 

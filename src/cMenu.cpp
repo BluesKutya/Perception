@@ -502,7 +502,7 @@ void cMenu::render( ){
 	}
 
 
-	sprite->Begin( D3DXSPRITE_ALPHABLEND | D3DXSPRITE_DONOTMODIFY_RENDERSTATE );
+	sprite->Begin( D3DXSPRITE_ALPHABLEND );
 
 	D3DXMATRIX matScale;
 	D3DXMatrixScaling( &matScale , viewportWidth / 1920.0 , viewportHeight / 1080.0 , 1.0 );
@@ -685,7 +685,6 @@ void cMenu::drawText( const QString& text , int align ){
 	if( align == ALIGN_RIGHT_COLUMN ){
 		rect.left += 1200;
 	}
-
 
 	rect.left   += 2;
 	rect.right  += 2;

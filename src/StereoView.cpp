@@ -128,16 +128,27 @@ void StereoView::Init(IDirect3DDevice9* pActualDevice){
 	initialized = true;
 }
 
-
+/**
+* Releases all Direct3D objects.
+***/
 void StereoView::ReleaseEverything(){
+	SAFE_RELEASE( backBuffer );
+	SAFE_RELEASE( leftTexture );
+	SAFE_RELEASE( rightTexture );
+	SAFE_RELEASE( leftSurface );
+	SAFE_RELEASE( rightSurface );
+	SAFE_RELEASE( lastVertexShader );
+	SAFE_RELEASE( lastPixelShader );
+	SAFE_RELEASE( lastTexture );
+	SAFE_RELEASE( lastTexture1 );
+	SAFE_RELEASE( lastVertexDeclaration );
+	SAFE_RELEASE( lastRenderTarget0 );
+	SAFE_RELEASE( lastRenderTarget1 );
+
 	viewEffect->OnLostDevice();
 
 	initialized = false;
 }
-
-
-
-
 
 /**
 * Draws stereoscopic frame.
@@ -160,7 +171,7 @@ void StereoView::Draw(D3D9ProxySurface* stereoCapableSurface)
 	switch(howToSaveRenderStates)
 	{
 	case HowToSaveRenderStates::STATE_BLOCK:
-		m_pActualDevice->CreateStateBlock(D3DSBT_ALL, sb);
+		m_pActualDevice->CreateStateBlock(D3DSBT_ALL, &sb);
 		break;
 	case HowToSaveRenderStates::SELECTED_STATES_MANUALLY:
 		SaveState();
@@ -295,14 +306,29 @@ void StereoView::InitTextureBuffers()
 {
 	m_pActualDevice->GetViewport(&viewport);
 	D3DSURFACE_DESC pDesc = D3DSURFACE_DESC();
-	m_pActualDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, backBuffer);
+	m_pActualDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backBuffer);
 	backBuffer->GetDesc(&pDesc);
 
-	m_pActualDevice->CreateTexture(pDesc.Width, pDesc.Height, 0, D3DUSAGE_RENDERTARGET, pDesc.Format, D3DPOOL_DEFAULT, leftTexture, NULL);
-	leftTexture->GetSurfaceLevel(0, leftSurface);
+#ifdef _DEBUG
+	char buf[32];
+	LPCSTR psz = NULL;
 
-	m_pActualDevice->CreateTexture(pDesc.Width, pDesc.Height, 0, D3DUSAGE_RENDERTARGET, pDesc.Format, D3DPOOL_DEFAULT, rightTexture, NULL);
-	rightTexture->GetSurfaceLevel(0, rightSurface);
+	sprintf(buf,"viewport width: %d",viewport.Width);
+	psz = buf;
+	OutputDebugStringA(psz);
+	OutputDebugStringA("\n");
+
+	sprintf(buf,"backbuffer width: %d",pDesc.Width);
+	psz = buf;
+	OutputDebugStringA(psz);
+	OutputDebugStringA("\n");
+#endif
+
+	m_pActualDevice->CreateTexture(pDesc.Width, pDesc.Height, 0, D3DUSAGE_RENDERTARGET, pDesc.Format, D3DPOOL_DEFAULT, &leftTexture, NULL);
+	leftTexture->GetSurfaceLevel(0, &leftSurface);
+
+	m_pActualDevice->CreateTexture(pDesc.Width, pDesc.Height, 0, D3DUSAGE_RENDERTARGET, pDesc.Format, D3DPOOL_DEFAULT, &rightTexture, NULL);
+	rightTexture->GetSurfaceLevel(0, &rightSurface);
 }
 
 /**
@@ -313,7 +339,7 @@ void StereoView::InitVertexBuffers()
 	OutputDebugStringA("SteroView initVertexBuffers\n");
 
 	HRESULT result = m_pActualDevice->CreateVertexBuffer(sizeof(TEXVERTEX) * 4, NULL,
-		D3DFVF_TEXVERTEX, D3DPOOL_MANAGED , screenVertexBuffer, NULL);
+		D3DFVF_TEXVERTEX, D3DPOOL_MANAGED , &screenVertexBuffer, NULL);
 
 	if( FAILED(result) ){
 		OutputDebugStringA("SteroView initVertexBuffers failed\n");
@@ -368,7 +394,7 @@ void StereoView::InitVertexBuffers()
 ***/
 void StereoView::InitShaderEffects()
 {
-	if (FAILED(D3DXCreateEffectFromFileA(m_pActualDevice, config.getShaderPath().toLocal8Bit(), NULL, NULL, D3DXFX_DONOTSAVESTATE, NULL, viewEffect, NULL))) {
+	if (FAILED(D3DXCreateEffectFromFileA(m_pActualDevice, config.getShaderPath().toLocal8Bit(), NULL, NULL, D3DXFX_DONOTSAVESTATE, NULL, &viewEffect, NULL))) {
 		OutputDebugStringA("Effect creation failed\n");
 	}
 }
@@ -472,16 +498,16 @@ void StereoView::SaveState()
 	m_pActualDevice->GetSamplerState(0, D3DSAMP_MIPFILTER, &ssMip0);
 	m_pActualDevice->GetSamplerState(1, D3DSAMP_MIPFILTER, &ssMip1);
 
-	m_pActualDevice->GetTexture(0, lastTexture);
-	m_pActualDevice->GetTexture(1, lastTexture1);
+	m_pActualDevice->GetTexture(0, &lastTexture);
+	m_pActualDevice->GetTexture(1, &lastTexture1);
 
-	m_pActualDevice->GetVertexShader(lastVertexShader);
-	m_pActualDevice->GetPixelShader(lastPixelShader);
+	m_pActualDevice->GetVertexShader(&lastVertexShader);
+	m_pActualDevice->GetPixelShader(&lastPixelShader);
 
-	m_pActualDevice->GetVertexDeclaration(lastVertexDeclaration);
+	m_pActualDevice->GetVertexDeclaration(&lastVertexDeclaration);
 
-	m_pActualDevice->GetRenderTarget(0, lastRenderTarget0);
-	m_pActualDevice->GetRenderTarget(1, lastRenderTarget1);
+	m_pActualDevice->GetRenderTarget(0, &lastRenderTarget0);
+	m_pActualDevice->GetRenderTarget(1, &lastRenderTarget1);
 }
 
 /**
@@ -593,12 +619,25 @@ void StereoView::RestoreState()
 	m_pActualDevice->SetSamplerState(1, D3DSAMP_MIPFILTER, ssMip1);
 
 	m_pActualDevice->SetTexture(0, lastTexture);
+	SAFE_RELEASE( lastTexture );
+
 	m_pActualDevice->SetTexture(1, lastTexture1);
+	SAFE_RELEASE( lastTexture1 );
+
 	m_pActualDevice->SetVertexShader(lastVertexShader);
+	SAFE_RELEASE( lastVertexShader );
+
 	m_pActualDevice->SetPixelShader(lastPixelShader);
+	SAFE_RELEASE( lastPixelShader );
+
 	m_pActualDevice->SetVertexDeclaration(lastVertexDeclaration);
+	SAFE_RELEASE( lastVertexDeclaration );
+
 	m_pActualDevice->SetRenderTarget(0, lastRenderTarget0);
+	SAFE_RELEASE( lastRenderTarget0 );
+
 	m_pActualDevice->SetRenderTarget(1, lastRenderTarget1);
+	SAFE_RELEASE( lastRenderTarget1 );
 }
 
 /**

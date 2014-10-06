@@ -22,54 +22,53 @@ class D3D9ProxyVertexDeclaration;
 class D3D9ProxyStateBlock : public cBase<IDirect3DStateBlock9> {
 public: 
 
-	D3D9ProxyStateBlock( IDirect3DStateBlock9* pActualStateBlock, D3DProxyDevice* pOwningDevice);
+	D3D9ProxyStateBlock( IDirect3DStateBlock9* pActualStateBlock, D3DProxyDevice* pOwningDevice );
+	~D3D9ProxyStateBlock();
+
+	void init();
 
 	// IDirect3DStateBlock9 methods
 	HRESULT WINAPI Capture();
 	HRESULT WINAPI Apply();
 
 
-	int   type;
-	bool  sideLeft;
-	bool  sideRight;
-	bool  selectAuto;
-	bool  selectIndexBuffer;
-	bool  selectViewport;
-	bool  selectViewTransform;
-	bool  selectProjTransform;
-	bool  selectPixelShader;
-	bool  selectVertexShader;
-	bool  selectVertexDeclaration;
+	int                                  type;
+	bool                                 sideLeft;
+	bool                                 sideRight;
+	bool                                 selectAuto;
 
-	
-	QMap< int , ComPtr<IDirect3DBaseTexture9> > storedTextureStages;
-	QMap< int , ComPtr<D3D9ProxyVertexBuffer> > storedVertexStreams;
-	QMap< int , D3DXVECTOR4 >                   storedVsConstants;
-	QMap< int , D3DXVECTOR4 >                   storedPsConstants;
+	bool                                 selectIndexBuffer;
+	bool                                 selectViewport;
+	bool                                 selectViewTransform;
+	bool                                 selectProjTransform;
+	bool                                 selectPixelShader;
+	bool                                 selectVertexShader;
+	bool                                 selectVertexDeclaration;
 
-	ComPtr<D3D9ProxyIndexBuffer>                  storedIndexBuffer;
-	ComPtr<D3D9ProxyVertexShader>                 storedVertexShader;
-	ComPtr<D3D9ProxyPixelShader>                  storedPixelShader;
-	ComPtr<D3D9ProxyVertexDeclaration>            storedVertexDeclaration;
-	D3DVIEWPORT9                                  storedViewport;
-	D3DXMATRIX                                    storedLeftView;
-	D3DXMATRIX                                    storedRightView;
-	D3DXMATRIX                                    storedLeftProjection;
-	D3DXMATRIX                                    storedRightProjection;
-
-
-	void init();
+	QMap< int , IDirect3DBaseTexture9* > storedTextureStages;
+	QMap< int , D3D9ProxyVertexBuffer* > storedVertexStreams;
+	QMap< int , D3DXVECTOR4 >            storedVsConstants;
+	QMap< int , D3DXVECTOR4 >            storedPsConstants;
+	D3D9ProxyIndexBuffer*                storedIndexBuffer;
+	D3D9ProxyVertexShader*               storedVertexShader;
+	D3D9ProxyPixelShader*                storedPixelShader;
+	D3D9ProxyVertexDeclaration*          storedVertexDeclaration;
+	D3DVIEWPORT9                         storedViewport;
+	D3DXMATRIX                           storedLeftView;
+	D3DXMATRIX                           storedRightView;
+	D3DXMATRIX                           storedLeftProjection;
+	D3DXMATRIX                           storedRightProjection;
 
 	void captureSelected( );
 	void captureIndexBuffer           ( D3D9ProxyIndexBuffer* ib );
 	void captureViewport              ( D3DVIEWPORT9 viewport );
 	void captureViewTransform         ( D3DXMATRIX left , D3DXMATRIX right );
 	void captureProjTransform         ( D3DXMATRIX left , D3DXMATRIX right );
-	void captureVertexShader          ( ComPtr<D3D9ProxyVertexShader> shader );
-	void capturePixelShader           ( ComPtr<D3D9ProxyPixelShader> shader );
-	void captureVertexDeclaration     ( ComPtr<D3D9ProxyVertexDeclaration> decl );
-	void captureTextureSampler        ( int stage , ComPtr<IDirect3DBaseTexture9> texture );
-	void captureVertexStream          ( int stream , ComPtr<D3D9ProxyVertexBuffer> buffer );
+	void captureVertexShader          ( D3D9ProxyVertexShader* shader );
+	void capturePixelShader           ( D3D9ProxyPixelShader* shader );
+	void captureVertexDeclaration     ( D3D9ProxyVertexDeclaration* decl );
+	void captureTextureSampler        ( int stage , IDirect3DBaseTexture9* texture );
+	void captureVertexStream          ( int stream , D3D9ProxyVertexBuffer* buffer );
 	void captureVertexShaderConstant  ( int index , const float* data , int count );
 	void capturePixelShaderConstant   ( int index , const float* data , int count );
 	

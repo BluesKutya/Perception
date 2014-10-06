@@ -44,9 +44,15 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetVertexShader , IDirect3DVert
 	if( SUCCEEDED(result) ){
 		if (stateBlock) {
 			stateBlock->captureVertexShader(shader);
+		}else{
+			SAFE_RELEASE( vsCurrent );
+
+			vsCurrent = shader;
+
+			if( vsCurrent ){
+				vsCurrent->AddRef();
+			}
 		}
-		
-		vsCurrent = shader;
 	}
 
 	if( shader ){
@@ -80,20 +86,32 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetVertexShader , IDirect3DVert
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetPixelShader , IDirect3DPixelShader9* , pShader )
 	D3D9ProxyPixelShader* shader = static_cast<D3D9ProxyPixelShader*>(pShader);
 
+	// Update actual pixel shader
 	HRESULT result;
-
 	if( shader ){
 		result = actual->SetPixelShader( shader->actual );
 	}else{
 		result = actual->SetPixelShader(NULL);
+		return result;
 	}
 
+	// Update stored proxy pixel shader
 	if( SUCCEEDED(result) ){
+
+		// If in a Begin-End StateBlock pair update the block state rather than the current proxy device state
 		if (stateBlock) {
 			stateBlock->capturePixelShader( shader );
-		}
+		}else{
+			SAFE_RELEASE( psCurrent );
 
-		psCurrent = shader;
+			psCurrent = shader;
+
+			if( psCurrent ) {
+				psCurrent->AddRef();
+			}
+
+			//m_spManagedShaderRegisters->ActivePixelShaderChanged( shader );
+		}
 	}
 
 	if( config.shaderAnalyzer && shader ){
@@ -138,10 +156,6 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetPixelShader , IDirect3DPixel
 
 
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetVertexShaderConstantF , UINT , StartRegister , CONST float* , pConstantData , UINT , Vector4fCount )
-	if( stateBlock ){
-		stateBlock->captureVertexShaderConstant(StartRegister, pConstantData, Vector4fCount);
-	}
-
 	vsConstantsOriginal.set( StartRegister , pConstantData , Vector4fCount );
 	vsConstantsLeft    .set( StartRegister , pConstantData , Vector4fCount );
 	vsConstantsRight   .set( StartRegister , pConstantData , Vector4fCount );
@@ -150,10 +164,6 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetVertexShaderConstantF , UINT
 
 
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetPixelShaderConstantF , UINT , StartRegister , CONST float* , pConstantData , UINT , Vector4fCount )
-	if( stateBlock ){
-		stateBlock->capturePixelShaderConstant(StartRegister, pConstantData, Vector4fCount);
-	}
-
 	psConstantsOriginal.set( StartRegister , pConstantData , Vector4fCount );
 	psConstantsLeft    .set( StartRegister , pConstantData , Vector4fCount );
 	psConstantsRight   .set( StartRegister , pConstantData , Vector4fCount );

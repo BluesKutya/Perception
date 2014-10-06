@@ -97,18 +97,18 @@ public:
 	DirectInput    dinput;
 
 	
-	bool                                        m_bActiveViewportIsDefault;
-	bool                                        m_bViewportIsSquished;
-	bool                                        m_VRboostRulesPresent;
-	D3DVIEWPORT9                                m_LastViewportSet;
-	D3DVIEWPORT9                                m_ViewportIfSquished;
-	ComPtr<D3D9ProxySurface>                    m_pActiveStereoDepthStencil;
-	ComPtr<D3D9ProxyIndexBuffer>                m_pActiveIndicies;
-	ComPtr<D3D9ProxyVertexDeclaration>          m_pActiveVertexDeclaration;
-	QVector<ComPtr<D3D9ProxySwapChain>>         m_activeSwapChains;
-	QVector<ComPtr<D3D9ProxySurface>>           m_activeRenderTargets;	
-	QMap< int , ComPtr<IDirect3DBaseTexture9> > m_activeTextureStages;
-	QMap< int , ComPtr<D3D9ProxyVertexBuffer> > m_activeVertexBuffers;
+	bool                                 m_bActiveViewportIsDefault;
+	bool                                 m_bViewportIsSquished;
+	bool                                 m_VRboostRulesPresent;
+	D3DVIEWPORT9                         m_LastViewportSet;
+	D3DVIEWPORT9                         m_ViewportIfSquished;
+	D3D9ProxySurface*                    m_pActiveStereoDepthStencil;
+	D3D9ProxyIndexBuffer*                m_pActiveIndicies;
+	D3D9ProxyVertexDeclaration*          m_pActiveVertexDeclaration;
+	QVector<D3D9ProxySwapChain*>         m_activeSwapChains;
+	QVector<D3D9ProxySurface*>           m_activeRenderTargets;	
+	QMap< int , IDirect3DBaseTexture9* > m_activeTextureStages;
+	QMap< int , D3D9ProxyVertexBuffer* > m_activeVertexBuffers;
 
 
 	bool                            calibrate_tracker;
@@ -154,7 +154,7 @@ public:
 
 	
 	HWND                          windowHandle;
-	ComPtr<D3D9ProxyStateBlock>   stateBlock;
+	D3D9ProxyStateBlock*          stateBlock;
 
 	
 	QList<cShader*>               shaders;
@@ -164,15 +164,15 @@ public:
 
 	/****    Shader and constant storage   ****/
 
-	ComPtr<D3D9ProxyVertexShader> vsCurrent;
-	cConstantBuffer               vsConstantsOriginal;
-	cConstantBuffer               vsConstantsLeft;
-	cConstantBuffer               vsConstantsRight;
+	D3D9ProxyVertexShader* vsCurrent;
+	cConstantBuffer        vsConstantsOriginal;
+	cConstantBuffer        vsConstantsLeft;
+	cConstantBuffer        vsConstantsRight;
 
-	ComPtr<D3D9ProxyPixelShader>  psCurrent;
-	cConstantBuffer               psConstantsOriginal;
-	cConstantBuffer               psConstantsLeft;
-	cConstantBuffer               psConstantsRight;
+	D3D9ProxyPixelShader*  psCurrent;
+	cConstantBuffer        psConstantsOriginal;
+	cConstantBuffer        psConstantsLeft;
+	cConstantBuffer        psConstantsRight;
 
 
 
