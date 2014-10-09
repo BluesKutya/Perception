@@ -44,6 +44,15 @@ P( bool    , rollEnabled                , )// True if headtracking-roll is to be
 P( bool    , swap_eyes                  , )// Option to swap the eye output for different 3D systems
 P( bool    , showVRMouse                , )
 
+P( int     , duplicateRenderTarget , )
+P( int     , duplicateDepthStencil , )
+P( int     , duplicateTexture      , )
+P( int     , duplicateCubeTexture  , )
+P( int     , whenRenderMenu        , )
+P( int     , whenUpdateTracker     , )
+P( int     , saveStateMethod       , )
+
+
 P( float   , trackerYawMultiplier		, )
 P( float   , trackerPitchMultiplier	    , )
 P( float   , trackerRollMultiplier		, )

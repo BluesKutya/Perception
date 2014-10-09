@@ -4,6 +4,7 @@
 #include <d3dx9.h>
 #include <qmap.h>
 #include <qset.h>
+#include <map>
 
 #include "D3DProxyDevice.h"
 #include "D3D9ProxyVertexBuffer.h"
@@ -42,20 +43,22 @@ public:
 	bool                                 selectPixelShader;
 	bool                                 selectVertexShader;
 	bool                                 selectVertexDeclaration;
+	bool                                 selectVertexBuffers;
 
-	QMap< int , D3DXVECTOR4 >                 storedVsConstants;
-	QMap< int , D3DXVECTOR4 >                 storedPsConstants;
-	QMap< int , cPtr<IDirect3DBaseTexture9> > storedTextureStages;
-	QMap< int , cPtr<D3D9ProxyVertexBuffer> > storedVertexStreams;
-	cPtr<D3D9ProxyIndexBuffer>                storedIndexBuffer;
-	cPtr<D3D9ProxyVertexShader>               storedVertexShader;
-	cPtr<D3D9ProxyPixelShader>                storedPixelShader;
-	cPtr<D3D9ProxyVertexDeclaration>          storedVertexDeclaration;
-	D3DVIEWPORT9                              storedViewport;
-	D3DXMATRIX                                storedLeftView;
-	D3DXMATRIX                                storedRightView;
-	D3DXMATRIX                                storedLeftProjection;
-	D3DXMATRIX                                storedRightProjection;
+	std::map< int , D3DXVECTOR4 >        storedVsConstants;
+	std::map< int , D3DXVECTOR4 >        storedPsConstants;
+
+	std::map< int , cPtr<IDirect3DBaseTexture9> > storedTextures;
+	std::map< int , cPtr<D3D9ProxyVertexBuffer> > storedVertexes;
+	cPtr<D3D9ProxyIndexBuffer>                    storedIndexBuffer;
+	cPtr<D3D9ProxyVertexShader>                   storedVertexShader;
+	cPtr<D3D9ProxyPixelShader>                    storedPixelShader;
+	cPtr<D3D9ProxyVertexDeclaration>              storedVertexDeclaration;
+	D3DVIEWPORT9                                  storedViewport;
+	D3DXMATRIX                                    storedLeftView;
+	D3DXMATRIX                                    storedRightView;
+	D3DXMATRIX                                    storedLeftProjection;
+	D3DXMATRIX                                    storedRightProjection;
 
 	void captureSelected( );
 	void captureIndexBuffer           ( D3D9ProxyIndexBuffer* ib );

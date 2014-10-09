@@ -1,24 +1,26 @@
 #pragma once
-#include <Vireio.h>
-#include "cRuleInfo.h"
+#include <qstringlist.h>
+
 class cConstantBuffer;
 class cShader;
 class cMenuItem;
 class D3DProxyDevice;
 
-class cRule : public cRuleInfo{
+class cRule{
 public:
-	QVector<int> vsRegisters;
-	QVector<int> psRegisters;
-	int          operation;
+	QString         name;
+	QStringList     constantsInclude;
+	QStringList     shadersInclude;
+	QStringList     shadersExclude;
+	int             operation;
+	bool            isMatrix;
+	bool            transpose;
+	bool            squishViewport;
+
+	cRule();
 
 	D3DProxyDevice* device;
 	cMenuItem*      item;
 	cMenuItem*      itemConstants;
 	cMenuItem*      itemShaders;
-
-	cRule( D3DProxyDevice* device );
-
-	void modify( int registerIndex , cConstantBuffer* buf , cConstantBuffer* bufLeft , cConstantBuffer* bufRight );
-	static QStringList availableOperations();
 };

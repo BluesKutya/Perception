@@ -36,6 +36,9 @@
     <ClCompile Include="..\src\Hijack\hijack_hook.cpp">
       <Filter>Hijack</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\cRule.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <QT_UIC Include="..\src\GUI\cProfileSelectDialog.ui">
@@ -63,6 +66,9 @@
       <Filter>Common</Filter>
     </ClInclude>
     <ClInclude Include="..\src\cConfig.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\cRule.h">
       <Filter>Common</Filter>
     </ClInclude>
   </ItemGroup>

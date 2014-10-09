@@ -117,9 +117,6 @@
     <ClCompile Include="..\src\cPropsFile.cpp">
       <Filter>Common</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\cRule.cpp">
-      <Filter>Common</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\cShader.cpp">
       <Filter>Common</Filter>
     </ClCompile>
@@ -144,14 +141,17 @@
     <ClCompile Include="..\src\Proxy\D3DProxyDevice_view.cpp">
       <Filter>Proxy</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\Proxy\D3DProxyDevice_game.cpp">
-      <Filter>Proxy</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\Proxy\D3D9ProxyVertexBuffer.cpp">
       <Filter>Proxy</Filter>
     </ClCompile>
     <ClCompile Include="..\src\Proxy\D3DProxyDevice_vrboost.cpp">
       <Filter>Proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\cRegisterModification.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\cRule.cpp">
+      <Filter>Common</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -209,9 +209,6 @@
     <ClInclude Include="..\src\StereoBackbuffer.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\StereoShaderConstant.h">
-      <Filter>Common</Filter>
-    </ClInclude>
     <ClInclude Include="..\src\StereoView.h">
       <Filter>Common</Filter>
     </ClInclude>
@@ -266,6 +263,9 @@
     <ClInclude Include="..\src\Proxy\D3D9ProxyVertexBuffer.h">
       <Filter>Proxy</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\cRegisterModification.h">
+      <Filter>Proxy</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\src\cConfig.inc">
@@ -276,5 +276,8 @@
     <Text Include="..\src\notes.txt">
       <Filter>Common</Filter>
     </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="C:\Dev\NVAPI\x86\nvapi.lib" />
   </ItemGroup>
 </Project>

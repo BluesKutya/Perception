@@ -143,35 +143,25 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetPixelShader , IDirect3DPixel
 }
 
 
-
-
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetVertexShaderConstantF , UINT , StartRegister , CONST float* , pConstantData , UINT , Vector4fCount )
-	vsConstantsOriginal.set( StartRegister , pConstantData , Vector4fCount );
-	vsConstantsLeft    .set( StartRegister , pConstantData , Vector4fCount );
-	vsConstantsRight   .set( StartRegister , pConstantData , Vector4fCount );
-	return D3D_OK;
+	return vsConstants.set( StartRegister , pConstantData , Vector4fCount );
 }
 
 
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetPixelShaderConstantF , UINT , StartRegister , CONST float* , pConstantData , UINT , Vector4fCount )
-	psConstantsOriginal.set( StartRegister , pConstantData , Vector4fCount );
-	psConstantsLeft    .set( StartRegister , pConstantData , Vector4fCount );
-	psConstantsRight   .set( StartRegister , pConstantData , Vector4fCount );
-	return D3D_OK;
+	return psConstants.set( StartRegister , pConstantData , Vector4fCount );
 }
 
 
 
 
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetVertexShaderConstantF , UINT , StartRegister , float* , pData , UINT , Vector4fCount )
-	vsConstantsOriginal.get( StartRegister , pData , Vector4fCount );
-	return D3D_OK;
+	return vsConstants.get( StartRegister , pData , Vector4fCount );
 }
 
 
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetPixelShaderConstantF , UINT , StartRegister , float* , pData , UINT , Vector4fCount )
-	psConstantsOriginal.get( StartRegister , pData , Vector4fCount );
-	return D3D_OK;
+	return psConstants.get( StartRegister , pData , Vector4fCount );
 }
 
 

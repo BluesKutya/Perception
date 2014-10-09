@@ -26,12 +26,6 @@ class D3DProxyDevice : public IDirect3DDevice9Ex {
 public:
 
 
-	enum WhenToDo{
-		PRESENT,
-		BEGIN_SCENE,
-		FIRST_BEGIN_SCENE,
-		END_SCENE,
-	};
 
 	enum GameTypes{
 		MONO = 0,                  /**<  !! */
@@ -63,13 +57,6 @@ public:
 	};
 
 
-
-
-
-
-	WhenToDo       whenToRenderBRASSA;
-	WhenToDo       whenToHandleHeadTracking;
-
 	StereoView*    stereoView;
 	cTracker*      tracker;
 
@@ -94,9 +81,9 @@ public:
 	cPtr<D3D9ProxyIndexBuffer>                activeIndicies;
 	cPtr<D3D9ProxyVertexDeclaration>          activeVertexDeclaration;
 	QVector<cPtr<D3D9ProxySwapChain>>         activeSwapChains;
-	QVector<cPtr<D3D9ProxySurface>>           activeRenderTargets;	
-	QMap< int , cPtr<IDirect3DBaseTexture9> > activeTextureStages;
-	QMap< int , cPtr<D3D9ProxyVertexBuffer> > activeVertexBuffers;
+	std::map<int,cPtr<D3D9ProxySurface>>      activeRenderTargets;	
+	std::map<int,cPtr<IDirect3DBaseTexture9>> activeTextures;
+	std::map<int,cPtr<D3D9ProxyVertexBuffer>> activeVertexes;
 	cPtr<D3D9ProxyVertexShader>               activeVertexShader;
 	cPtr<D3D9ProxyPixelShader>                activePixelShader;
 
@@ -145,28 +132,18 @@ public:
 
 
 	/****    Shader and constant storage   ****/
-
-	cConstantBuffer        vsConstantsOriginal;
-	cConstantBuffer        vsConstantsLeft;
-	cConstantBuffer        vsConstantsRight;
-
-	cConstantBuffer        psConstantsOriginal;
-	cConstantBuffer        psConstantsLeft;
-	cConstantBuffer        psConstantsRight;
-
-
+	cConstantBuffer                    vsConstants;
+	cConstantBuffer                    psConstants;
+	std::vector<cRegisterModification> vsDefaultModifications;
+	std::vector<cRegisterModification> psDefaultModifications;
 
 
 	/****    Constant modification   ****/
 
-	QList<cRule*>   rules;
 	cMenuItem*      rulesMenu;
 	cRule*          rulesAdd   ( );
 	void            rulesDelete( cRule* );
 	void            rulesInit  ( );
-	void            rulesFree  ( );
-	void            rulesSave  ( );
-	void            rulesLoad  ( );
 	void            rulesUpdate( );
 	void            rulesApply ( );
 
@@ -258,14 +235,6 @@ public:
 	float separationIPDAdjustment( );
 
 
-	bool  gameShouldDuplicateRenderTarget(UINT Width, UINT Height, D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality,BOOL Lockable, bool isSwapChainBackBuffer);
-	bool  gameShouldDuplicateDepthStencilSurface(UINT Width,UINT Height,D3DFORMAT Format,D3DMULTISAMPLE_TYPE MultiSample,DWORD MultisampleQuality,BOOL Discard);
-	bool  gameShouldDuplicateTexture(UINT Width,UINT Height,UINT Levels,DWORD Usage,D3DFORMAT Format,D3DPOOL Pool);
-	bool  gameShouldDuplicateCubeTexture(UINT EdgeLength, UINT Levels, DWORD Usage, D3DFORMAT Format, D3DPOOL Pool);
-
-
-
-
 
 
 
@@ -279,7 +248,7 @@ public:
 
 	friend class D3D9ProxyStateBlock;
 
-	void    ProxyPresent( );
+	void    ProxyPresent( D3D9ProxySwapChain* swapChain );
 	HRESULT ProxyReset( D3DPRESENT_PARAMETERS* pPresentationParameters , D3DDISPLAYMODEEX* pFullscreenDisplayMode , bool useEx );
 	HRESULT ProxyCreateOffscreenPlainSurface(UINT Width , UINT Height , D3DFORMAT Format , D3DPOOL Pool , IDirect3DSurface9** ppSurface , HANDLE* pSharedHandle , DWORD Usage , bool useEx );
 	HRESULT ProxyCreateRenderTarget         (UINT Width , UINT Height , D3DFORMAT Format , D3DMULTISAMPLE_TYPE MultiSample , DWORD MultisampleQuality , BOOL Lockable , IDirect3DSurface9** ppSurface , HANDLE* pSharedHandle , DWORD Usage , bool isSwapChainBackBuffer , bool useEx );

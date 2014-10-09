@@ -14,6 +14,7 @@
     <ClCompile Include="..\src\cConfig.cpp" />
     <ClCompile Include="..\src\cConfig_ovr.cpp" />
     <ClCompile Include="..\src\cPropsFile.cpp" />
+    <ClCompile Include="..\src\cRule.cpp" />
     <ClCompile Include="..\src\GUI\app_main.cpp" />
     <ClCompile Include="..\src\GUI\cMainWindow.cpp" />
     <ClCompile Include="..\src\GUI\cProfileSelectDialog.cpp" />
@@ -34,6 +35,7 @@
   <ItemGroup>
     <ClInclude Include="..\src\cConfig.h" />
     <ClInclude Include="..\src\cPropsFile.h" />
+    <ClInclude Include="..\src\cRule.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{866D94CE-80C6-4660-9D25-D1F73F024D5A}</ProjectGuid>

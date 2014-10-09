@@ -3,6 +3,7 @@
 #include <qcryptographichash.h>
 #include "cMenu.h"
 #include "cRule.h"
+#include "cRegisterModification.h"
 
 class D3DProxyDevice;
 
@@ -18,19 +19,19 @@ public:
 
 class cShader {
 public:
-	D3DProxyDevice*          device;
-	IDirect3DVertexShader9*  vs;
-	IDirect3DPixelShader9*   ps;
-	QByteArray               code;
-	QString                  name;
-	QVector<cShaderConstant> constants;
-	QList<cRule*>            rules;
-	bool                     squishViewport;
-	bool                     blink;
-	bool                     hide;
-	bool                     used;
-	bool                     visible;
-	cMenuItem*               item;
+	D3DProxyDevice*                    device;
+	IDirect3DVertexShader9*            vs;
+	IDirect3DPixelShader9*             ps;
+	QByteArray                         code;
+	QString                            name;
+	QVector<cShaderConstant>           constants;
+	std::vector<cRegisterModification> modifications;
+	bool                               squishViewport;
+	bool                               blink;
+	bool                               hide;
+	bool                               used;
+	bool                               visible;
+	cMenuItem*                         item;
 	
 				          
 	cShader( D3DProxyDevice* d , IDirect3DVertexShader9* avs , IDirect3DPixelShader9* aps );

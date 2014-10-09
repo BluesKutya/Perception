@@ -1,25 +1,44 @@
 #pragma once
 #include <Vireio.h>
 #include <vector>
+#include "cRegisterModification.h"
+#include "cRule.h"
 
 class IDirect3DDevice9;
-class cRule;
 
 class cConstantBuffer{
 public:
-	bool                  set            ( int registerIndex  , const float* ptr , int registerCount );
-	bool                  get            ( int registerOffset ,       float* ptr , int registerCount );
-	void                  writeTo        ( IDirect3DDevice9* device , bool vs );
-	bool                  isModified     ( int registerIndex , int registerCount );
-	void                  setModified    ( int registerIndex , int registerCount );
-	float*                data           ( int registerIndex , int registerCount );
-	int                   registerCount  ( );
+
+	cConstantBuffer( D3DProxyDevice* device , bool isVertex );
+
+	void resize               ( int count );
+
+	bool isModified           ( int start , int count );
+	void clearModified        ( );
+	void setModified          ( int start , int count );
+	void setStereoModified    ( );
+
+	HRESULT set                  ( int start , const float* ptr , int count );
+	HRESULT get                  ( int start ,       float* ptr , int count );
+
+	void applyStereo          ( );
+
+	int  registerCount        ( );
 
 private:
-	std::vector<float>               registers;
-	std::vector<std::pair<int,int>>  modified;
+	std::vector<float>                   original;
+	std::vector<float>                   left;
+	std::vector<float>                   right;
+	std::vector<std::pair<int,int>>      modified;
+	std::vector<cRegisterModification>*  modifications;
+	D3DProxyDevice*                      device;
+	bool                                 isVertex;
 
-	void resize( int registerCount , bool mod );
+
+
+	
+	HRESULT set  ( std::vector<float>& array , int start , const float* ptr , int count );
+	void    write( std::vector<float>& array );
 
 	friend class cRule;
 };

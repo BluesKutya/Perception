@@ -304,6 +304,7 @@ void cMenu::goToMenu( cMenuItem* item ){
 
 
 void cMenu::render( ){
+
 	if( !font || !sprite ){
 		return;
 	}

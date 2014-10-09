@@ -109,7 +109,7 @@ void Streamer::enc_encode( void* pixels , int w , int h ){
 	int r = avcodec_encode_video2( codec_context , &pkt , picture , &out );
 
 	if( out ){
-		printf( "encoded %d   %d bytes\n" , r , pkt.size );
+		//printf( "encoded %d   %d bytes\n" , r , pkt.size );
 		net_send( pkt.data , pkt.size );
 		av_free_packet(&pkt);
 	}

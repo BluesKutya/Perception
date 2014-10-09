@@ -15,6 +15,7 @@
     <ClCompile Include="..\src\cConfig_ovr.cpp" />
     <ClCompile Include="..\src\cMenu.cpp" />
     <ClCompile Include="..\src\cPropsFile.cpp" />
+    <ClCompile Include="..\src\cRegisterModification.cpp" />
     <ClCompile Include="..\src\cRule.cpp" />
     <ClCompile Include="..\src\cShader.cpp" />
     <ClCompile Include="..\src\cTracker.cpp" />
@@ -41,7 +42,6 @@
     <ClCompile Include="..\src\Proxy\D3D9ProxyVolumeTexture.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDevice.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDeviceAdv.cpp" />
-    <ClCompile Include="..\src\Proxy\D3DProxyDevice_game.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDevice_rules.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDevice_shaders.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDevice_view.cpp" />
@@ -63,6 +63,7 @@
     <ClInclude Include="..\src\cConfig.h" />
     <ClInclude Include="..\src\cMenu.h" />
     <ClInclude Include="..\src\cPropsFile.h" />
+    <ClInclude Include="..\src\cRegisterModification.h" />
     <ClInclude Include="..\src\cRule.h" />
     <ClInclude Include="..\src\cRuleInfo.h" />
     <ClInclude Include="..\src\cShader.h" />
@@ -88,7 +89,6 @@
     <ClInclude Include="..\src\Proxy\D3DProxyDevice.h" />
     <ClInclude Include="..\src\Proxy\D3DProxyDeviceAdv.h" />
     <ClInclude Include="..\src\StereoBackbuffer.h" />
-    <ClInclude Include="..\src\StereoShaderConstant.h" />
     <ClInclude Include="..\src\StereoView.h" />
     <ClInclude Include="..\src\Streaming\inttypes.h" />
     <ClInclude Include="..\src\Streaming\Streamer.h" />
@@ -101,6 +101,9 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\src\notes.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="C:\Dev\NVAPI\x86\nvapi.lib" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{F0290832-C81F-4165-BA92-2A31FB20D7CD}</ProjectGuid>
@@ -133,7 +136,9 @@
     <Import Project="props\qt-lib.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <IncludePath>C:\Dev\NVAPI;$(IncludePath)</IncludePath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Link>
       <SubSystem>Windows</SubSystem>

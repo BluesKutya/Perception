@@ -56,54 +56,6 @@ StereoView::StereoView( ){
 	viewEffect = NULL;
 	sb = NULL;
 
-	// set behavior accordingly to game type
-
-	switch(config.game_type)
-	{
-	case D3DProxyDevice::FIXED:
-		howToSaveRenderStates = HowToSaveRenderStates::STATE_BLOCK;
-		break;
-	case D3DProxyDevice::SOURCE:
-	case D3DProxyDevice::SOURCE_L4D:
-	case D3DProxyDevice::SOURCE_ESTER:
-		howToSaveRenderStates = HowToSaveRenderStates::SELECTED_STATES_MANUALLY;
-		break;
-	case D3DProxyDevice::UNREAL:
-	case D3DProxyDevice::UNREAL_MIRROR:
-	case D3DProxyDevice::UNREAL_UT3:
-	case D3DProxyDevice::UNREAL_BIOSHOCK:
-		howToSaveRenderStates = HowToSaveRenderStates::STATE_BLOCK;
-		break;
-	case D3DProxyDevice::UNREAL_BORDERLANDS:
-		howToSaveRenderStates = HowToSaveRenderStates::DO_NOT_SAVE_AND_RESTORE;
-		break;
-	case D3DProxyDevice::EGO:
-	case D3DProxyDevice::EGO_DIRT:
-		howToSaveRenderStates = HowToSaveRenderStates::STATE_BLOCK;
-		break;
-	case D3DProxyDevice::REALV:
-	case D3DProxyDevice::REALV_ARMA:
-		howToSaveRenderStates = HowToSaveRenderStates::STATE_BLOCK;
-		break;
-	case D3DProxyDevice::UNITY:
-	case D3DProxyDevice::UNITY_SLENDER:
-		howToSaveRenderStates = HowToSaveRenderStates::STATE_BLOCK;
-		break;
-	case D3DProxyDevice::GAMEBRYO:
-	case D3DProxyDevice::GAMEBRYO_SKYRIM:
-		howToSaveRenderStates = HowToSaveRenderStates::STATE_BLOCK;
-		break;
-	case D3DProxyDevice::LFS:
-		howToSaveRenderStates = HowToSaveRenderStates::STATE_BLOCK;
-		break;
-	case D3DProxyDevice::CDC:
-		howToSaveRenderStates = HowToSaveRenderStates::STATE_BLOCK;
-		break;
-	default:
-		howToSaveRenderStates = HowToSaveRenderStates::STATE_BLOCK;
-		break;
-	}
-
 	m_pStreamer = new Streamer( );
 }
 
@@ -168,19 +120,21 @@ void StereoView::Draw(D3D9ProxySurface* stereoCapableSurface)
 		m_pActualDevice->StretchRect(leftImage, NULL, rightSurface, NULL, D3DTEXF_NONE);
 
 	// how to save (backup) render states ?
-	switch(howToSaveRenderStates)
-	{
-	case HowToSaveRenderStates::STATE_BLOCK:
+	switch( config.saveStateMethod ){
+	case SAVE_STATE_BLOCK:
 		m_pActualDevice->CreateStateBlock(D3DSBT_ALL, &sb);
 		break;
-	case HowToSaveRenderStates::SELECTED_STATES_MANUALLY:
+
+	case SAVE_STATE_SELECTED_MANUALLY:
 		SaveState();
 		break;
-	case HowToSaveRenderStates::ALL_STATES_MANUALLY:
+
+	case SAVE_STATE_ALL_MANUALLY:
 		SaveAllRenderStates(m_pActualDevice);
 		SetAllRenderStatesDefault(m_pActualDevice);
 		break;
-	case HowToSaveRenderStates::DO_NOT_SAVE_AND_RESTORE:
+
+	case SAVE_STATE_DONT_SAVE:
 		break;
 	}
 
@@ -245,21 +199,23 @@ void StereoView::Draw(D3D9ProxySurface* stereoCapableSurface)
 	m_pStreamer->send( m_pActualDevice );
 
 	// how to restore render states ?
-	switch(howToSaveRenderStates)
-	{
-	case HowToSaveRenderStates::STATE_BLOCK:
+	switch( config.saveStateMethod ){
+	case SAVE_STATE_BLOCK:
 		// apply stored render states
 		sb->Apply();
 		sb->Release();
 		sb = NULL;
 		break;
-	case HowToSaveRenderStates::SELECTED_STATES_MANUALLY:
+
+	case SAVE_STATE_SELECTED_MANUALLY:
 		RestoreState();
 		break;
-	case HowToSaveRenderStates::ALL_STATES_MANUALLY:
+
+	case SAVE_STATE_ALL_MANUALLY:
 		RestoreAllRenderStates(m_pActualDevice);
 		break;
-	case HowToSaveRenderStates::DO_NOT_SAVE_AND_RESTORE:
+
+	case SAVE_STATE_DONT_SAVE:
 		break;
 	}
 }

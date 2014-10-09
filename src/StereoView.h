@@ -229,16 +229,7 @@ protected:
 	DWORD ssMin1;                /**< Various states. */
 	DWORD ssMip0;                /**< Various states. */
 	DWORD ssMip1;                /**< Various states. */
-	/**
-	* Determines how to save render states for stereo view output.
-	***/
-	enum HowToSaveRenderStates
-	{
-		STATE_BLOCK,
-		SELECTED_STATES_MANUALLY,
-		ALL_STATES_MANUALLY,
-		DO_NOT_SAVE_AND_RESTORE,
-	} howToSaveRenderStates;
+
 };
 
 /**

@@ -108,3 +108,75 @@ namespace vireio {
 		*pfToClamp > max ? *pfToClamp = max : (*pfToClamp < min ? *pfToClamp = min : *pfToClamp = *pfToClamp);
 	}
 };
+
+
+
+
+
+
+
+
+QStringList Vireio_enum_duplicate(){
+	QStringList r;
+	r += "always";
+	r += "never";
+	r += "swap chain back buffer or not square";
+	r += "not square";
+	r += "is depth stencil or not square render target";
+	r += "depth stencil or render target";
+	r += "render target";
+	return r;
+}
+
+
+QStringList Vireio_enum_when(){
+	QStringList r;
+	r += "render";
+	r += "scene begin";
+	r += "scene first begin";
+	r += "scene end";
+	return r;
+}
+
+QStringList Vireio_enum_saveState(){
+	QStringList r;
+	r += "state block";
+	r += "selected states manually";
+	r += "all states manually";
+	r += "don't save";
+	return r;
+}
+
+bool  Vireio_shouldDuplicate( int mode , int width , int height , int usage , bool isSwapChainBackBuffer ){
+	if( mode == DUPLICATE_ALWAYS ){
+		return true;
+	}
+
+	if( mode == DUPLICATE_NEVER ){
+		return false;
+	}
+
+	if( mode == DUPLICATE_IF_SWAP_OR_NOT_SQUARE ){
+		return isSwapChainBackBuffer || (width != height);
+	}
+
+	if( mode == DUPLICATE_IF_NOT_SQUARE ){
+		return width != height;
+	}
+
+	if( mode == DUPLICATE_IF_DEPTH_OR_RT_NOT_SQUARE ){
+		return (usage & D3DUSAGE_DEPTHSTENCIL) || ( (usage & D3DUSAGE_RENDERTARGET) && (width != height) );
+	}
+
+	if( mode == DUPLICATE_IF_DEPTH_OR_RT ){
+		return (usage & D3DUSAGE_DEPTHSTENCIL) || (usage & D3DUSAGE_RENDERTARGET);
+	}
+
+	if( mode == DUPLICATE_IF_RT ){
+		return (usage & D3DUSAGE_RENDERTARGET);
+	}
+
+	printf("Virieo: unknown duplicate mode %d\n" , mode );
+	return true;
+}
+

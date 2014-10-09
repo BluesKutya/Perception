@@ -36,6 +36,13 @@ cConfig::cConfig(){
 
 	showVRMouse = true;
 
+	duplicateRenderTarget = DUPLICATE_IF_SWAP_OR_NOT_SQUARE;
+	duplicateDepthStencil = DUPLICATE_IF_NOT_SQUARE;
+	duplicateTexture      = DUPLICATE_IF_DEPTH_OR_RT_NOT_SQUARE;
+	duplicateCubeTexture  = DUPLICATE_NEVER;
+	whenRenderMenu        = WHEN_END_SCENE;
+	whenUpdateTracker     = WHEN_FIRST_BEGIN_SCENE;
+	saveStateMethod       = SAVE_STATE_ALL_MANUALLY;
 }
 
 
@@ -89,13 +96,13 @@ bool cConfig::loadRules( ){
 			continue;
 		}
 
-		cRuleInfo rule;
+		cRule rule;
 		prop.get( rule.name             , "name"             );
 		prop.get( rule.constantsInclude , "constantsInclude" );
 		prop.get( rule.shadersInclude   , "shadersInclude"   );
 		prop.get( rule.shadersExclude   , "shadersExclude"   );
-		prop.get( rule.operationName    , "operationName"    );
-		prop.get( rule.isMatrixRule     , "isMatrixRule"     );
+		prop.get( rule.operation        , "operation"        );
+		prop.get( rule.isMatrix         , "isMatrix"         );
 		prop.get( rule.transpose        , "transpose"        );
 		prop.get( rule.squishViewport   , "squishViewport"   );
 
@@ -114,15 +121,17 @@ bool cConfig::saveRules( ){
 
 	int index = 0;
 
-	for( cRuleInfo& rule : rules ){
+	for( cRule& rule : rules ){
 		cPropsFile prop;
+
+
 
 		prop.set( rule.name             , "name"             );
 		prop.set( rule.constantsInclude , "constantsInclude" );
 		prop.set( rule.shadersInclude   , "shadersInclude"   );
 		prop.set( rule.shadersExclude   , "shadersExclude"   );
-		prop.set( rule.operationName    , "operationName"    );
-		prop.set( rule.isMatrixRule     , "isMatrixRule"     );
+		prop.set( rule.operation        , "operation"        );
+		prop.set( rule.isMatrix         , "isMatrix"         );
 		prop.set( rule.transpose        , "transpose"        );
 		prop.set( rule.squishViewport   , "squishViewport"   );
 		

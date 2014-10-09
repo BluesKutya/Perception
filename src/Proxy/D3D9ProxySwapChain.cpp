@@ -125,37 +125,9 @@ ULONG WINAPI D3D9ProxySwapChain::Release(){
 }
 
 
-/**
-* Here, the stereo view render method is called.
-* @see StereoView::Draw()
-***/
-HRESULT WINAPI D3D9ProxySwapChain::Present(CONST RECT* pSourceRect, CONST RECT* pDestRect, HWND hDestWindowOverride, CONST RGNDATA* pDirtyRegion, DWORD dwFlags)
-{
-#ifdef _DEBUG
-	OutputDebugStringA(__FUNCTION__);
-	OutputDebugStringA("\n");
-#endif;
 
-	// Test only, StereoView needs to be properly integrated as part of SwapChain.
-	// This test allowed deus ex menus and videos to work correctly. Lots of model rendering issues in game though
-
-	IDirect3DSurface9* pWrappedBackBuffer;
-
-	try {
-		GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &pWrappedBackBuffer);
-
-		if (device->stereoView->initialized)
-			device->stereoView->Draw(static_cast<D3D9ProxySurface*>(pWrappedBackBuffer));
-
-		pWrappedBackBuffer->Release();
-	}
-	catch (std::out_of_range) {
-		OutputDebugStringA("Present: No primary swap chain found. (Present probably called before device has been reset)");
-	}
-
-	// call proxy device present update
-	device->HandleUpdateExtern();
-
+METHOD_IMPL( HRESULT , WINAPI , D3D9ProxySwapChain , Present , CONST RECT* , pSourceRect , CONST RECT* , pDestRect , HWND , hDestWindowOverride , CONST RGNDATA* , pDirtyRegion , DWORD , dwFlags )
+	device->ProxyPresent( this );
 	return actual->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion, dwFlags);
 }
 
