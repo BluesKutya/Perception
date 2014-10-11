@@ -10,7 +10,7 @@ public:
 	bool            isMatrix;
 	bool            transpose;
 	int             operation;
-
+	
 	cRegisterModification( );
 
 	void modify( D3DProxyDevice* device , float* ptrData , float* ptrLeft , float* ptrRight );

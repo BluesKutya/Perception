@@ -13,6 +13,9 @@ cRule::cRule(){
 	item          = 0;
 	itemConstants = 0;
 	itemShaders   = 0;
+	shaderBlink   = false;
+	shaderHide    = false;
+
 }
 
 /*

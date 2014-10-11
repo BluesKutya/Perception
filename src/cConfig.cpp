@@ -36,9 +36,9 @@ cConfig::cConfig(){
 
 	showVRMouse = true;
 
-	duplicateRenderTarget = DUPLICATE_IF_SWAP_OR_NOT_SQUARE;
-	duplicateDepthStencil = DUPLICATE_IF_NOT_SQUARE;
-	duplicateTexture      = DUPLICATE_IF_DEPTH_OR_RT_NOT_SQUARE;
+	duplicateRenderTarget = DUPLICATE_ALWAYS;
+	duplicateDepthStencil = DUPLICATE_ALWAYS;
+	duplicateTexture      = DUPLICATE_IF_DEPTH_OR_RT;
 	duplicateCubeTexture  = DUPLICATE_NEVER;
 	whenRenderMenu        = WHEN_END_SCENE;
 	whenUpdateTracker     = WHEN_FIRST_BEGIN_SCENE;
@@ -105,6 +105,8 @@ bool cConfig::loadRules( ){
 		prop.get( rule.isMatrix         , "isMatrix"         );
 		prop.get( rule.transpose        , "transpose"        );
 		prop.get( rule.squishViewport   , "squishViewport"   );
+		prop.get( rule.shaderBlink      , "shaderBlink"      );
+		prop.get( rule.shaderHide       , "shaderHide"       );
 
 		rules += rule;
 	}
@@ -134,7 +136,8 @@ bool cConfig::saveRules( ){
 		prop.set( rule.isMatrix         , "isMatrix"         );
 		prop.set( rule.transpose        , "transpose"        );
 		prop.set( rule.squishViewport   , "squishViewport"   );
-		
+		prop.set( rule.shaderBlink      , "shaderBlink"      );
+		prop.set( rule.shaderHide       , "shaderHide"       );
 
 		prop.save( config.getRulesPath() + "/rule " + QString::number(index) + ".ini" );
 

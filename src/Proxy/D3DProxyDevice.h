@@ -141,8 +141,8 @@ public:
 	/****    Constant modification   ****/
 
 	cMenuItem*      rulesMenu;
-	cRule*          rulesAdd   ( );
-	void            rulesDelete( cRule* );
+	void            rulesAdd   ( );
+	void            rulesDelete( cRule& );
 	void            rulesInit  ( );
 	void            rulesUpdate( );
 	void            rulesApply ( );

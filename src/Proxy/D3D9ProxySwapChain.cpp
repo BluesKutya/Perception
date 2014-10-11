@@ -169,8 +169,8 @@ HRESULT WINAPI D3D9ProxySwapChain::GetBackBuffer(UINT iBackBuffer, D3DBACKBUFFER
 	if ((iBackBuffer < 0) || (iBackBuffer >= m_backBuffers.size())) 
 		return D3DERR_INVALIDCALL;
 
-	m_backBuffers[iBackBuffer]->AddRef();
 	*ppBackBuffer = m_backBuffers[iBackBuffer];
+	(*ppBackBuffer)->AddRef();
 
 	return D3D_OK;
 }

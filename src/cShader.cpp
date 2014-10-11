@@ -31,10 +31,8 @@ cShader::cShader( D3DProxyDevice* d , IDirect3DVertexShader9* avs , IDirect3DPix
 
 	if( vs ){
 		vs->GetFunction( code.data() , &len );
-		name = "VS ";
 	}else{
 		ps->GetFunction( code.data() , &len );	
-		name = "PS ";
 	}
 
 	
@@ -97,7 +95,8 @@ cShader::cShader( D3DProxyDevice* d , IDirect3DVertexShader9* avs , IDirect3DPix
 				
 				cShaderConstant* n = &constants.last();
 				*(D3DXCONSTANT_DESC*)n = desc;
-				n->name     = n->Name;//QString("r%1 - %2").arg(n->RegisterIndex).arg(n->Name);
+				//n->name     = n->Name;
+				n->name     = QString("%2 (r%1)").arg(n->RegisterIndex).arg(n->Name);
 				n->typeName = typeName;
 				n->item     = 0;
 			}

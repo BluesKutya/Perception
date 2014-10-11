@@ -304,7 +304,6 @@ void cMenu::goToMenu( cMenuItem* item ){
 
 
 void cMenu::render( ){
-
 	if( !font || !sprite ){
 		return;
 	}
@@ -562,28 +561,30 @@ void cMenu::render( ){
 				drawText( i->hotkey.toString() , ALIGN_HOTKEY_COLUMN );
 			}
 
-			drawText( i->name , ALIGN_LEFT_COLUMN );
+			if( posY > -64 && posY < 1144 ){
+				drawText( i->name , ALIGN_LEFT_COLUMN );
 
-			if( i->type == cMenuItem::CHECKBOX ){
-				drawText( (*i->checkVar) ? i->checkOn : i->checkOff , ALIGN_RIGHT_COLUMN );
-			}else
-			if( i->type == cMenuItem::SPINNER ){
-				char s[256];
+				if( i->type == cMenuItem::CHECKBOX ){
+					drawText( (*i->checkVar) ? i->checkOn : i->checkOff , ALIGN_RIGHT_COLUMN );
+				}else
+				if( i->type == cMenuItem::SPINNER ){
+					char s[256];
 
-				int decimals = -floor(log10(i->spinStep));
-				if( decimals < 0){
-					decimals = 0;
-				}
+					int decimals = -floor(log10(i->spinStep));
+					if( decimals < 0){
+						decimals = 0;
+					}
 
-				sprintf_s( s , "%.*f" , decimals , *i->spinVar );
+					sprintf_s( s , "%.*f" , decimals , *i->spinVar );
 				
-				drawText( s , ALIGN_RIGHT_COLUMN );
-			}else
-			if( i->type == cMenuItem::SELECT ){
-				drawText( i->selectVariants[ *i->selectVar ] , ALIGN_RIGHT_COLUMN );
-			}else
-			if( i->type == cMenuItem::TEXT ){
-				drawText( *i->textVar , ALIGN_RIGHT_COLUMN );
+					drawText( s , ALIGN_RIGHT_COLUMN );
+				}else
+				if( i->type == cMenuItem::SELECT ){
+					drawText( i->selectVariants[ *i->selectVar ] , ALIGN_RIGHT_COLUMN );
+				}else
+				if( i->type == cMenuItem::TEXT ){
+					drawText( *i->textVar , ALIGN_RIGHT_COLUMN );
+				}
 			}
 
 			posY += 40;

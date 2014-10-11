@@ -1582,11 +1582,10 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , EndScene )
 
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , Clear , DWORD , Count , CONST D3DRECT* , pRects , DWORD , Flags , D3DCOLOR , Color , float , Z , DWORD , Stencil )
 	HRESULT result;
-	int r = rand() & 255;
 
-	if (SUCCEEDED(result = actual->Clear(Count, pRects, Flags, D3DCOLOR_RGBA(r,128,64,255) , Z, Stencil))) {
+	if (SUCCEEDED(result = actual->Clear(Count, pRects, Flags, Color , Z, Stencil))) {
 		if (switchDrawingSide()) {
-			result = actual->Clear(Count, pRects, Flags, D3DCOLOR_RGBA(64,128,r,255) , Z, Stencil);
+			result = actual->Clear(Count, pRects, Flags, Color , Z, Stencil);
 		}
 	}
 
@@ -2359,7 +2358,7 @@ METHOD_IMPL( bool , , D3DProxyDevice , setDrawingSide , vireio::RenderPosition ,
 	}
 
 	if( !activeRenderTargets[0]->right && (side == vireio::Right) ){
-		printf( "Vireio: should never try and render for the right eye if there is no render target for the main render targets right side\n" );
+		//should never try and render for the right eye if there is no render target for the main render targets right side
 		return false;
 	}
 
@@ -2494,9 +2493,6 @@ METHOD_IMPL( bool , , D3DProxyDevice , switchDrawingSide )
 		printf( "Vireio: unknown m_currentRenderingSide\n" );
 	}
 
-	if( !switched ){
-		printf( "Vireio: switchDrawingSide failed\n" );
-	}
 
 	return switched;
 }

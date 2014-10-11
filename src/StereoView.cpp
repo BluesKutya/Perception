@@ -37,8 +37,7 @@ StereoView::StereoView( ){
 	XOffset = 0;
 
 	// set all member pointers to NULL to prevent uninitialized objects being used
-	m_pActualDevice = NULL;
-	backBuffer = NULL;
+	device = NULL;
 	leftTexture = NULL;
 	rightTexture = NULL;
 
@@ -46,15 +45,7 @@ StereoView::StereoView( ){
 	rightSurface = NULL;
 
 	screenVertexBuffer = NULL;
-	lastVertexShader = NULL;
-	lastPixelShader = NULL;
-	lastTexture = NULL;
-	lastTexture1 = NULL;
-	lastVertexDeclaration = NULL;
-	lastRenderTarget0 = NULL;
-	lastRenderTarget1 = NULL;
 	viewEffect = NULL;
-	sb = NULL;
 
 	m_pStreamer = new Streamer( );
 }
@@ -70,9 +61,13 @@ void StereoView::Init(IDirect3DDevice9* pActualDevice){
 		return;
 	}
 
-	m_pActualDevice = pActualDevice;
+	device = pActualDevice;
 
-	InitShaderEffects();
+
+	if( FAILED(D3DXCreateEffectFromFileA(device, config.getShaderPath().toLocal8Bit(), NULL, NULL, D3DXFX_DONOTSAVESTATE, NULL, &viewEffect, NULL))) {
+		printf( "Vireio: Effect creation failed\n" );
+	}
+
 	InitTextureBuffers();
 	InitVertexBuffers();
 	CalculateShaderVariables();
@@ -84,145 +79,180 @@ void StereoView::Init(IDirect3DDevice9* pActualDevice){
 * Releases all Direct3D objects.
 ***/
 void StereoView::ReleaseEverything(){
-	SAFE_RELEASE( backBuffer );
+	viewEffect->OnLostDevice();
+
 	SAFE_RELEASE( leftTexture );
 	SAFE_RELEASE( rightTexture );
 	SAFE_RELEASE( leftSurface );
 	SAFE_RELEASE( rightSurface );
-	SAFE_RELEASE( lastVertexShader );
-	SAFE_RELEASE( lastPixelShader );
-	SAFE_RELEASE( lastTexture );
-	SAFE_RELEASE( lastTexture1 );
-	SAFE_RELEASE( lastVertexDeclaration );
-	SAFE_RELEASE( lastRenderTarget0 );
-	SAFE_RELEASE( lastRenderTarget1 );
-
-	viewEffect->OnLostDevice();
-
+	SAFE_RELEASE( backBuffer );
+	SAFE_RELEASE( screenVertexBuffer );
+	SAFE_RELEASE( viewEffect );
+	
 	initialized = false;
 }
 
-/**
-* Draws stereoscopic frame.
-***/
-void StereoView::Draw(D3D9ProxySurface* stereoCapableSurface)
-{
-	// Copy left and right surfaces to textures to use as shader input
-	// TODO match aspect ratio of source in target ? 
-	IDirect3DSurface9* leftImage = stereoCapableSurface->actual;
-	IDirect3DSurface9* rightImage = stereoCapableSurface->right;
 
-	m_pActualDevice->StretchRect(leftImage, NULL, leftSurface, NULL, D3DTEXF_NONE);
 
-	if (stereoCapableSurface->right)
-		m_pActualDevice->StretchRect(rightImage, NULL, rightSurface, NULL, D3DTEXF_NONE);
-	else
-		m_pActualDevice->StretchRect(leftImage, NULL, rightSurface, NULL, D3DTEXF_NONE);
 
-	// how to save (backup) render states ?
-	switch( config.saveStateMethod ){
-	case SAVE_STATE_BLOCK:
-		m_pActualDevice->CreateStateBlock(D3DSBT_ALL, &sb);
-		break;
+void StereoView::Draw( D3D9ProxySurface* stereoCapableSurface ){
 
-	case SAVE_STATE_SELECTED_MANUALLY:
-		SaveState();
-		break;
+	IDirect3DSurface9*    leftImage  = stereoCapableSurface->actual;
+	IDirect3DSurface9*    rightImage = stereoCapableSurface->right;
+	D3DXMATRIX	          identity;
+	IDirect3DStateBlock9* state;
+	float                 resolution[2];
+	UINT                  numPasses;
 
-	case SAVE_STATE_ALL_MANUALLY:
-		SaveAllRenderStates(m_pActualDevice);
-		SetAllRenderStatesDefault(m_pActualDevice);
-		break;
+	device->StretchRect( leftImage                           , 0 , leftSurface  , 0 , D3DTEXF_NONE );
+	device->StretchRect( rightImage ? rightImage : leftImage , 0 , rightSurface , 0 , D3DTEXF_NONE );
 
-	case SAVE_STATE_DONT_SAVE:
-		break;
+	D3DXMatrixIdentity( &identity );
+
+	device->CreateStateBlock( D3DSBT_ALL , &state );
+
+
+
+	device->SetTransform        ( D3DTS_WORLD            , &identity );
+	device->SetTransform        ( D3DTS_VIEW             , &identity);
+	device->SetTransform        ( D3DTS_PROJECTION       , &identity);
+	device->SetRenderState      ( D3DRS_LIGHTING         , FALSE);
+	device->SetRenderState      ( D3DRS_CULLMODE         , D3DCULL_NONE);
+	device->SetRenderState      ( D3DRS_ZENABLE          , FALSE);
+	device->SetRenderState      ( D3DRS_ZWRITEENABLE     , FALSE);
+	device->SetRenderState      ( D3DRS_ALPHABLENDENABLE , FALSE);
+	device->SetRenderState      ( D3DRS_ALPHATESTENABLE  , FALSE);
+	device->SetRenderState      ( D3DRS_STENCILENABLE    , FALSE); 
+
+	device->SetTextureStageState( 0 , D3DTSS_COLOROP   , D3DTOP_SELECTARG1 );
+	device->SetTextureStageState( 0 , D3DTSS_COLORARG1 , D3DTA_TEXTURE     );
+	device->SetTextureStageState( 0 , D3DTSS_ALPHAOP   , D3DTOP_SELECTARG1 );
+	device->SetTextureStageState( 0 , D3DTSS_ALPHAARG1 , D3DTA_CONSTANT    );
+	device->SetTextureStageState( 0 , D3DTSS_CONSTANT  , 0xffffffff        );
+
+	device->SetRenderState( D3DRS_ALPHABLENDENABLE , FALSE );
+	device->SetRenderState( D3DRS_ZENABLE          , D3DZB_FALSE );
+	device->SetRenderState( D3DRS_ZWRITEENABLE     , FALSE );
+	device->SetRenderState( D3DRS_ALPHATESTENABLE  , FALSE );  
+
+	//gamma stuff. maybe keep it?
+	device->SetRenderState ( D3DRS_SRGBWRITEENABLE , 0 );  // will cause visual errors in HL2
+	device->SetSamplerState( 0 , D3DSAMP_SRGBTEXTURE, 0 );
+	device->SetSamplerState( 1 , D3DSAMP_SRGBTEXTURE, 0 );
+
+	device->SetSamplerState( 0 , D3DSAMP_ADDRESSU , D3DTADDRESS_CLAMP );
+	device->SetSamplerState( 0 , D3DSAMP_ADDRESSV , D3DTADDRESS_CLAMP );
+	device->SetSamplerState( 0 , D3DSAMP_ADDRESSW , D3DTADDRESS_CLAMP );
+	device->SetSamplerState( 1 , D3DSAMP_ADDRESSU , D3DTADDRESS_CLAMP );
+	device->SetSamplerState( 1 , D3DSAMP_ADDRESSV , D3DTADDRESS_CLAMP );
+	device->SetSamplerState( 1 , D3DSAMP_ADDRESSW , D3DTADDRESS_CLAMP );
+
+	// TODO Need to check device capabilities if we want a prefered order of fallback rather than 
+	// whatever the default is being used when a mode isn't supported.
+	// Example - GeForce 660 doesn't appear to support D3DTEXF_ANISOTROPIC on the MAGFILTER (at least
+	// according to the spam of error messages when running with the directx debug runtime)
+	device->SetSamplerState( 0 , D3DSAMP_MAGFILTER , D3DTEXF_ANISOTROPIC );
+	device->SetSamplerState( 1 , D3DSAMP_MAGFILTER , D3DTEXF_ANISOTROPIC );
+	device->SetSamplerState( 0 , D3DSAMP_MINFILTER , D3DTEXF_ANISOTROPIC );
+	device->SetSamplerState( 1 , D3DSAMP_MINFILTER , D3DTEXF_ANISOTROPIC );
+	device->SetSamplerState( 0 , D3DSAMP_MIPFILTER , D3DTEXF_NONE );
+	device->SetSamplerState( 1 , D3DSAMP_MIPFILTER , D3DTEXF_NONE );
+
+	device->SetVertexShader     ( 0 );
+	device->SetPixelShader      ( 0 );
+	device->SetVertexDeclaration( 0 );
+
+	device->SetRenderTarget( 1 , 0 );
+	device->SetRenderTarget( 2 , 0 );
+	device->SetRenderTarget( 3 , 0 );
+
+	device->SetFVF( D3DFVF_TEXVERTEX );
+
+
+
+
+
+
+	if( config.swap_eyes ){
+		device->SetTexture( 0 , leftTexture  );
+		device->SetTexture( 1 , rightTexture );
+	}else{
+		device->SetTexture( 0 , rightTexture );
+		device->SetTexture( 1 , leftTexture  );
 	}
 
-	// set states for fullscreen render
-	SetState();
-
-	// all render settings start here
-	m_pActualDevice->SetFVF(D3DFVF_TEXVERTEX);
-
-	// swap eyes
-	if(!config.swap_eyes)
-	{
-		m_pActualDevice->SetTexture(0, leftTexture);
-		m_pActualDevice->SetTexture(1, rightTexture);
-	}
-	else 
-	{
-		m_pActualDevice->SetTexture(0, rightTexture);
-		m_pActualDevice->SetTexture(1, leftTexture);
+	if( FAILED(device->SetRenderTarget( 0 , backBuffer )) ) {
+		printf( "Virieo: SetRenderTarget backbuffer failed\n" );
 	}
 
-	if (FAILED(m_pActualDevice->SetRenderTarget(0, backBuffer))) {
-		OutputDebugStringA("SetRenderTarget backbuffer failed\n");
+	if( FAILED(device->SetStreamSource( 0 , screenVertexBuffer , 0 , sizeof(TEXVERTEX) )) ){
+		printf( "Virieo: SetStreamSource failed\n");
 	}
 
-	if (FAILED(m_pActualDevice->SetStreamSource(0, screenVertexBuffer, 0, sizeof(TEXVERTEX)))) {
-		OutputDebugStringA("SetStreamSource failed\n");
+	if( FAILED(viewEffect->SetTechnique("ViewShader")) ){
+		printf( "Virieo: SetTechnique failed\n");
 	}
 
-	UINT iPass, cPasses;
 
-	if (FAILED(viewEffect->SetTechnique("ViewShader"))) {
-		OutputDebugStringA("SetTechnique failed\n");
+	viewEffect->SetInt       ( "viewWidth"       , viewport.Width );
+	viewEffect->SetInt       ( "viewHeight"      , viewport.Height );
+	viewEffect->SetFloatArray( "LensCenter"      , LensCenter , 2 );
+	viewEffect->SetFloatArray( "Scale"           , Scale , 2);
+	viewEffect->SetFloatArray( "ScaleIn"         , ScaleIn , 2);
+	viewEffect->SetFloatArray( "HmdWarpParam"    , config.distortionCoefficients , 4 );
+	viewEffect->SetFloat     ( "ViewportXOffset" , -ViewportXOffset );
+	viewEffect->SetFloat     ( "ViewportYOffset" , -ViewportYOffset );
+
+	if( config.chromaticAberrationCorrection ){
+		viewEffect->SetFloatArray( "Chroma",  config.chromaCoefficients , 4 );
+	}else{
+		static float noChroma[4] = {0.0f, 0.0f, 0.0f, 0.0f};
+		viewEffect->SetFloatArray( "Chroma" , noChroma , 4 );
 	}
 
-	SetViewEffectInitialValues();
 
-	// now, render
-	if (FAILED(viewEffect->Begin(&cPasses, 0))) {
-		OutputDebugStringA("Begin failed\n");
+	resolution[0] = config.resolutionWidth;
+	resolution[1] = config.resolutionHeight;
+	viewEffect->SetFloatArray( "Resolution" , resolution , 2 );
+
+
+
+
+	
+
+	if( FAILED(viewEffect->Begin( &numPasses , 0 )) ){
+		numPasses = 0;
+		printf( "Vireio: Begin failed\n" );
 	}
 
-	for(iPass = 0; iPass < cPasses; iPass++)
-	{
-		if (FAILED(viewEffect->BeginPass(iPass))) {
-			OutputDebugStringA("Beginpass failed\n");
+	for( int c=0 ; c<numPasses ; c++ ){
+		if( FAILED(viewEffect->BeginPass(c)) ){
+			printf( "Vireio: Beginpass failed\n");
 		}
 
-		if (FAILED(m_pActualDevice->DrawPrimitive(D3DPT_TRIANGLEFAN, 0, 2))) {
-			OutputDebugStringA("Draw failed\n");
+		if (FAILED(device->DrawPrimitive( D3DPT_TRIANGLEFAN , 0 , 2 ))) {
+			printf( "Vireio: Draw failed\n");
 		}
 
 		if (FAILED(viewEffect->EndPass())) {
-			OutputDebugStringA("Beginpass failed\n");
+			printf( "Vireio: Beginpass failed\n");
 		}
 	}
 
 	if (FAILED(viewEffect->End())) {
-		OutputDebugStringA("End failed\n");
+		printf( "Vireio: End failed\n");
 	}
 
-	m_pStreamer->send( m_pActualDevice );
+	m_pStreamer->send( device );
 
-	// how to restore render states ?
-	switch( config.saveStateMethod ){
-	case SAVE_STATE_BLOCK:
-		// apply stored render states
-		sb->Apply();
-		sb->Release();
-		sb = NULL;
-		break;
 
-	case SAVE_STATE_SELECTED_MANUALLY:
-		RestoreState();
-		break;
-
-	case SAVE_STATE_ALL_MANUALLY:
-		RestoreAllRenderStates(m_pActualDevice);
-		break;
-
-	case SAVE_STATE_DONT_SAVE:
-		break;
-	}
+	state->Apply();
+	state->Release();
 }
 
-/**
-* Saves screenshot and shot of left and right surface.
-***/
+
+
+
 void StereoView::SaveScreen()
 {
 	static int screenCount = 0;
@@ -260,9 +290,9 @@ void StereoView::PostReset()
 ***/
 void StereoView::InitTextureBuffers()
 {
-	m_pActualDevice->GetViewport(&viewport);
+	device->GetViewport(&viewport);
 	D3DSURFACE_DESC pDesc = D3DSURFACE_DESC();
-	m_pActualDevice->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backBuffer);
+	device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backBuffer);
 	backBuffer->GetDesc(&pDesc);
 
 #ifdef _DEBUG
@@ -280,10 +310,10 @@ void StereoView::InitTextureBuffers()
 	OutputDebugStringA("\n");
 #endif
 
-	m_pActualDevice->CreateTexture(pDesc.Width, pDesc.Height, 0, D3DUSAGE_RENDERTARGET, pDesc.Format, D3DPOOL_DEFAULT, &leftTexture, NULL);
+	device->CreateTexture(pDesc.Width, pDesc.Height, 0, D3DUSAGE_RENDERTARGET, pDesc.Format, D3DPOOL_DEFAULT, &leftTexture, NULL);
 	leftTexture->GetSurfaceLevel(0, &leftSurface);
 
-	m_pActualDevice->CreateTexture(pDesc.Width, pDesc.Height, 0, D3DUSAGE_RENDERTARGET, pDesc.Format, D3DPOOL_DEFAULT, &rightTexture, NULL);
+	device->CreateTexture(pDesc.Width, pDesc.Height, 0, D3DUSAGE_RENDERTARGET, pDesc.Format, D3DPOOL_DEFAULT, &rightTexture, NULL);
 	rightTexture->GetSurfaceLevel(0, &rightSurface);
 }
 
@@ -294,7 +324,7 @@ void StereoView::InitVertexBuffers()
 {
 	OutputDebugStringA("SteroView initVertexBuffers\n");
 
-	HRESULT result = m_pActualDevice->CreateVertexBuffer(sizeof(TEXVERTEX) * 4, NULL,
+	HRESULT result = device->CreateVertexBuffer(sizeof(TEXVERTEX) * 4, NULL,
 		D3DFVF_TEXVERTEX, D3DPOOL_MANAGED , &screenVertexBuffer, NULL);
 
 	if( FAILED(result) ){
@@ -345,43 +375,7 @@ void StereoView::InitVertexBuffers()
 	screenVertexBuffer->Unlock();
 }
 
-/**
-* Loads stereo mode effect file.
-***/
-void StereoView::InitShaderEffects()
-{
-	if (FAILED(D3DXCreateEffectFromFileA(m_pActualDevice, config.getShaderPath().toLocal8Bit(), NULL, NULL, D3DXFX_DONOTSAVESTATE, NULL, &viewEffect, NULL))) {
-		OutputDebugStringA("Effect creation failed\n");
-	}
-}
 
-
-
-/**
-* Update all vertex shader constants.
-***/
-void StereoView::SetViewEffectInitialValues() {
-	viewEffect->SetInt       ( "viewWidth"       , viewport.Width );
-	viewEffect->SetInt       ( "viewHeight"      , viewport.Height );
-	viewEffect->SetFloatArray( "LensCenter"      , LensCenter , 2 );
-	viewEffect->SetFloatArray( "Scale"           , Scale , 2);
-	viewEffect->SetFloatArray( "ScaleIn"         , ScaleIn , 2);
-	viewEffect->SetFloatArray( "HmdWarpParam"    , config.distortionCoefficients , 4 );
-	viewEffect->SetFloat     ( "ViewportXOffset" , -ViewportXOffset );
-	viewEffect->SetFloat     ( "ViewportYOffset" , -ViewportYOffset );
-
-	if( config.chromaticAberrationCorrection ){
-		viewEffect->SetFloatArray( "Chroma",  config.chromaCoefficients , 4 );
-	}else{
-		static float noChroma[4] = {0.0f, 0.0f, 0.0f, 0.0f};
-		viewEffect->SetFloatArray( "Chroma" , noChroma , 4 );
-	}
-
-	float resolution[2];
-	resolution[0] = config.resolutionWidth;
-	resolution[1] = config.resolutionHeight;
-	viewEffect->SetFloatArray( "Resolution" , resolution , 2 );
-} 
 
 
 /**
@@ -420,534 +414,3 @@ void StereoView::CalculateShaderVariables() {
 	Scale[0] = (1.0f / 4.0f) * scaleFactor;
 	Scale[1] = (1.0f / 2.0f) * scaleFactor * inputTextureAspectRatio;
 } 
-
-
-
-
-/**
-* Workaround for Half Life 2 for now.
-***/
-void StereoView::SaveState()
-{
-	m_pActualDevice->GetTextureStageState(0, D3DTSS_COLOROP, &tssColorOp);
-	m_pActualDevice->GetTextureStageState(0, D3DTSS_COLORARG1, &tssColorArg1);
-	m_pActualDevice->GetTextureStageState(0, D3DTSS_ALPHAOP, &tssAlphaOp);
-	m_pActualDevice->GetTextureStageState(0, D3DTSS_ALPHAARG1, &tssAlphaArg1);
-	m_pActualDevice->GetTextureStageState(0, D3DTSS_CONSTANT, &tssConstant);
-
-	m_pActualDevice->GetRenderState(D3DRS_ALPHABLENDENABLE, &rsAlphaEnable);
-	m_pActualDevice->GetRenderState(D3DRS_ZWRITEENABLE, &rsZWriteEnable);
-	m_pActualDevice->GetRenderState(D3DRS_ZENABLE, &rsZEnable);
-	m_pActualDevice->GetRenderState(D3DRS_SRGBWRITEENABLE, &rsSrgbEnable);
-
-	m_pActualDevice->GetSamplerState(0, D3DSAMP_SRGBTEXTURE, &ssSrgb);
-	m_pActualDevice->GetSamplerState(1, D3DSAMP_SRGBTEXTURE, &ssSrgb1);
-	
-	m_pActualDevice->GetSamplerState(0, D3DSAMP_ADDRESSU, &ssAddressU);
-	m_pActualDevice->GetSamplerState(0, D3DSAMP_ADDRESSV, &ssAddressV);
-	m_pActualDevice->GetSamplerState(0, D3DSAMP_ADDRESSW, &ssAddressW);
-
-	m_pActualDevice->GetSamplerState(0, D3DSAMP_MAGFILTER, &ssMag0);
-	m_pActualDevice->GetSamplerState(1, D3DSAMP_MAGFILTER, &ssMag1);
-	m_pActualDevice->GetSamplerState(0, D3DSAMP_MINFILTER, &ssMin0);
-	m_pActualDevice->GetSamplerState(1, D3DSAMP_MINFILTER, &ssMin1);
-	m_pActualDevice->GetSamplerState(0, D3DSAMP_MIPFILTER, &ssMip0);
-	m_pActualDevice->GetSamplerState(1, D3DSAMP_MIPFILTER, &ssMip1);
-
-	m_pActualDevice->GetTexture(0, &lastTexture);
-	m_pActualDevice->GetTexture(1, &lastTexture1);
-
-	m_pActualDevice->GetVertexShader(&lastVertexShader);
-	m_pActualDevice->GetPixelShader(&lastPixelShader);
-
-	m_pActualDevice->GetVertexDeclaration(&lastVertexDeclaration);
-
-	m_pActualDevice->GetRenderTarget(0, &lastRenderTarget0);
-	m_pActualDevice->GetRenderTarget(1, &lastRenderTarget1);
-}
-
-/**
-* Set all states and settings for fullscreen render.
-* Also sets identity world, view and projection matrix. 
-***/
-void StereoView::SetState()
-{
-	D3DXMATRIX	identity;
-	m_pActualDevice->SetTransform(D3DTS_WORLD, D3DXMatrixIdentity(&identity));
-	m_pActualDevice->SetTransform(D3DTS_VIEW, &identity);
-	m_pActualDevice->SetTransform(D3DTS_PROJECTION, &identity);
-	m_pActualDevice->SetRenderState(D3DRS_LIGHTING, FALSE);
-	m_pActualDevice->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
-	m_pActualDevice->SetRenderState(D3DRS_ZENABLE, FALSE);
-	m_pActualDevice->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
-	m_pActualDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
-	m_pActualDevice->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);// This fixed interior or car not being drawn in rFactor
-	m_pActualDevice->SetRenderState(D3DRS_STENCILENABLE, FALSE); 
-
-	m_pActualDevice->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
-	m_pActualDevice->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-	m_pActualDevice->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-	m_pActualDevice->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_CONSTANT);
-	m_pActualDevice->SetTextureStageState(0, D3DTSS_CONSTANT, 0xffffffff);
-
-	m_pActualDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
-	m_pActualDevice->SetRenderState(D3DRS_ZENABLE, D3DZB_FALSE);
-	m_pActualDevice->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
-	m_pActualDevice->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);  
-
-	//m_pActualDevice->SetRenderState(D3DRS_SRGBWRITEENABLE, 0);  // will cause visual errors in HL2
-
-	if( config.game_type == D3DProxyDevice::SOURCE_L4D ||
-		config.game_type == D3DProxyDevice::SOURCE_ESTER)
-	{
-		m_pActualDevice->SetSamplerState(0, D3DSAMP_SRGBTEXTURE, ssSrgb);
-		m_pActualDevice->SetSamplerState(1, D3DSAMP_SRGBTEXTURE, ssSrgb);
-	}
-	else
-	{
-		//Borderlands Dark Eye FIX
-		m_pActualDevice->SetSamplerState(0, D3DSAMP_SRGBTEXTURE, 0);
-		m_pActualDevice->SetSamplerState(1, D3DSAMP_SRGBTEXTURE, 0);
-	}
-	
-
-	m_pActualDevice->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
-	m_pActualDevice->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
-	m_pActualDevice->SetSamplerState(0, D3DSAMP_ADDRESSW, D3DTADDRESS_CLAMP);
-	m_pActualDevice->SetSamplerState(1, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
-	m_pActualDevice->SetSamplerState(1, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
-	m_pActualDevice->SetSamplerState(1, D3DSAMP_ADDRESSW, D3DTADDRESS_CLAMP);
-
-	// TODO Need to check m_pActualDevice capabilities if we want a prefered order of fallback rather than 
-	// whatever the default is being used when a mode isn't supported.
-	// Example - GeForce 660 doesn't appear to support D3DTEXF_ANISOTROPIC on the MAGFILTER (at least
-	// according to the spam of error messages when running with the directx debug runtime)
-	m_pActualDevice->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_ANISOTROPIC);
-	m_pActualDevice->SetSamplerState(1, D3DSAMP_MAGFILTER, D3DTEXF_ANISOTROPIC);
-	m_pActualDevice->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_ANISOTROPIC);
-	m_pActualDevice->SetSamplerState(1, D3DSAMP_MINFILTER, D3DTEXF_ANISOTROPIC);
-	m_pActualDevice->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
-	m_pActualDevice->SetSamplerState(1, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
-
-	//m_pActualDevice->SetTexture(0, NULL);
-	//m_pActualDevice->SetTexture(1, NULL);
-
-	m_pActualDevice->SetVertexShader(NULL);
-	m_pActualDevice->SetPixelShader(NULL);
-
-	m_pActualDevice->SetVertexDeclaration(NULL);
-
-	//It's a Direct3D9 error when using the debug runtine to set RenderTarget 0 to NULL
-	//m_pActualDevice->SetRenderTarget(0, NULL);
-	m_pActualDevice->SetRenderTarget(1, NULL);
-	m_pActualDevice->SetRenderTarget(2, NULL);
-	m_pActualDevice->SetRenderTarget(3, NULL);
-}
-
-/**
-* Workaround for Half Life 2 for now.
-***/
-void StereoView::RestoreState()
-{
-	m_pActualDevice->SetTextureStageState(0, D3DTSS_COLOROP, tssColorOp);
-	m_pActualDevice->SetTextureStageState(0, D3DTSS_COLORARG1, tssColorArg1);
-	m_pActualDevice->SetTextureStageState(0, D3DTSS_ALPHAOP, tssAlphaOp);
-	m_pActualDevice->SetTextureStageState(0, D3DTSS_ALPHAARG1, tssAlphaArg1);
-	m_pActualDevice->SetTextureStageState(0, D3DTSS_CONSTANT, tssConstant);
-
-	m_pActualDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, rsAlphaEnable);
-	m_pActualDevice->SetRenderState(D3DRS_ZWRITEENABLE, rsZWriteEnable);
-	m_pActualDevice->SetRenderState(D3DRS_ZENABLE, rsZEnable);
-	m_pActualDevice->SetRenderState(D3DRS_SRGBWRITEENABLE, rsSrgbEnable);
-
-	m_pActualDevice->SetSamplerState(0, D3DSAMP_SRGBTEXTURE, ssSrgb);
-	m_pActualDevice->SetSamplerState(1, D3DSAMP_SRGBTEXTURE, ssSrgb1);
-
-	m_pActualDevice->SetSamplerState(0, D3DSAMP_ADDRESSU, ssAddressU);
-	m_pActualDevice->SetSamplerState(0, D3DSAMP_ADDRESSV, ssAddressV);
-	m_pActualDevice->SetSamplerState(0, D3DSAMP_ADDRESSW, ssAddressW);
-
-	m_pActualDevice->SetSamplerState(0, D3DSAMP_MAGFILTER, ssMag0);
-	m_pActualDevice->SetSamplerState(1, D3DSAMP_MAGFILTER, ssMag1);
-	m_pActualDevice->SetSamplerState(0, D3DSAMP_MINFILTER, ssMin0);
-	m_pActualDevice->SetSamplerState(1, D3DSAMP_MINFILTER, ssMin1);
-	m_pActualDevice->SetSamplerState(0, D3DSAMP_MIPFILTER, ssMip0);
-	m_pActualDevice->SetSamplerState(1, D3DSAMP_MIPFILTER, ssMip1);
-
-	m_pActualDevice->SetTexture(0, lastTexture);
-	SAFE_RELEASE( lastTexture );
-
-	m_pActualDevice->SetTexture(1, lastTexture1);
-	SAFE_RELEASE( lastTexture1 );
-
-	m_pActualDevice->SetVertexShader(lastVertexShader);
-	SAFE_RELEASE( lastVertexShader );
-
-	m_pActualDevice->SetPixelShader(lastPixelShader);
-	SAFE_RELEASE( lastPixelShader );
-
-	m_pActualDevice->SetVertexDeclaration(lastVertexDeclaration);
-	SAFE_RELEASE( lastVertexDeclaration );
-
-	m_pActualDevice->SetRenderTarget(0, lastRenderTarget0);
-	SAFE_RELEASE( lastRenderTarget0 );
-
-	m_pActualDevice->SetRenderTarget(1, lastRenderTarget1);
-	SAFE_RELEASE( lastRenderTarget1 );
-}
-
-/**
-* Saves all Direct3D 9 render states.
-* Used for games that do not work with state blocks for some reason.
-***/
-void StereoView::SaveAllRenderStates(LPDIRECT3DDEVICE9 pDevice)
-{
-	// save all Direct3D 9 RenderStates 
-	DWORD dwCount = 0;
-	pDevice->GetRenderState(D3DRS_ZENABLE                     , &renderStates[dwCount++]); 
-	pDevice->GetRenderState(D3DRS_FILLMODE                    , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_SHADEMODE                   , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_ZWRITEENABLE                , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_ALPHATESTENABLE             , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_LASTPIXEL                   , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_SRCBLEND                    , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_DESTBLEND                   , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_CULLMODE                    , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_ZFUNC                       , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_ALPHAREF                    , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_ALPHAFUNC                   , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_DITHERENABLE                , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_ALPHABLENDENABLE            , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_FOGENABLE                   , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_SPECULARENABLE              , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_FOGCOLOR                    , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_FOGTABLEMODE                , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_FOGSTART                    , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_FOGEND                      , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_FOGDENSITY                  , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_RANGEFOGENABLE              , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_STENCILENABLE               , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_STENCILFAIL                 , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_STENCILZFAIL                , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_STENCILPASS                 , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_STENCILFUNC                 , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_STENCILREF                  , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_STENCILMASK                 , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_STENCILWRITEMASK            , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_TEXTUREFACTOR               , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_WRAP0                       , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_WRAP1                       , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_WRAP2                       , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_WRAP3                       , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_WRAP4                       , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_WRAP5                       , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_WRAP6                       , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_WRAP7                       , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_CLIPPING                    , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_LIGHTING                    , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_AMBIENT                     , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_FOGVERTEXMODE               , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_COLORVERTEX                 , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_LOCALVIEWER                 , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_NORMALIZENORMALS            , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_DIFFUSEMATERIALSOURCE       , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_SPECULARMATERIALSOURCE      , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_AMBIENTMATERIALSOURCE       , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_EMISSIVEMATERIALSOURCE      , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_VERTEXBLEND                 , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_CLIPPLANEENABLE             , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_POINTSIZE                   , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_POINTSIZE_MIN               , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_POINTSPRITEENABLE           , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_POINTSCALEENABLE            , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_POINTSCALE_A                , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_POINTSCALE_B                , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_POINTSCALE_C                , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_MULTISAMPLEANTIALIAS        , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_MULTISAMPLEMASK             , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_PATCHEDGESTYLE              , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_DEBUGMONITORTOKEN           , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_POINTSIZE_MAX               , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_INDEXEDVERTEXBLENDENABLE    , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_COLORWRITEENABLE            , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_TWEENFACTOR                 , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_BLENDOP                     , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_POSITIONDEGREE              , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_NORMALDEGREE                , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_SCISSORTESTENABLE           , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_SLOPESCALEDEPTHBIAS         , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_ANTIALIASEDLINEENABLE       , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_MINTESSELLATIONLEVEL        , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_MAXTESSELLATIONLEVEL        , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_ADAPTIVETESS_X              , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_ADAPTIVETESS_Y              , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_ADAPTIVETESS_Z              , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_ADAPTIVETESS_W              , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_ENABLEADAPTIVETESSELLATION  , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_TWOSIDEDSTENCILMODE         , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_CCW_STENCILFAIL             , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_CCW_STENCILZFAIL            , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_CCW_STENCILPASS             , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_CCW_STENCILFUNC             , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_COLORWRITEENABLE1           , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_COLORWRITEENABLE2           , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_COLORWRITEENABLE3           , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_BLENDFACTOR                 , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_SRGBWRITEENABLE             , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_DEPTHBIAS                   , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_WRAP8                       , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_WRAP9                       , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_WRAP10                      , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_WRAP11                      , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_WRAP12                      , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_WRAP13                      , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_WRAP14                      , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_WRAP15                      , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_SEPARATEALPHABLENDENABLE    , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_SRCBLENDALPHA               , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_DESTBLENDALPHA              , &renderStates[dwCount++]);
-	pDevice->GetRenderState(D3DRS_BLENDOPALPHA                , &renderStates[dwCount++]);
-}
-
-/**
-* Sets all Direct3D 9 render states to their default values.
-* Use this function only if a game does not want to render.
-***/
-void StereoView::SetAllRenderStatesDefault(LPDIRECT3DDEVICE9 pDevice)
-{
-	// set all Direct3D 9 RenderStates to default values
-	float fData = 0.0f;
-	double dData = 0.0f;
-
-	pDevice->SetRenderState(D3DRS_ZENABLE                     , D3DZB_TRUE);
-	pDevice->SetRenderState(D3DRS_FILLMODE                    , D3DFILL_SOLID);
-	pDevice->SetRenderState(D3DRS_SHADEMODE                   , D3DSHADE_GOURAUD);
-	pDevice->SetRenderState(D3DRS_ZWRITEENABLE                , TRUE);
-	pDevice->SetRenderState(D3DRS_ALPHATESTENABLE             , FALSE);
-	pDevice->SetRenderState(D3DRS_LASTPIXEL                   , TRUE);
-	pDevice->SetRenderState(D3DRS_SRCBLEND                    , D3DBLEND_ONE);
-	pDevice->SetRenderState(D3DRS_DESTBLEND                   , D3DBLEND_ZERO);
-	pDevice->SetRenderState(D3DRS_CULLMODE                    , D3DCULL_CCW);
-	pDevice->SetRenderState(D3DRS_ZFUNC                       , D3DCMP_LESSEQUAL);
-	pDevice->SetRenderState(D3DRS_ALPHAREF                    , 0);
-	pDevice->SetRenderState(D3DRS_ALPHAFUNC                   , D3DCMP_ALWAYS);
-	pDevice->SetRenderState(D3DRS_DITHERENABLE                , FALSE);
-	pDevice->SetRenderState(D3DRS_ALPHABLENDENABLE            , FALSE);
-	pDevice->SetRenderState(D3DRS_FOGENABLE                   , FALSE);
-	pDevice->SetRenderState(D3DRS_SPECULARENABLE              , FALSE);
-	pDevice->SetRenderState(D3DRS_FOGCOLOR                    , 0);
-	pDevice->SetRenderState(D3DRS_FOGTABLEMODE                , D3DFOG_NONE);
-	fData = 0.0f;
-	pDevice->SetRenderState(D3DRS_FOGSTART                    , *((DWORD*)&fData));
-	fData = 1.0f;
-	pDevice->SetRenderState(D3DRS_FOGEND                      , *((DWORD*)&fData));
-	fData = 1.0f;
-	pDevice->SetRenderState(D3DRS_FOGDENSITY                  , *((DWORD*)&fData));
-	pDevice->SetRenderState(D3DRS_RANGEFOGENABLE              , FALSE);
-	pDevice->SetRenderState(D3DRS_STENCILENABLE               , FALSE);
-	pDevice->SetRenderState(D3DRS_STENCILFAIL                 , D3DSTENCILOP_KEEP);
-	pDevice->SetRenderState(D3DRS_STENCILZFAIL                , D3DSTENCILOP_KEEP);
-	pDevice->SetRenderState(D3DRS_STENCILPASS                 , D3DSTENCILOP_KEEP);
-	pDevice->SetRenderState(D3DRS_STENCILFUNC                 , D3DCMP_ALWAYS);
-	pDevice->SetRenderState(D3DRS_STENCILREF                  , 0);
-	pDevice->SetRenderState(D3DRS_STENCILMASK                 , 0xFFFFFFFF);
-	pDevice->SetRenderState(D3DRS_STENCILWRITEMASK            , 0xFFFFFFFF);
-	pDevice->SetRenderState(D3DRS_TEXTUREFACTOR               , 0xFFFFFFFF);
-	pDevice->SetRenderState(D3DRS_WRAP0                       , 0);
-	pDevice->SetRenderState(D3DRS_WRAP1                       , 0);
-	pDevice->SetRenderState(D3DRS_WRAP2                       , 0);
-	pDevice->SetRenderState(D3DRS_WRAP3                       , 0);
-	pDevice->SetRenderState(D3DRS_WRAP4                       , 0);
-	pDevice->SetRenderState(D3DRS_WRAP5                       , 0);
-	pDevice->SetRenderState(D3DRS_WRAP6                       , 0);
-	pDevice->SetRenderState(D3DRS_WRAP7                       , 0);
-	pDevice->SetRenderState(D3DRS_CLIPPING                    , TRUE);
-	pDevice->SetRenderState(D3DRS_LIGHTING                    , TRUE);
-	pDevice->SetRenderState(D3DRS_AMBIENT                     , 0);
-	pDevice->SetRenderState(D3DRS_FOGVERTEXMODE               , D3DFOG_NONE);
-	pDevice->SetRenderState(D3DRS_COLORVERTEX                 , TRUE);
-	pDevice->SetRenderState(D3DRS_LOCALVIEWER                 , TRUE);
-	pDevice->SetRenderState(D3DRS_NORMALIZENORMALS            , FALSE);
-	pDevice->SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE       , D3DMCS_COLOR1);
-	pDevice->SetRenderState(D3DRS_SPECULARMATERIALSOURCE      , D3DMCS_COLOR2);
-	pDevice->SetRenderState(D3DRS_AMBIENTMATERIALSOURCE       , D3DMCS_MATERIAL);
-	pDevice->SetRenderState(D3DRS_EMISSIVEMATERIALSOURCE      , D3DMCS_MATERIAL);
-	pDevice->SetRenderState(D3DRS_VERTEXBLEND                 , D3DVBF_DISABLE);
-	pDevice->SetRenderState(D3DRS_CLIPPLANEENABLE             , 0);
-	pDevice->SetRenderState(D3DRS_POINTSIZE                   , 64);
-	fData = 1.0f;
-	pDevice->SetRenderState(D3DRS_POINTSIZE_MIN               , *((DWORD*)&fData));
-	pDevice->SetRenderState(D3DRS_POINTSPRITEENABLE           , FALSE);
-	pDevice->SetRenderState(D3DRS_POINTSCALEENABLE            , FALSE);
-	fData = 1.0f;
-	pDevice->SetRenderState(D3DRS_POINTSCALE_A                , *((DWORD*)&fData));
-	fData = 0.0f;
-	pDevice->SetRenderState(D3DRS_POINTSCALE_B                , *((DWORD*)&fData));
-	fData = 0.0f;
-	pDevice->SetRenderState(D3DRS_POINTSCALE_C                , *((DWORD*)&fData));
-	pDevice->SetRenderState(D3DRS_MULTISAMPLEANTIALIAS        , TRUE);
-	pDevice->SetRenderState(D3DRS_MULTISAMPLEMASK             , 0xFFFFFFFF);
-	pDevice->SetRenderState(D3DRS_PATCHEDGESTYLE              , D3DPATCHEDGE_DISCRETE);
-	pDevice->SetRenderState(D3DRS_DEBUGMONITORTOKEN           , D3DDMT_ENABLE);
-	dData = 64.0;
-	pDevice->SetRenderState(D3DRS_POINTSIZE_MAX               , *((DWORD*)&dData));
-	pDevice->SetRenderState(D3DRS_INDEXEDVERTEXBLENDENABLE    , FALSE);
-	pDevice->SetRenderState(D3DRS_COLORWRITEENABLE            , 0x0000000F);
-	fData = 0.0f;
-	pDevice->SetRenderState(D3DRS_TWEENFACTOR                 , *((DWORD*)&fData));
-	pDevice->SetRenderState(D3DRS_BLENDOP                     , D3DBLENDOP_ADD);
-	pDevice->SetRenderState(D3DRS_POSITIONDEGREE              , D3DDEGREE_CUBIC);
-	pDevice->SetRenderState(D3DRS_NORMALDEGREE                , D3DDEGREE_LINEAR );
-	pDevice->SetRenderState(D3DRS_SCISSORTESTENABLE           , FALSE);
-	pDevice->SetRenderState(D3DRS_SLOPESCALEDEPTHBIAS         , 0);
-	pDevice->SetRenderState(D3DRS_ANTIALIASEDLINEENABLE       , FALSE);
-	fData = 1.0f;
-	pDevice->SetRenderState(D3DRS_MINTESSELLATIONLEVEL        , *((DWORD*)&fData));
-	fData = 1.0f;
-	pDevice->SetRenderState(D3DRS_MAXTESSELLATIONLEVEL        , *((DWORD*)&fData));
-	fData = 0.0f;
-	pDevice->SetRenderState(D3DRS_ADAPTIVETESS_X              , *((DWORD*)&fData));
-	fData = 0.0f;
-	pDevice->SetRenderState(D3DRS_ADAPTIVETESS_Y              , *((DWORD*)&fData));
-	fData = 1.0f;
-	pDevice->SetRenderState(D3DRS_ADAPTIVETESS_Z              , *((DWORD*)&fData));
-	fData = 0.0f;
-	pDevice->SetRenderState(D3DRS_ADAPTIVETESS_W              , *((DWORD*)&fData));
-	pDevice->SetRenderState(D3DRS_ENABLEADAPTIVETESSELLATION  , FALSE);
-	pDevice->SetRenderState(D3DRS_TWOSIDEDSTENCILMODE         , FALSE);
-	pDevice->SetRenderState(D3DRS_CCW_STENCILFAIL             , D3DSTENCILOP_KEEP);
-	pDevice->SetRenderState(D3DRS_CCW_STENCILZFAIL            , D3DSTENCILOP_KEEP);
-	pDevice->SetRenderState(D3DRS_CCW_STENCILPASS             , D3DSTENCILOP_KEEP);
-	pDevice->SetRenderState(D3DRS_CCW_STENCILFUNC             , D3DCMP_ALWAYS);
-	pDevice->SetRenderState(D3DRS_COLORWRITEENABLE1           , 0x0000000f);
-	pDevice->SetRenderState(D3DRS_COLORWRITEENABLE2           , 0x0000000f);
-	pDevice->SetRenderState(D3DRS_COLORWRITEENABLE3           , 0x0000000f);
-	pDevice->SetRenderState(D3DRS_BLENDFACTOR                 , 0xffffffff);
-	pDevice->SetRenderState(D3DRS_SRGBWRITEENABLE             , 0);
-	pDevice->SetRenderState(D3DRS_DEPTHBIAS                   , 0);
-	pDevice->SetRenderState(D3DRS_WRAP8                       , 0);
-	pDevice->SetRenderState(D3DRS_WRAP9                       , 0);
-	pDevice->SetRenderState(D3DRS_WRAP10                      , 0);
-	pDevice->SetRenderState(D3DRS_WRAP11                      , 0);
-	pDevice->SetRenderState(D3DRS_WRAP12                      , 0);
-	pDevice->SetRenderState(D3DRS_WRAP13                      , 0);
-	pDevice->SetRenderState(D3DRS_WRAP14                      , 0);
-	pDevice->SetRenderState(D3DRS_WRAP15                      , 0);
-	pDevice->SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE    , FALSE);
-	pDevice->SetRenderState(D3DRS_SRCBLENDALPHA               , D3DBLEND_ONE);
-	pDevice->SetRenderState(D3DRS_DESTBLENDALPHA              , D3DBLEND_ZERO);
-	pDevice->SetRenderState(D3DRS_BLENDOPALPHA                , D3DBLENDOP_ADD);
-}
-
-/**
-* Restores all Direct3D 9 render states.
-* Used for games that do not work with state blocks for some reason.
-***/
-void StereoView::RestoreAllRenderStates(LPDIRECT3DDEVICE9 pDevice)
-{
-	// set all Direct3D 9 RenderStates to saved values
-	DWORD dwCount = 0;
-	pDevice->SetRenderState(D3DRS_ZENABLE                     , renderStates[dwCount++]); 
-	pDevice->SetRenderState(D3DRS_FILLMODE                    , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_SHADEMODE                   , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_ZWRITEENABLE                , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_ALPHATESTENABLE             , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_LASTPIXEL                   , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_SRCBLEND                    , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_DESTBLEND                   , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_CULLMODE                    , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_ZFUNC                       , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_ALPHAREF                    , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_ALPHAFUNC                   , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_DITHERENABLE                , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_ALPHABLENDENABLE            , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_FOGENABLE                   , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_SPECULARENABLE              , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_FOGCOLOR                    , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_FOGTABLEMODE                , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_FOGSTART                    , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_FOGEND                      , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_FOGDENSITY                  , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_RANGEFOGENABLE              , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_STENCILENABLE               , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_STENCILFAIL                 , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_STENCILZFAIL                , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_STENCILPASS                 , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_STENCILFUNC                 , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_STENCILREF                  , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_STENCILMASK                 , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_STENCILWRITEMASK            , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_TEXTUREFACTOR               , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_WRAP0                       , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_WRAP1                       , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_WRAP2                       , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_WRAP3                       , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_WRAP4                       , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_WRAP5                       , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_WRAP6                       , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_WRAP7                       , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_CLIPPING                    , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_LIGHTING                    , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_AMBIENT                     , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_FOGVERTEXMODE               , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_COLORVERTEX                 , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_LOCALVIEWER                 , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_NORMALIZENORMALS            , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE       , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_SPECULARMATERIALSOURCE      , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_AMBIENTMATERIALSOURCE       , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_EMISSIVEMATERIALSOURCE      , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_VERTEXBLEND                 , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_CLIPPLANEENABLE             , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_POINTSIZE                   , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_POINTSIZE_MIN               , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_POINTSPRITEENABLE           , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_POINTSCALEENABLE            , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_POINTSCALE_A                , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_POINTSCALE_B                , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_POINTSCALE_C                , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_MULTISAMPLEANTIALIAS        , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_MULTISAMPLEMASK             , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_PATCHEDGESTYLE              , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_DEBUGMONITORTOKEN           , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_POINTSIZE_MAX               , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_INDEXEDVERTEXBLENDENABLE    , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_COLORWRITEENABLE            , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_TWEENFACTOR                 , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_BLENDOP                     , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_POSITIONDEGREE              , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_NORMALDEGREE                , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_SCISSORTESTENABLE           , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_SLOPESCALEDEPTHBIAS         , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_ANTIALIASEDLINEENABLE       , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_MINTESSELLATIONLEVEL        , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_MAXTESSELLATIONLEVEL        , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_ADAPTIVETESS_X              , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_ADAPTIVETESS_Y              , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_ADAPTIVETESS_Z              , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_ADAPTIVETESS_W              , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_ENABLEADAPTIVETESSELLATION  , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_TWOSIDEDSTENCILMODE         , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_CCW_STENCILFAIL             , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_CCW_STENCILZFAIL            , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_CCW_STENCILPASS             , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_CCW_STENCILFUNC             , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_COLORWRITEENABLE1           , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_COLORWRITEENABLE2           , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_COLORWRITEENABLE3           , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_BLENDFACTOR                 , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_SRGBWRITEENABLE             , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_DEPTHBIAS                   , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_WRAP8                       , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_WRAP9                       , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_WRAP10                      , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_WRAP11                      , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_WRAP12                      , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_WRAP13                      , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_WRAP14                      , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_WRAP15                      , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE    , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_SRCBLENDALPHA               , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_DESTBLENDALPHA              , renderStates[dwCount++]);
-	pDevice->SetRenderState(D3DRS_BLENDOPALPHA                , renderStates[dwCount++]);
-}

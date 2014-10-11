@@ -16,6 +16,8 @@ public:
 	bool            isMatrix;
 	bool            transpose;
 	bool            squishViewport;
+	bool            shaderBlink;
+	bool            shaderHide;
 
 	cRule();
 

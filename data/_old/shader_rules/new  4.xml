@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shaderConfig>
+  <rules>
+
+    <rule constantName="WorldViewProj" partialName="true" id="1" constantType="MatrixR" modToApply="MatOrthographicSquashShifted" startReg="0" transpose="true" />
+    <rule constantName="mvp"           partialName="true" id="2" constantType="MatrixC" modToApply="MatOrthographicSquashShifted" startReg="0" transpose="true" />
+    <rule constantName="ModelViewProj" partialName="true" id="5" constantType="MatrixR" modToApply="MatOrthographicSquashShifted" startReg="0" transpose="true" />
+    <rule constantName="WorldViewProj" partialName="true" id="3" constantType="MatrixR" modToApply="MatOrthographicSquashShifted" startReg="128" transpose="true" />
+    <rule constantName="WorldViewProj" partialName="true" id="4" constantType="MatrixR" modToApply="MatOrthographicSquashShifted" startReg="180" transpose="true" />
+
+	
+    <rule constantName="TextureProj" partialName="true" id="7" constantType="MatrixR" modToApply="MatSurfaceRefractionTransform" startReg="0" transpose="true" />
+
+
+    <rule constantName="ModelViewProj" partialName="true" id="6" constantType="MatrixR" modToApply="MatGatheredOrthographicSquash" startReg="0" transpose="true" />
+    <rule constantName="WorldViewProj" partialName="true" id="8" constantType="MatrixR" modToApply="MatConvergenceOffset" startReg="0" transpose="true" />
+    <rule constantName="WorldViewProj" partialName="true" id="10" constantType="MatrixR" modToApply="MatSimpleTranslate" startReg="0" transpose="true" />
+    <rule constantName="WorldViewProj" partialName="true" id="12" constantType="MatrixR" modToApply="MatDoNothing" startReg="0" transpose="true" />
+    <rule constantName="WorldViewProj" partialName="true" id="14" constantType="MatrixR" modToApply="MatNoRoll" startReg="0" transpose="true" />
+
+
+    <rule constantName="WorldViewProj" partialName="true" id="9" constantType="MatrixR" modToApply="MatConvergenceOffset" startReg="180" transpose="true" />
+    <rule constantName="WorldViewProj" partialName="true" id="11" constantType="MatrixR" modToApply="MatSimpleTranslate" startReg="180" transpose="true" />
+    <rule constantName="WorldViewProj" partialName="true" id="13" constantType="MatrixR" modToApply="MatDoNothing" startReg="180" transpose="true" />
+	
+	
+  </rules>
+  <defaultRuleIDs>
+    <ruleID id="1" />
+    <ruleID id="2" />
+    <ruleID id="3" />
+    <ruleID id="4" />
+    <ruleID id="5" />
+  </defaultRuleIDs>
+  
+  <shaderSpecificRuleIDs shaderHash="9B6F9D9EA955CB770A4BA4AE2EFBB106">
+    <ruleID id="6" />GATHER MATRIX FOR WATER REFRACTION FIX !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="2BAC3037A32ACDE83E25573784E5FC4C">
+    <ruleID id="6" />GATHER MATRIX FOR WATER REFRACTION FIX !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="C0B0F215F9C59E753CD39806BECE1631">
+    <ruleID id="6" />GATHER MATRIX FOR WATER REFRACTION FIX !</shaderSpecificRuleIDs>
+	
+	
+  <shaderSpecificRuleIDs shaderHash="3584763826">
+    <ruleID id="7" />WATER REFRACTION FIX !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="462145519">
+    <ruleID id="7" />WATER REFRACTION FIX !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="2880869292">
+    <ruleID id="7" />WATER REFRACTION FIX !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="1804716609">
+    <ruleID id="7"></ruleID>WATER REFRACTION FIX !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="4B87F2A0E8F9F9E33AD0D5F5B4C57B0D">
+    <ruleID id="7" />WATER REFRACTION FIX !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="7DF0676AEC5D24BD3CF5C15DF249F355">
+    <ruleID id="8" />HUD FIX !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="3E354956A908E674991C4D6FB26F2DDD">
+    <ruleID id="8" />HUD FIX !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="0C09AC101AA77AEE3AC4C584A694A24B">
+    <ruleID id="8" />HUD FIX !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="1D770B5DCF80A2B39F0F63868CDBC252">
+    <ruleID id="8" />HUD FIX !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="1956566FF2FF4E8C95CE7B4EA2612808">
+    <ruleID id="8" />HUD FIX !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="184FD059DE9A24601A94DE112AFE1AFC">
+    <ruleID id="8" />HUD FIX !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="7276BF6616D244F183611D8D73716951">
+    <ruleID id="9" />CONVERGENCE OFFSET FIX !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="D309CBD9DE52F962241B83FBAD70774D">
+    <ruleID id="10" />SHADOW SHADER ! SIMPLE MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="DB3568E79025757EE81A0DD7564D477F">
+    <ruleID id="10" />SHADOW SHADER ! SIMPLE MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="D78A82C5D0172ACC56742698F8717342">
+    <ruleID id="10" />SHADOW SHADER ! SIMPLE MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="15A6CD130A60E454972485F4AE02EF6A">
+    <ruleID id="10" />SHADOW SHADER ! SIMPLE MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="55654473D26C98E6B3777DDCFCC560DD">
+    <ruleID id="11" />SHADOW SHADER ! SIMPLE MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="EB94CC54A3EB5510600BF179BC71D309">
+    <ruleID id="12" />SHADOW SHADER ! NO MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="D563BC1F7837AA709C4EB98F43C7BEB9">
+    <ruleID id="12" />SHADOW SHADER ! NO MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="8FC2189E223E0FB8C03DF52F9BC2F6B2">
+    <ruleID id="12" />SHADOW SHADER ! NO MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="7D8AC6FBD7C13D479582D7AB443BE02A">
+    <ruleID id="12" />SHADOW SHADER ! NO MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="9BBF377DC99875524C6CF3B4A3637EF1">
+    <ruleID id="13" />SHADOW SHADER ! NO MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="17B553E2182167E4F4FCFB3F8378E90A">
+    <ruleID id="13" />SHADOW SHADER ! NO MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="63CEFA07C89141B126DB214350660BC3">
+    <ruleID id="12" />SHADOW SHADER ! NO MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="F00A8E7215803101B9E43AFE64793383">
+    <ruleID id="13" />SHADOW SHADER ! NO MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="80AF0493B13AE2FFF9DAA9770B716ED4">
+    <ruleID id="13" />SHADOW SHADER ! NO MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="9B02378C9364D0B7439E504A549C96F6">
+    <ruleID id="13" />SHADOW SHADER ! NO MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="E7756237C4DF44AF4E3E5C8ECFE11B3B">
+    <ruleID id="12" />SHADOW SHADER ! NO MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="E242BF5F619F0622DF296836945A2FCD">
+    <ruleID id="12" />SHADOW SHADER ! NO MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="FB656951E4CB492253C91CEDF6F8E6C3">
+    <ruleID id="13" />SHADOW SHADER ! NO MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="D70E36C29F51EF5AC8422985259B9429">
+    <ruleID id="12" />SHADOW SHADER ! NO MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="274804C253D595C46801C7C8DCEC8BF1">
+    <ruleID id="13" />SHADOW SHADER ! NO MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="DED81C42B15CFFEB8F626949BBCF011C">
+    <ruleID id="10" />SHADOW SHADER ! SIMPLE MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="1B463AA39B460B2B5728CC3A65E0BEC1">
+    <ruleID id="10" />SHADOW SHADER ! SIMPLE MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="47C4F1E4AE6DD06C8A4749BB9BAE39BD">
+    <ruleID id="10" />SHADOW SHADER ! SIMPLE MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="1ABFE13AACA9CEB72846876816F7375C">
+    <ruleID id="11" />SHADOW SHADER ! SIMPLE MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="7A85163B7CAE470485B38BDF68427832">
+    <ruleID id="11" />SHADOW SHADER ! SIMPLE MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="A711E1B28A69A77158082E4242726730">
+    <ruleID id="11" />SHADOW SHADER ! SIMPLE MODIFICATION ! ALSO DRAWS HANDS !!!</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="CC61A56E0B03F3008C0F05B5E109C4A6">
+    <ruleID id="11" />HANDS/ARMS SHADER ! SIMPLE MODIFICATION !</shaderSpecificRuleIDs>
+	
+  <shaderSpecificRuleIDs shaderHash="83D13A941F900DBE02625658640E908F">
+    <ruleID id="10" />SHADOW SHADER ! SIMPLE MODIFICATION !</shaderSpecificRuleIDs>
+</shaderConfig>
