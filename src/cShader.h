@@ -30,6 +30,7 @@ public:
 	bool                               blink;
 	bool                               hide;
 	bool                               used;
+	bool                               doDisableZ;
 	bool                               visible;
 	cMenuItem*                         item;
 	

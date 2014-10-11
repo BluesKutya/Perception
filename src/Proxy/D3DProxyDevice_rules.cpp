@@ -42,7 +42,6 @@ void D3DProxyDevice::rulesAdd( ){
 	r.name      = QString("Rule %1").arg( config.rules.count() );
 	r.operation = 0;
 	r.isMatrix  = true;
-	r.transpose = config.shaderAnalyzerTranspose;
 
 	rulesUpdate();
 
@@ -87,7 +86,7 @@ void D3DProxyDevice::rulesUpdate( ){
 				for( cShader* s : shaders ){
 					for( cShaderConstant& c : s->constants ){
 						if( c.isMatrix() == r.isMatrix  &&
-						   (r.constantsInclude.contains(c.name) || s->visible) &&
+						   (r.constants.contains(c.name) || s->visible) &&
 							!allConstants.contains(c.name)
 						){
 							allConstants += c.name;
@@ -100,14 +99,15 @@ void D3DProxyDevice::rulesUpdate( ){
 				for( QString constant : allConstants ){
 					cMenuItem* cb = r.itemConstants->addCheckbox( constant , 0 );
 
-					cb->internalBool = r.constantsInclude.contains( constant );
+					cb->internalBool = r.constants.contains( constant );
 
 					cb->callback = [&r,constant,cb,this](){
+						r.constants.removeAll( constant );
+
 						if( cb->internalBool ){
-							r.constantsInclude.append( constant );
-						}else{
-							r.constantsInclude.removeAll( constant );
+							r.constants.append( constant );
 						}
+
 						rulesUpdate();
 					};
 				}
@@ -115,44 +115,43 @@ void D3DProxyDevice::rulesUpdate( ){
 
 
 
+			i = r.item->addCheckbox( "Apply for vertex shaders" , &r.shadersVs );
+			i->callback = [this](){
+				rulesUpdate();
+			};
+
+			i = r.item->addCheckbox( "Apply for pixel  shaders" , &r.shadersPs );
+			i->callback = [this](){
+				rulesUpdate();
+			};
+
+			i = r.item->addCheckbox( "Apply for shaders" , &r.shadersIsExclude , "all, except selected" , "selected only" );
+			i->callback = [this](){
+				rulesUpdate();
+			};
 
 
 			r.itemShaders = r.item->addSubmenu( "Select shaders" );
 			r.itemShaders->callback = [&r,this](){
 				r.itemShaders->removeChildren();
 
-				for( QString& se : r.shadersExclude ){
-					printf("excl %s\n",se.toLocal8Bit().data());
-				}
-
-
 				for( cShader* s : shaders ){
-					cMenuItem* sel = r.itemShaders->addSelect( (s->vs ? "VS " : "PS ") + s->name , 0 , QStringList()<<"ignore"<<"include"<<"exclude" );
+					if( !r.shaders.contains(s->name) ){
+						if( !s->visible || (s->vs && !r.shadersVs)  ||  (s->ps && !r.shadersPs) ){
+							continue;
+						}
+					}
 
-					sel->visible = s->visible;
-
+					cMenuItem* sel = r.itemShaders->addCheckbox( (s->vs ? "VS " : "PS ") + s->name , 0 );
 					s->item = sel;
 		 
-					sel->internalInt = 0;
-
-					if( r.shadersInclude.contains( s->name ) ){
-						sel->internalInt = 1;
-					}
-
-					if( r.shadersExclude.contains( s->name ) ){
-						sel->internalInt = 2;
-					}
+					sel->internalBool = r.shaders.contains( s->name );
 		
 					sel->callback = [&r,s,sel,this](){
-						r.shadersInclude.removeAll( s->name );
-						r.shadersExclude.removeAll( s->name );
+						r.shaders.removeAll( s->name );
 
-						if( sel->internalInt == 1 ){
-							r.shadersInclude += s->name;
-						}
-			
-						if( sel->internalInt == 2 ){
-							r.shadersExclude += s->name;
+						if( sel->internalBool == 1 ){
+							r.shaders += s->name;
 						}
 
 						rulesUpdate();
@@ -165,13 +164,19 @@ void D3DProxyDevice::rulesUpdate( ){
 				rulesUpdate();
 			};
 
-			r.item->addSelect  ( "Constant operation" , &r.operation , cRegisterModification::availableOperations() )->callback = [this](){
-				rulesUpdate();
-			};
 
-			r.item->addCheckbox( "Constant transpose" , &r.transpose      )->callback = [this](){
-				rulesUpdate();
-			};
+			QStringList ops = cRegisterModification::availableOperations();
+
+			for( int c=0 ; c<ops.count() ; c++ ){
+				i = r.item->addCheckbox( ops[c] , 0 );
+				
+				i->internalBool = (r.operation & (1<<c));
+
+				i->callback = [this,&r,c,i](){
+					r.operation = (r.operation & ~(1<<c)) | (i->internalBool<<c);
+					rulesUpdate();
+				};
+			}
 
 			r.item->addCheckbox( "Shader squish viewport" , &r.squishViewport )->callback = [this](){
 				rulesUpdate();
@@ -182,6 +187,10 @@ void D3DProxyDevice::rulesUpdate( ){
 			};
 
 			r.item->addCheckbox( "Shader hide" , &r.shaderHide )->callback = [this](){
+				rulesUpdate();
+			};
+
+			r.item->addCheckbox( "Shader disable z" , &r.shaderDisableZ )->callback = [this](){
 				rulesUpdate();
 			};
 
@@ -203,6 +212,7 @@ void D3DProxyDevice::rulesUpdate( ){
 		s->squishViewport = false;
 		s->hide           = false;
 		s->blink          = false;
+		s->doDisableZ     = false;
 
 		for( cShaderConstant& c : s->constants ){
 			if( s->vs ){
@@ -214,27 +224,41 @@ void D3DProxyDevice::rulesUpdate( ){
 
 
 		for( cRule& r : config.rules ){
-			if( !r.shadersExclude.contains(s->name) &&
-				(r.shadersInclude.isEmpty() || r.shadersInclude.contains(s->name))
-			){
-				
-				for( cShaderConstant& c : s->constants ){
-					if( c.isMatrix() == r.isMatrix && r.constantsInclude.contains(c.name) ){
-						cRegisterModification m;
-						m.start     = c.RegisterIndex;
-						m.count     = c.RegisterCount;
-						m.isMatrix  = r.isMatrix;
-						m.transpose = r.transpose;
-						m.operation = r.operation;
-						s->modifications.push_back( m );
-
-					}
-				}
-				
-				s->squishViewport |= r.squishViewport;
-				s->blink          |= r.shaderBlink;
-				s->hide           |= r.shaderHide;
+			if( s->vs && !r.shadersVs ){
+				continue;
 			}
+
+			if( s->ps && !r.shadersPs ){
+				continue;
+			}
+
+			if( r.shadersIsExclude ){
+				if( r.shaders.contains(s->name) ){
+					continue;
+				}
+			}else{
+				if( !r.shaders.contains(s->name) ){
+					continue;
+				}
+			}
+			
+							
+			for( cShaderConstant& c : s->constants ){
+				if( c.isMatrix() == r.isMatrix && r.constants.contains(c.name) ){
+					cRegisterModification m;
+					m.start     = c.RegisterIndex;
+					m.count     = c.RegisterCount;
+					m.isMatrix  = r.isMatrix;
+					m.operation = r.operation;
+					s->modifications.push_back( m );
+
+				}
+			}
+				
+			s->squishViewport |= r.squishViewport;
+			s->blink          |= r.shaderBlink;
+			s->hide           |= r.shaderHide;
+			s->doDisableZ     |= r.shaderDisableZ;
 		}
 	}
 }
@@ -244,4 +268,23 @@ void D3DProxyDevice::rulesUpdate( ){
 void D3DProxyDevice::rulesApply( ){
 	vsConstants.applyStereo();
 	psConstants.applyStereo();
+}
+
+void D3DProxyDevice::rulesPreDraw( ){
+	if( (activePixelShader && activePixelShader->doDisableZ) ||
+		(activeVertexShader && activeVertexShader->doDisableZ)
+	){
+		rulesZDisable = true;
+		GetRenderState( D3DRS_ZENABLE , &rulesZPrev );
+		SetRenderState( D3DRS_ZENABLE , FALSE );
+
+	}else{
+		rulesZDisable = false;
+	}
+}
+
+void D3DProxyDevice::rulesPostDraw( ){
+	if( rulesZDisable ){
+		SetRenderState( D3DRS_ZENABLE , rulesZPrev );
+	}
 }

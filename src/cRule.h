@@ -8,16 +8,9 @@ class D3DProxyDevice;
 
 class cRule{
 public:
-	QString         name;
-	QStringList     constantsInclude;
-	QStringList     shadersInclude;
-	QStringList     shadersExclude;
-	int             operation;
-	bool            isMatrix;
-	bool            transpose;
-	bool            squishViewport;
-	bool            shaderBlink;
-	bool            shaderHide;
+	#define  P(A,B,C) A B;
+	#include "cRule.inc"
+	#undef   P
 
 	cRule();
 

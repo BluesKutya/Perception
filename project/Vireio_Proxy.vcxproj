@@ -98,6 +98,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\src\cConfig.inc" />
+    <None Include="..\src\cRule.inc" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\src\notes.txt" />

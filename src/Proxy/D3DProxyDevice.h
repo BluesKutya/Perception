@@ -139,13 +139,17 @@ public:
 
 
 	/****    Constant modification   ****/
+	bool  rulesZDisable;
+	DWORD rulesZPrev;
 
 	cMenuItem*      rulesMenu;
-	void            rulesAdd   ( );
-	void            rulesDelete( cRule& );
-	void            rulesInit  ( );
-	void            rulesUpdate( );
-	void            rulesApply ( );
+	void            rulesAdd     ( );
+	void            rulesDelete  ( cRule& );
+	void            rulesInit    ( );
+	void            rulesUpdate  ( );
+	void            rulesApply   ( );
+	void            rulesPreDraw ( );
+	void            rulesPostDraw( );
 
 	
 	/****    VRBoost ****/

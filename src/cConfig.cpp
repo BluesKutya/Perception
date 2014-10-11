@@ -97,16 +97,10 @@ bool cConfig::loadRules( ){
 		}
 
 		cRule rule;
-		prop.get( rule.name             , "name"             );
-		prop.get( rule.constantsInclude , "constantsInclude" );
-		prop.get( rule.shadersInclude   , "shadersInclude"   );
-		prop.get( rule.shadersExclude   , "shadersExclude"   );
-		prop.get( rule.operation        , "operation"        );
-		prop.get( rule.isMatrix         , "isMatrix"         );
-		prop.get( rule.transpose        , "transpose"        );
-		prop.get( rule.squishViewport   , "squishViewport"   );
-		prop.get( rule.shaderBlink      , "shaderBlink"      );
-		prop.get( rule.shaderHide       , "shaderHide"       );
+
+		#define  P(A,B,C) prop.get( rule.B , #B );
+		#include "cRule.inc"
+		#undef   P
 
 		rules += rule;
 	}
@@ -126,18 +120,10 @@ bool cConfig::saveRules( ){
 	for( cRule& rule : rules ){
 		cPropsFile prop;
 
+		#define  P(A,B,C) prop.set( rule.B , #B );
+		#include "cRule.inc"
+		#undef   P
 
-
-		prop.set( rule.name             , "name"             );
-		prop.set( rule.constantsInclude , "constantsInclude" );
-		prop.set( rule.shadersInclude   , "shadersInclude"   );
-		prop.set( rule.shadersExclude   , "shadersExclude"   );
-		prop.set( rule.operation        , "operation"        );
-		prop.set( rule.isMatrix         , "isMatrix"         );
-		prop.set( rule.transpose        , "transpose"        );
-		prop.set( rule.squishViewport   , "squishViewport"   );
-		prop.set( rule.shaderBlink      , "shaderBlink"      );
-		prop.set( rule.shaderHide       , "shaderHide"       );
 
 		prop.save( config.getRulesPath() + "/rule " + QString::number(index) + ".ini" );
 

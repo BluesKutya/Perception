@@ -5,12 +5,11 @@ class D3DProxyDevice;
 
 class cRegisterModification{
 public:
-	int             start;
-	int             count;
-	bool            isMatrix;
-	bool            transpose;
-	int             operation;
-	
+	int    start;
+	int    count;
+	int    operation;
+	bool   isMatrix;
+
 	cRegisterModification( );
 
 	void modify( D3DProxyDevice* device , float* ptrData , float* ptrLeft , float* ptrRight );

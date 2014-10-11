@@ -4,18 +4,14 @@
 
 
 cRule::cRule(){
-	operation      = 0;
-	isMatrix       = false;
-	transpose      = false;
-	squishViewport = false;
-
 	device        = 0;
 	item          = 0;
 	itemConstants = 0;
 	itemShaders   = 0;
-	shaderBlink   = false;
-	shaderHide    = false;
 
+	#define  P(A,B,C) B = C;
+	#include "cRule.inc"
+	#undef   P
 }
 
 /*

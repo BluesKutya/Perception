@@ -10,13 +10,14 @@ bool cShaderConstant::isMatrix(){
 
 cShader::cShader( D3DProxyDevice* d , IDirect3DVertexShader9* avs , IDirect3DPixelShader9* aps ){
 
-	device = d;
-	blink  = false;
-	hide   = false;
-	used   = true;
-	vs     = avs;
-	ps     = aps;
-	item   = 0;
+	device     = d;
+	blink      = false;
+	hide       = false;
+	doDisableZ = false;
+	used       = true;
+	vs         = avs;
+	ps         = aps;
+	item       = 0;
 
 	ID3DXConstantTable* table = 0;
 

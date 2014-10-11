@@ -1816,11 +1816,15 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawPrimitive , D3DPRIMITIVETYP
 
 	rulesApply();
 
+	rulesPreDraw();
+
 	HRESULT result;
 	if (SUCCEEDED(result = actual->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount))) {
 		if (switchDrawingSide())
 			actual->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
 	}
+
+	rulesPostDraw();
 
 	return result;
 }
@@ -1838,6 +1842,8 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawIndexedPrimitive , D3DPRIMI
 	
 	rulesApply();
 
+	rulesPreDraw();
+
 	HRESULT result;
 	if (SUCCEEDED(result = actual->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount))) {
 		if (switchDrawingSide()) {
@@ -1846,6 +1852,8 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawIndexedPrimitive , D3DPRIMI
 				OutputDebugStringA("moop\n");
 		}
 	}
+
+	rulesPostDraw();
 
 	return result;
 }
@@ -1863,11 +1871,15 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawPrimitiveUP , D3DPRIMITIVET
 	
 	rulesApply();
 
+	rulesPreDraw();
+
 	HRESULT result;
 	if (SUCCEEDED(result = actual->DrawPrimitiveUP(PrimitiveType, PrimitiveCount, pVertexStreamZeroData, VertexStreamZeroStride))) {
 		if (switchDrawingSide())
 			actual->DrawPrimitiveUP(PrimitiveType, PrimitiveCount, pVertexStreamZeroData, VertexStreamZeroStride);
 	}
+
+	rulesPostDraw();
 
 	return result;
 }
@@ -1885,11 +1897,15 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawIndexedPrimitiveUP , D3DPRI
 
 	rulesApply();
 
+	rulesPreDraw();
+
 	HRESULT result;
 	if (SUCCEEDED(result = actual->DrawIndexedPrimitiveUP(PrimitiveType, MinVertexIndex, NumVertices, PrimitiveCount, pIndexData, IndexDataFormat, pVertexStreamZeroData, VertexStreamZeroStride))) {
 		if (switchDrawingSide())
 			actual->DrawIndexedPrimitiveUP(PrimitiveType, MinVertexIndex, NumVertices, PrimitiveCount, pIndexData, IndexDataFormat, pVertexStreamZeroData, VertexStreamZeroStride);
 	}
+
+	rulesPostDraw();
 
 	return result;
 }
@@ -1905,6 +1921,8 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , ProcessVertices , UINT , SrcSta
 
 	rulesApply();
 
+	rulesPreDraw();
+
 	D3D9ProxyVertexBuffer* pCastDestBuffer = static_cast<D3D9ProxyVertexBuffer*>(pDestBuffer);
 	D3D9ProxyVertexDeclaration* pCastVertexDeclaration = NULL;
 
@@ -1916,6 +1934,8 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , ProcessVertices , UINT , SrcSta
 	else {
 		result = actual->ProcessVertices(SrcStartIndex, DestIndex, VertexCount, pCastDestBuffer->actual, NULL, Flags);
 	}
+
+	rulesPostDraw();
 
 	return result;
 }
@@ -2071,11 +2091,15 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawRectPatch , UINT , Handle ,
 
 	rulesApply();
 
+	rulesPreDraw();
+
 	HRESULT result;
 	if (SUCCEEDED(result = actual->DrawRectPatch(Handle, pNumSegs, pRectPatchInfo))) {
 		if (switchDrawingSide())
 			actual->DrawRectPatch(Handle, pNumSegs, pRectPatchInfo);
 	}
+
+	rulesPostDraw();
 
 	return result;
 }
@@ -2089,11 +2113,15 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawTriPatch , UINT , Handle , 
 
 	rulesApply();
 
+	rulesPreDraw();
+
 	HRESULT result;
 	if (SUCCEEDED(result = actual->DrawTriPatch(Handle, pNumSegs, pTriPatchInfo))) {
 		if (switchDrawingSide())
 			actual->DrawTriPatch(Handle, pNumSegs, pTriPatchInfo);
 	}
+
+	rulesPostDraw();
 
 	return result;
 }
