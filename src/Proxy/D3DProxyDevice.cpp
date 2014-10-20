@@ -29,20 +29,16 @@
 
 #define OUTPUT_HRESULT(hr) { _com_error err(hr); LPCTSTR errMsg = err.ErrorMessage(); OutputDebugStringA(errMsg); }
 
-#define MAX_PIXEL_SHADER_CONST_2_0 32
-#define MAX_PIXEL_SHADER_CONST_2_X 32
-#define MAX_PIXEL_SHADER_CONST_3_0 224
 
 
 
 /**
 * Constructor : creates game handler and sets various states.
 ***/
-D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDeviceEx,  D3D9ProxyDirect3D* pCreatedBy ) :
-	actual(pDevice),
-	actualEx(pDeviceEx),
+D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDeviceEx, D3D9ProxyDirect3D* pCreatedBy ):
+	cBase( pDevice , this , 0 ) ,
+	actualEx( pDeviceEx ),
 	m_pCreatedBy(pCreatedBy),
-	m_nRefCount(1),
 	controls(),
 	dinput(),
 	show_fps(FPS_NONE),
@@ -63,6 +59,25 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	// Check the maximum number of supported render targets
 	D3DCAPS9 capabilities;
 	actual->GetDeviceCaps(&capabilities);
+
+	vsConstants.resize( capabilities.MaxVertexShaderConst );
+
+	switch( D3DSHADER_VERSION_MAJOR(capabilities.PixelShaderVersion) ){
+	case 1:
+		psConstants.resize( 8 );
+		break;
+
+	case 2:
+		psConstants.resize( 32 );
+		break;
+
+	case 3:
+	default:
+		psConstants.resize( 224 );
+		break;
+	}
+
+
 
 	D3DXMatrixIdentity(&m_leftView);
 	D3DXMatrixIdentity(&m_rightView);
@@ -319,655 +334,13 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 		SaveConfiguration();
 	};
 
-
-	
-	/*
-	i = m->addAction( "Create new shader rule" );
-	i->callbackOpenSubmenu = [this](){
-		GetCurrentShaderRules(true);
-		menu.show = false;
-	};
-
-	rulesMenu = m->addSubmenu( "Change current shader rules" );
-	rulesMenu->callbackOpenSubmenu = [this](){
-		GetCurrentShaderRules(false);
-	};
-
-
-
-	i = m->addSubmenu( "Save rules shaders" );
-	i->callbackOpenSubmenu = [this](){
-		saveShaderRules();
-		menu.show = false;
-	};*/
-
-	
 }
-
-
-	
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
 bool D3DProxyDevice::isDrawHide( ){
 	return config.shaderAnalyzer && ((activeVertexShader && activeVertexShader->hide) || (activePixelShader && activePixelShader->hide));
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-void DataGatherer::UpdateRuleDisplay( ShaderConstant* c ){
-	static int dummy;
-	
-	if( !c->nodeCreated ){
-	
-		std::string s;
-
-		c->applyRule = m_pGameHandler->GetShaderModificationRepository()->ConstantHasRule( c->name.toStdString() , s , c->ruleOperation , c->ruleTranspose );
-
-		if( c->applyRule ){
-			c->ruleName = QString::fromStdString( s );
-
-			c->item->addText    ( "Rule name"      , &c->ruleName )->readOnly = true;;
-			
-			c->item->addCheckbox( "Rule transpose" , &c->ruleTranspose )->callbackValueChanged = [=](){
-				if( c->applyRule ){
-				}
-			};
-
-			c->item->addSelect  ( "Rule operation" , &dummy , QStringList()<<"!"<<"$#$" );
-
-			c->nodeCreated = true;
-		}
-
-		
-
-		//c->item->addSelect( "Rule" , (int*)&c->ruleOperation 
-
-
-	}
-
-				/*mi = n->item->addCheckbox( "Apply rule" , &n->applyRule );
-				mi->callbackValueChanged = [=](){
-					if( n->applyRule ){
-						bool transpose = config.shaderAnalyzerTranspose;
-						if( n->desc.Class == D3DXPARAMETER_CLASS::D3DXPC_VECTOR ){
-							transpose = false;
-						}
-						addRule( n->name.toStdString() , true , n->desc.RegisterIndex , n->desc.Class , 1 , transpose );
-					}else{
-						deleteRule( n->name.toStdString() );
-					}
-				};*
-
-
-				//n->item->addSelect  ( "Rule "      , &n->haveRule );
-
-}
-*/
-
-
-
-
-/*
-
-
-void DataGatherer::BRASSA_ChangeRules()
-{
-	menuHelperRect.left = 0;
-	menuHelperRect.top = 0;
-
-	UINT menuEntryCount = 2;
-	UINT constantIndex = 0;
-	std::vector<std::string> menuEntries;
-	std::vector<bool> menuColor;
-	std::vector<DWORD> menuID;
-	// loop through relevant vertex shader constants
-	auto itShaderConstants = m_relevantVSConstantNames.begin();
-	while (itShaderConstants != m_relevantVSConstantNames.end())
-	{
-		menuColor.push_back(itShaderConstants->hasRule);
-		menuID.push_back(constantIndex);
-		menuEntries.push_back(itShaderConstants->name);
-		if (itShaderConstants->nodeOpen)
-		{
-			// output the class
-			menuColor.push_back(itShaderConstants->hasRule);
-			menuID.push_back(constantIndex+(1<<31));
-			// output shader constant + index 
-			switch(itShaderConstants->desc.Class)
-			{
-			case D3DXPC_VECTOR:
-				menuEntries.push_back("  D3DXPC_VECTOR");
-				break;
-			case D3DXPC_MATRIX_ROWS:
-				menuEntries.push_back("  D3DXPC_MATRIX_ROWS");
-				break;
-			case D3DXPC_MATRIX_COLUMNS:
-				menuEntries.push_back("  D3DXPC_MATRIX_COLUMNS");
-				break;
-			}
-			menuEntryCount++;
-
-			// output the class
-			menuColor.push_back(itShaderConstants->hasRule);
-			menuID.push_back(constantIndex+(1<<30));
-			if (itShaderConstants->hasRule)
-				menuEntries.push_back("  "+itShaderConstants->ruleName);
-			else
-				menuEntries.push_back("  No Rule assigned");
-			menuEntryCount++;
-
-			// output wether transposed or not
-			if ((itShaderConstants->hasRule) && (itShaderConstants->desc.Class != D3DXPC_VECTOR))
-			{
-				menuColor.push_back(itShaderConstants->hasRule);
-				menuID.push_back(constantIndex+(1<<29));
-				if (itShaderConstants->isTransposed)
-					menuEntries.push_back("  Transposed");
-				else
-					menuEntries.push_back("  Non-Transposed");
-				menuEntryCount++;
-			}
-		}
-
-		constantIndex++;
-		menuEntryCount++;
-		++itShaderConstants;
-	}
-
-
-	if ((controls.Key_Down(VK_RETURN) || controls.Key_Down(VK_RSHIFT) || (controls.xButtonsStatus[0x0c])) && (menuVelocity == D3DXVECTOR2(0.0f, 0.0f)))
-	{
-		// switch shader rule node
-		if ((entryID >= 0) && (entryID < menuEntryCount-2) && (menuEntryCount>2))
-		{
-			// constant node entry ?
-			if ((menuID[entryID] & (1<<31)) == (1<<31))
-			{
-				// no influence on class node entry
-			}
-			else if ((menuID[entryID] & (1<<30)) == (1<<30)) // add/delete rule
-			{
-				// no rule present, so add
-				if (!m_relevantVSConstantNames[menuID[entryID]].hasRule)
-				{
-					auto itShaderConstants = m_relevantVSConstants.begin();
-					while (itShaderConstants != m_relevantVSConstants.end())
-					{
-						// constant name in menu entries already present
-						if (itShaderConstants->name.compare(m_relevantVSConstantNames[menuID[entryID]].name) == 0)
-						{
-							// never assign "transposed" to vector
-							if (itShaderConstants->desc.Class == D3DXPARAMETER_CLASS::D3DXPC_VECTOR)
-								
-							else
-								addRule(itShaderConstants->name, true, itShaderConstants->desc.RegisterIndex, itShaderConstants->desc.Class, 1, m_bTransposedRules);
-							itShaderConstants->hasRule = true;
-
-							// set the menu output accordingly
-							auto itShaderConstants1 = m_relevantVSConstantNames.begin();
-							while (itShaderConstants1 != m_relevantVSConstantNames.end())
-							{
-								// set rule bool for all relevant constant names
-								if (itShaderConstants1->name.compare(m_relevantVSConstantNames[menuID[entryID]].name) == 0)
-								{
-									UINT operation;
-									itShaderConstants1->hasRule = m_pGameHandler->GetShaderModificationRepository()->ConstantHasRule(itShaderConstants1->name, itShaderConstants1->ruleName, operation, itShaderConstants1->isTransposed);
-								}
-								++itShaderConstants1;
-							}
-						}
-
-						++itShaderConstants;
-					}
-				}
-				else // rule present, so delete
-				{
-					deleteRule(m_relevantVSConstantNames[menuID[entryID]].name);
-
-					// set the menu output accordingly
-					auto itShaderConstants1 = m_relevantVSConstantNames.begin();
-					while (itShaderConstants1 != m_relevantVSConstantNames.end())
-					{
-						// set rule bool for all relevant constant names
-						if (itShaderConstants1->name.compare(m_relevantVSConstantNames[menuID[entryID]].name) == 0)
-						{
-							UINT operation;
-							itShaderConstants1->hasRule = m_pGameHandler->GetShaderModificationRepository()->ConstantHasRule(itShaderConstants1->name, itShaderConstants1->ruleName, operation, itShaderConstants1->isTransposed);
-						}
-						++itShaderConstants1;
-					}
-				}
-			}
-			else if ((menuID[entryID] & (1<<29)) == (1<<29))
-			{
-				bool newTrans = !m_relevantVSConstantNames[menuID[entryID]].isTransposed;
-				// transposed or non-transposed
-				auto itShaderConstants = m_relevantVSConstants.begin();
-				while (itShaderConstants != m_relevantVSConstants.end())
-				{
-					// constant name in menu entries already present
-					if (itShaderConstants->name.compare(m_relevantVSConstantNames[menuID[entryID]].name) == 0)
-					{
-						// get the operation id
-						UINT operation;
-						m_pGameHandler->GetShaderModificationRepository()->ConstantHasRule(itShaderConstants->name, itShaderConstants->ruleName, operation, itShaderConstants->isTransposed);
-						modifyRule(itShaderConstants->name, operation, newTrans);
-
-						// set the menu output accordingly
-						auto itShaderConstants1 = m_relevantVSConstantNames.begin();
-						while (itShaderConstants1 != m_relevantVSConstantNames.end())
-						{
-							// set rule bool for all relevant constant names
-							if (itShaderConstants1->name.compare(m_relevantVSConstantNames[menuID[entryID]].name) == 0)
-							{
-								itShaderConstants1->hasRule = m_pGameHandler->GetShaderModificationRepository()->ConstantHasRule(itShaderConstants1->name, itShaderConstants1->ruleName, operation, itShaderConstants1->isTransposed);
-							}
-							++itShaderConstants1;
-						}
-					}
-
-					itShaderConstants++;
-				}
-			}
-			else
-			{
-				// open or close node
-				m_relevantVSConstantNames[menuID[entryID]].nodeOpen = !m_relevantVSConstantNames[menuID[entryID]].nodeOpen;
-
-				auto itShaderConstants = m_relevantVSConstants.begin();
-				while (itShaderConstants != m_relevantVSConstants.end())
-				{
-					// constant name in menu entries already present
-					if (itShaderConstants->name.compare(m_relevantVSConstantNames[menuID[entryID]].name) == 0)
-					{
-						// show blinking if shader is drawn
-						if (m_relevantVSConstantNames[menuID[entryID]].nodeOpen)
-						{
-							if (std::find(m_excludedVShaders.begin(), m_excludedVShaders.end(), itShaderConstants->hash) == m_excludedVShaders.end()) {
-								m_excludedVShaders.push_back(itShaderConstants->hash);
-							}
-						}
-						else
-						{
-							// erase all entries for that hash
-							m_excludedVShaders.erase(std::remove(m_excludedVShaders.begin(), m_excludedVShaders.end(), itShaderConstants->hash), m_excludedVShaders.end()); 
-						}
-					}
-					++itShaderConstants;
-				}
-			}
-
-			menuVelocity.x+=2.0f;
-		}
-		// back to main menu
-		if (entryID == menuEntryCount-2)
-		{
-			BRASSA_mode = BRASSA_Modes::MAINMENU;
-			menuVelocity.x+=2.0f;
-		}
-		// back to game
-		if (entryID == menuEntryCount-1)
-		{
-			BRASSA_mode = BRASSA_Modes::INACTIVE;
-		}
-	}
-
-	if ((controls.Key_Down(VK_LEFT) || controls.Key_Down(0x4A) || (controls.xInputState.Gamepad.sThumbLX<-8192)) && (menuVelocity == D3DXVECTOR2(0.0f, 0.0f)))
-	{
-		// switch shader rule node
-		if ((entryID >= 0) && (entryID < menuEntryCount-2) && (menuEntryCount>2))
-		{
-			if ((menuID[entryID] & (1<<30)) == (1<<30)) // rule node entry
-			{
-				// rule present, so modify
-				if (m_relevantVSConstantNames[menuID[entryID]].hasRule)
-				{
-					// get the operation id
-					UINT operation;
-					m_pGameHandler->GetShaderModificationRepository()->ConstantHasRule(m_relevantVSConstantNames[menuID[entryID]].name, m_relevantVSConstantNames[menuID[entryID]].ruleName, operation, m_relevantVSConstantNames[menuID[entryID]].isTransposed);
-					if (operation > 0)
-						operation--;
-
-					auto itShaderConstants = m_relevantVSConstants.begin();
-					while (itShaderConstants != m_relevantVSConstants.end())
-					{
-						// constant name in menu entries already present
-						if (itShaderConstants->name.compare(m_relevantVSConstantNames[menuID[entryID]].name) == 0)
-						{
-							modifyRule(itShaderConstants->name, operation, itShaderConstants->isTransposed);
-
-							// set the menu output accordingly
-							auto itShaderConstants1 = m_relevantVSConstantNames.begin();
-							while (itShaderConstants1 != m_relevantVSConstantNames.end())
-							{
-								// set rule bool for all relevant constant names
-								if (itShaderConstants1->name.compare(m_relevantVSConstantNames[menuID[entryID]].name) == 0)
-								{
-									itShaderConstants1->hasRule = m_pGameHandler->GetShaderModificationRepository()->ConstantHasRule(itShaderConstants1->name, itShaderConstants1->ruleName, operation, itShaderConstants1->isTransposed);
-								}
-								++itShaderConstants1;
-							}
-						}
-
-						itShaderConstants++;
-					}
-				}
-			}
-		}
-		menuVelocity.x+=2.0f;
-	}
-
-	if ((controls.Key_Down(VK_RIGHT) || controls.Key_Down(0x4C) || (controls.xInputState.Gamepad.sThumbLX>8192)) && (menuVelocity == D3DXVECTOR2(0.0f, 0.0f)))
-	{
-		// switch shader rule node
-		if ((entryID >= 0) && (entryID < menuEntryCount-2) && (menuEntryCount>2))
-		{
-			if ((menuID[entryID] & (1<<30)) == (1<<30)) // rule node entry
-			{
-				// rule present, so modify
-				if (m_relevantVSConstantNames[menuID[entryID]].hasRule)
-				{
-					// get the operation id
-					UINT operation;
-					m_pGameHandler->GetShaderModificationRepository()->ConstantHasRule(m_relevantVSConstantNames[menuID[entryID]].name, m_relevantVSConstantNames[menuID[entryID]].ruleName, operation, m_relevantVSConstantNames[menuID[entryID]].isTransposed);
-					if (m_relevantVSConstantNames[menuID[entryID]].desc.Class == D3DXPARAMETER_CLASS::D3DXPC_VECTOR)
-					{
-						if (operation < (UINT)ShaderConstantModificationFactory::Vec4EyeShiftUnity)
-							operation++;
-					}
-					else
-					{
-						if (operation < (UINT)ShaderConstantModificationFactory::MatConvergenceOffset)
-							operation++;
-					}
-
-					auto itShaderConstants = m_relevantVSConstants.begin();
-					while (itShaderConstants != m_relevantVSConstants.end())
-					{
-						// constant name in menu entries already present
-						if (itShaderConstants->name.compare(m_relevantVSConstantNames[menuID[entryID]].name) == 0)
-						{
-							modifyRule(itShaderConstants->name, operation, itShaderConstants->isTransposed);
-
-							// set the menu output accordingly
-							auto itShaderConstants1 = m_relevantVSConstantNames.begin();
-							while (itShaderConstants1 != m_relevantVSConstantNames.end())
-							{
-								// set rule bool for all relevant constant names
-								if (itShaderConstants1->name.compare(m_relevantVSConstantNames[menuID[entryID]].name) == 0)
-								{
-									itShaderConstants1->hasRule = m_pGameHandler->GetShaderModificationRepository()->ConstantHasRule(itShaderConstants1->name, itShaderConstants1->ruleName, operation, itShaderConstants1->isTransposed);
-								}
-								++itShaderConstants1;
-							}
-						}
-
-						itShaderConstants++;
-					}
-				}
-			}
-		}
-		menuVelocity.x+=2.0f;
-	}
-
-}
-
-
-
-void DataGatherer::Analyze()
-{
-
-	// loop through relevant vertex shader constants
-	auto itShaderConstants = m_relevantVSConstantNames.begin();
-	while (itShaderConstants != m_relevantVSConstantNames.end())
-	{
-		// loop through matrix constant name assumptions
-		for (int i = 0; i < MATRIX_NAMES; i++)
-		{
-			// test if assumption is found in constant name
-			if (strstr(itShaderConstants->name.c_str(), m_wvpMatrixConstantNames[i].c_str()) != 0)
-			{
-				// test for "to-be-avoided" assumptions
-				for (int j = 0; j < AVOID_SUBSTRINGS; j++)
-				{
-					if (strstr(itShaderConstants->name.c_str(), m_wvpMatrixAvoidedSubstrings[j].c_str()) != 0)
-					{
-						// break loop
-						i = MATRIX_NAMES;
-						break;
-					}
-				}
-
-				// still in loop ?
-				if (i < MATRIX_NAMES)
-				{
-					// add this rule !!!!
-					if (addRule(itShaderConstants->name, true, itShaderConstants->desc.RegisterIndex, itShaderConstants->desc.Class, 2, m_bTransposedRules))
-						m_addedVSConstants.push_back(*itShaderConstants);
-
-					// output debug data
-					OutputDebugStringA("---Shader Rule");
-					// output constant name
-					OutputDebugStringA(itShaderConstants->desc.Name);
-					// output shader constant + index 
-					switch(itShaderConstants->desc.Class)
-					{
-					case D3DXPC_VECTOR:
-						OutputDebugStringA("D3DXPC_VECTOR");
-						break;
-					case D3DXPC_MATRIX_ROWS:
-						OutputDebugStringA("D3DXPC_MATRIX_ROWS");
-						break;
-					case D3DXPC_MATRIX_COLUMNS:
-						OutputDebugStringA("D3DXPC_MATRIX_COLUMNS");
-						break;
-					}
-					char buf[32];
-					sprintf_s(buf,"Register Index: %d", itShaderConstants->desc.RegisterIndex);
-					OutputDebugStringA(buf);
-					sprintf_s(buf,"Shader Hash: %u", itShaderConstants->hash);
-					OutputDebugStringA(buf);
-					sprintf_s(buf,"Transposed: %d", m_bTransposedRules);
-					OutputDebugStringA(buf);
-
-					// end loop
-					i = MATRIX_NAMES;
-				}
-			}
-			else
-				if (itShaderConstants->desc.RegisterIndex == 128)
-				{
-					OutputDebugStringA(itShaderConstants->name.c_str());
-					OutputDebugStringA(m_wvpMatrixConstantNames[i].c_str());
-				}
-		}
-
-		++itShaderConstants;
-	}
-
-	// save data
-	saveShaderRules();
-	
-}
-
-
-void DataGatherer::GetCurrentShaderRules(bool allStartRegisters)
-{
-	ShaderModificationRepository* pModRep = m_pGameHandler->GetShaderModificationRepository();
-
-	// clear name vector, loop through constants
-	for( ShaderConstant& c : m_relevantVSConstantNames ){
-		delete c.item;
-	}
-	m_relevantVSConstantNames.clear();
-
-
-	for( ShaderConstant& constant : m_relevantVSConstants ){
-
-		bool namePresent     = false;
-		bool registerPresent = !allStartRegisters;
-
-		for( ShaderConstant& c : m_relevantVSConstantNames ){
-			if( constant.name.compare(c.name) == 0 ){
-				namePresent = true;
-				if( constant.desc.RegisterIndex == c.desc.RegisterIndex ){
-					registerPresent = true;
-				}
-			}
-		}
-
-		if( !namePresent || !registerPresent ){
-			UINT operation = 0;
-
-			if( pModRep ){
-				constant.hasRule = pModRep->ConstantHasRule( constant.name , constant.ruleName , operation , constant.isTransposed );
-			}else{
-				constant.hasRule = false;
-			}
-
-			QString name = QString::fromStdString(constant.name);
-
-			switch( constant.desc.Class ){
-			case D3DXPC_VECTOR:
-				name += " (D3DXPC_VECTOR)";
-				break;
-
-			case D3DXPC_MATRIX_ROWS:
-				name += " (D3DXPC_MATRIX_ROWS)";
-				break;
-
-			case D3DXPC_MATRIX_COLUMNS:
-				name += " (D3DXPC_MATRIX_COLUMNS)";
-				break;
-			}
-
-			constant.applyRule    = false;
-			constant.isTransposed = false;
-			constant.item         = rulesMenu->addSubmenu( name );
-			
-
-			cMenuItem* i;
-
-			if( constant.hasRule && constant.desc.Class != D3DXPARAMETER_CLASS::D3DXPC_VECTOR ){
-				i = constant.item->addCheckbox( "Transposed" , &constant.isTransposed );
-				i->callbackValueChanged = [&](){
-					//UINT operation;
-					//m_pGameHandler->GetShaderModificationRepository()->ConstantHasRule( constant.name, constant.ruleName , operation , constant.isTransposed );
-					//modifyRule( constant.name, operation, constant.isTransposed );
-				};
-			}
-
-			i = constant.item->addCheckbox( "Apply rule" , &constant.applyRule );
-			i->callbackValueChanged = [&](){
-				if( constant.applyRule ){
-					addRule( constant.name , true , constant.desc.RegisterIndex , constant.desc.Class , 1 , constant.isTransposed );
-				}else{
-					deleteRule( constant.name );
-				}
-			};
-
-			m_relevantVSConstantNames.push_back( constant );
-		}
-
-	}
-}
-
-*/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -978,14 +351,9 @@ void D3DProxyDevice::SaveConfiguration(){
 	config.save( config.getGameConfigFile(exe_path) , QList<int>() << cConfig::SAVE_GAME << cConfig::SAVE_PROFILE << cConfig::SAVE_USER );
 }
 
-/**
-* Destructor : calls ReleaseEverything() and releases swap chains.
-* @see ReleaseEverything()
-***/
-D3DProxyDevice::~D3DProxyDevice()
-{
 
 
+D3DProxyDevice::~D3DProxyDevice(){
 	ReleaseEverything();
 
 	vrbFree();
@@ -998,40 +366,6 @@ D3DProxyDevice::~D3DProxyDevice()
 	SAFE_RELEASE(actual);
 }
 
-#define IF_GUID(riid,a,b,c,d,e,f,g,h,i,j,k) if ((riid.Data1==a)&&(riid.Data2==b)&&(riid.Data3==c)&&(riid.Data4[0]==d)&&(riid.Data4[1]==e)&&(riid.Data4[2]==f)&&(riid.Data4[3]==g)&&(riid.Data4[4]==h)&&(riid.Data4[5]==i)&&(riid.Data4[6]==j)&&(riid.Data4[7]==k))
-/**
-* Catch QueryInterface calls and increment the reference counter if necesarry. 
-***/
-
-METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , QueryInterface , REFIID , riid , LPVOID* , ppv )
-
-	//DEFINE_GUID(IID_IDirect3DDevice9Ex, 0xb18b10ce, 0x2649, 0x405a, 0x87, 0xf, 0x95, 0xf7, 0x77, 0xd4, 0x31, 0x3a);
-	IF_GUID(riid,0xb18b10ce,0x2649,0x405a,0x87,0xf,0x95,0xf7,0x77,0xd4,0x31,0x3a)
-	{
-		if (ppv==NULL)
-			return E_POINTER;
-
-		this->AddRef();
-		*ppv = NULL;
-		return E_NOINTERFACE;
-	}
-	return actual->QueryInterface(riid,ppv);
-}
-
-
-
-METHOD_IMPL( ULONG , WINAPI , D3DProxyDevice , AddRef )	 
-	return ++m_nRefCount;
-}
-
-
-METHOD_IMPL( ULONG , WINAPI , D3DProxyDevice , Release )
-	if(--m_nRefCount == 0){
-		delete this;
-		return 0;
-	}	
-	return m_nRefCount;
-}
 
 
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetDirect3D , IDirect3D9** , ppD3D9 )
@@ -1580,20 +914,6 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , EndScene )
 
 
 
-METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , Clear , DWORD , Count , CONST D3DRECT* , pRects , DWORD , Flags , D3DCOLOR , Color , float , Z , DWORD , Stencil )
-	HRESULT result;
-
-	if (SUCCEEDED(result = actual->Clear(Count, pRects, Flags, Color , Z, Stencil))) {
-		if (switchDrawingSide()) {
-			result = actual->Clear(Count, pRects, Flags, Color , Z, Stencil);
-		}
-	}
-
-	return result;
-}
-
-
-
 
 
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetTransform , D3DTRANSFORMSTATETYPE , State , CONST D3DMATRIX* , pMatrix )
@@ -1634,7 +954,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetTransform , D3DTRANSFORMSTAT
 		}
 		
 		if( stateBlock ){
-			stateBlock->captureViewTransform( left , right );
+			stateBlock->captureViewTransform( isSet , left , right );
 		}	
 
 		return actual->SetTransform( State , m_pCurrentView );
@@ -1658,7 +978,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetTransform , D3DTRANSFORMSTAT
 		}
 
 		if( stateBlock ){
-			stateBlock->captureViewTransform( left , right );
+			stateBlock->captureProjTransform( isSet , left , right );
 		}
 
 		return actual->SetTransform( State , m_pCurrentProjection );
@@ -1701,8 +1021,6 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateStateBlock , D3DSTATEBLOC
 
 	if (SUCCEEDED(creationResult)) {
 		D3D9ProxyStateBlock* proxy = new D3D9ProxyStateBlock(pActualStateBlock, this);
-		proxy->sideLeft  = (m_currentRenderingSide == vireio::Left);
-		proxy->sideRight = (m_currentRenderingSide == vireio::Right);
 		proxy->type = Type;
 		proxy->init();
 		*ppSB = proxy;
@@ -1717,8 +1035,6 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , BeginStateBlock )
 	if (SUCCEEDED(result = actual->BeginStateBlock())) {
 		m_bInBeginEndStateBlock = true;
 		stateBlock = new D3D9ProxyStateBlock(NULL, this);
-		stateBlock->sideLeft  = (m_currentRenderingSide == vireio::Left);
-		stateBlock->sideRight = (m_currentRenderingSide == vireio::Right);
 		stateBlock->type      = 0;
 		stateBlock->init();
 	}
@@ -1803,142 +1119,28 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetTexture , DWORD , Stage , ID
 }
 
 
-/**
-* Applies all dirty shader registers, draws both stereo sides if switchDrawingSide() agrees.
-* @see switchDrawingSide()
-***/
-METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawPrimitive , D3DPRIMITIVETYPE , PrimitiveType , UINT , StartVertex , UINT , PrimitiveCount )
-	if( isDrawHide() ){
-		return S_OK;
-	}
-	
-	//m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
 
-	rulesApply();
-
-	rulesPreDraw();
-
-	HRESULT result;
-	if (SUCCEEDED(result = actual->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount))) {
-		if (switchDrawingSide())
-			actual->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
-	}
-
-	rulesPostDraw();
-
-	return result;
-}
-
-/**
-* Applies all dirty shader registers, draws both stereo sides if switchDrawingSide() agrees.
-* @see switchDrawingSide()
-***/
-METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawIndexedPrimitive , D3DPRIMITIVETYPE , PrimitiveType , INT , BaseVertexIndex , UINT , MinVertexIndex , UINT , NumVertices , UINT , startIndex , UINT , primCount )
-	if( isDrawHide() ){
-		return S_OK;
-	}
-
-	//m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
-	
-	rulesApply();
-
-	rulesPreDraw();
-
-	HRESULT result;
-	if (SUCCEEDED(result = actual->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount))) {
-		if (switchDrawingSide()) {
-			HRESULT result2 = actual->DrawIndexedPrimitive(PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount);
-			if (result != result2)
-				OutputDebugStringA("moop\n");
-		}
-	}
-
-	rulesPostDraw();
-
-	return result;
-}
-
-/**
-* Applies all dirty shader registers, draws both stereo sides if switchDrawingSide() agrees.
-* @see switchDrawingSide()
-***/
-METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawPrimitiveUP , D3DPRIMITIVETYPE , PrimitiveType , UINT , PrimitiveCount , CONST void* , pVertexStreamZeroData , UINT , VertexStreamZeroStride )
-	if( isDrawHide() ){
-		return S_OK;
-	}
-
-	//m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
-	
-	rulesApply();
-
-	rulesPreDraw();
-
-	HRESULT result;
-	if (SUCCEEDED(result = actual->DrawPrimitiveUP(PrimitiveType, PrimitiveCount, pVertexStreamZeroData, VertexStreamZeroStride))) {
-		if (switchDrawingSide())
-			actual->DrawPrimitiveUP(PrimitiveType, PrimitiveCount, pVertexStreamZeroData, VertexStreamZeroStride);
-	}
-
-	rulesPostDraw();
-
-	return result;
-}
-
-/**
-* Applies all dirty shader registers, draws both stereo sides if switchDrawingSide() agrees.
-* @see switchDrawingSide()
-***/
-METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawIndexedPrimitiveUP , D3DPRIMITIVETYPE , PrimitiveType , UINT , MinVertexIndex , UINT , NumVertices , UINT , PrimitiveCount , CONST void* , pIndexData , D3DFORMAT , IndexDataFormat , CONST void* , pVertexStreamZeroData , UINT , VertexStreamZeroStride )
-	if( isDrawHide() ){
-		return S_OK;
-	}
-
-	//m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
-
-	rulesApply();
-
-	rulesPreDraw();
-
-	HRESULT result;
-	if (SUCCEEDED(result = actual->DrawIndexedPrimitiveUP(PrimitiveType, MinVertexIndex, NumVertices, PrimitiveCount, pIndexData, IndexDataFormat, pVertexStreamZeroData, VertexStreamZeroStride))) {
-		if (switchDrawingSide())
-			actual->DrawIndexedPrimitiveUP(PrimitiveType, MinVertexIndex, NumVertices, PrimitiveCount, pIndexData, IndexDataFormat, pVertexStreamZeroData, VertexStreamZeroStride);
-	}
-
-	rulesPostDraw();
-
-	return result;
-}
-
-/**
-* Applies all dirty shader registers, processes vertices.
-***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , ProcessVertices , UINT , SrcStartIndex , UINT , DestIndex , UINT , VertexCount , IDirect3DVertexBuffer9* , pDestBuffer , IDirect3DVertexDeclaration9* , pVertexDecl , DWORD , Flags )
-	if (!pDestBuffer)
+	if( !pDestBuffer ){
 		return D3DERR_INVALIDCALL;
+	}
 
-	//m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
+	D3D9ProxyVertexBuffer* proxy = static_cast<D3D9ProxyVertexBuffer*>(pDestBuffer);
 
 	rulesApply();
 
-	rulesPreDraw();
-
-	D3D9ProxyVertexBuffer* pCastDestBuffer = static_cast<D3D9ProxyVertexBuffer*>(pDestBuffer);
-	D3D9ProxyVertexDeclaration* pCastVertexDeclaration = NULL;
-
-	HRESULT result;
-	if (pVertexDecl) {
-		pCastVertexDeclaration = static_cast<D3D9ProxyVertexDeclaration*>(pVertexDecl);
-		result = actual->ProcessVertices(SrcStartIndex, DestIndex, VertexCount, pCastDestBuffer->actual, pCastVertexDeclaration->actual, Flags);
-	}
-	else {
-		result = actual->ProcessVertices(SrcStartIndex, DestIndex, VertexCount, pCastDestBuffer->actual, NULL, Flags);
+	if( !pVertexDecl ) {
+		return actual->ProcessVertices( SrcStartIndex , DestIndex , VertexCount , proxy->actual , NULL , Flags );
 	}
 
-	rulesPostDraw();
 
-	return result;
+	D3D9ProxyVertexDeclaration* decl  = static_cast<D3D9ProxyVertexDeclaration*>(pVertexDecl);
+
+	return actual->ProcessVertices( SrcStartIndex , DestIndex , VertexCount , proxy->actual , decl->actual , Flags );
 }
+
+
+
 
 /**
 * Creates base vertex declaration (D3D9ProxyVertexDeclaration).
@@ -2081,54 +1283,6 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetIndices , IDirect3DIndexBuff
 
 
 
-
-/**
-* Applies all dirty registers, draws both stereo sides if switchDrawingSide() agrees.
-* @see switchDrawingSide()
-***/
-METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawRectPatch , UINT , Handle , CONST float* , pNumSegs , CONST D3DRECTPATCH_INFO* , pRectPatchInfo )
-	//m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
-
-	rulesApply();
-
-	rulesPreDraw();
-
-	HRESULT result;
-	if (SUCCEEDED(result = actual->DrawRectPatch(Handle, pNumSegs, pRectPatchInfo))) {
-		if (switchDrawingSide())
-			actual->DrawRectPatch(Handle, pNumSegs, pRectPatchInfo);
-	}
-
-	rulesPostDraw();
-
-	return result;
-}
-
-/**
-* Applies all dirty registers, draws both stereo sides if switchDrawingSide() agrees.
-* @see switchDrawingSide() 
-***/
-METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , DrawTriPatch , UINT , Handle , CONST float* , pNumSegs , CONST D3DTRIPATCH_INFO* , pTriPatchInfo )
-	//m_spManagedShaderRegisters->ApplyAllDirty(m_currentRenderingSide);
-
-	rulesApply();
-
-	rulesPreDraw();
-
-	HRESULT result;
-	if (SUCCEEDED(result = actual->DrawTriPatch(Handle, pNumSegs, pTriPatchInfo))) {
-		if (switchDrawingSide())
-			actual->DrawTriPatch(Handle, pNumSegs, pTriPatchInfo);
-	}
-
-	rulesPostDraw();
-
-	return result;
-}
-
-
-
-
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateQuery , D3DQUERYTYPE , Type , IDirect3DQuery9** , ppQuery )
 	// this seems a weird response to me but it's what the actual device does.
 	if (!ppQuery)
@@ -2144,14 +1298,6 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateQuery , D3DQUERYTYPE , Ty
 	return creationResult;
 }
 
-
-/**
-* Returns the actual embedded device pointer.
-***/
-IDirect3DDevice9* D3DProxyDevice::getActual()
-{
-	return actual;
-}
 
 
 METHOD_IMPL( void , , D3DProxyDevice, HandleControls )
@@ -2358,7 +1504,7 @@ METHOD_IMPL( void , , D3DProxyDevice , OnCreateOrRestore )
 
 	menu.createResources();
 
-	stereoView->Init(getActual());
+	stereoView->Init( actual );
 
 	viewUpdateProjectionMatrices( );
 	viewComputeTransforms       ( );
@@ -2521,6 +1667,10 @@ METHOD_IMPL( bool , , D3DProxyDevice , switchDrawingSide )
 		printf( "Vireio: unknown m_currentRenderingSide\n" );
 	}
 
+	if( !switched ){
+		printf( "Vireio: switch failed\n" );
+	}
+
 
 	return switched;
 }
@@ -2605,67 +1755,6 @@ METHOD_IMPL( bool , , D3DProxyDevice , isViewportDefaultForMainRT , CONST D3DVIE
 		(pViewport->MinZ <= SMALL_FLOAT) && (pViewport->MaxZ >= SLIGHTLY_LESS_THAN_ONE));
 }
 
-/**
-* Stores and sets view transform calling SetTransform() accordingly to current render side.
-* @param pLeftMatrix The left view matrix.
-* @param pRightMatrix The right view matrix.
-* @param apply True to apply calling SetTransform()
-* @see actual->SetTransform()
-***/
-METHOD_IMPL( HRESULT , , D3DProxyDevice , SetStereoViewTransform , D3DXMATRIX , pLeftMatrix , D3DXMATRIX , pRightMatrix , bool , apply )
-	if (D3DXMatrixIsIdentity(&pLeftMatrix) && D3DXMatrixIsIdentity(&pRightMatrix)) {
-		m_bViewTransformSet = false;
-	}
-	else {
-		m_bViewTransformSet = true;
-	}
-
-	m_leftView = pLeftMatrix;
-	m_rightView = pRightMatrix;
-
-	if (m_currentRenderingSide == vireio::Left) {
-		m_pCurrentView = &m_leftView;
-	}
-	else {
-		m_pCurrentView = &m_rightView;
-	}
-
-	if (apply)
-		return actual->SetTransform(D3DTS_VIEW, m_pCurrentView);
-	else
-		return D3D_OK;
-}
-
-/**
-* Stores and sets projection transform calling SetTransform() accordingly to current render side.
-* @param pLeftMatrix The left view matrix.
-* @param pRightMatrix The right view matrix.
-* @param apply True to apply calling SetTransform()
-* @see actual->SetTransform()
-***/
-METHOD_IMPL( HRESULT , , D3DProxyDevice , SetStereoProjectionTransform , D3DXMATRIX , pLeftMatrix , D3DXMATRIX , pRightMatrix , bool , apply )
-	if (D3DXMatrixIsIdentity(&pLeftMatrix) && D3DXMatrixIsIdentity(&pRightMatrix)) {
-		m_bProjectionTransformSet = false;
-	}
-	else {
-		m_bProjectionTransformSet = true;
-	}
-
-	m_leftProjection = pLeftMatrix;
-	m_rightProjection = pRightMatrix;
-
-	if (m_currentRenderingSide == vireio::Left) {
-		m_pCurrentProjection = &m_leftProjection;
-	}
-	else {
-		m_pCurrentProjection = &m_rightProjection;
-	}
-
-	if (apply)
-		return actual->SetTransform(D3DTS_PROJECTION, m_pCurrentProjection);
-	else
-		return D3D_OK;
-}
 
 /**
 * Sets the viewport to squish the GUI accordingly.
@@ -2848,7 +1937,7 @@ METHOD_IMPL( HRESULT , , D3DProxyDevice , ProxyCreateRenderTarget , UINT , Width
 	if( useEx ){
 		resultLeft = actualEx->CreateRenderTargetEx(Width, Height, Format, MultiSample, MultisampleQuality, Lockable, &left, pSharedHandle , Usage );
 	}else{
-		resultLeft = actual->CreateRenderTarget(Width, Height, Format, MultiSample, MultisampleQuality, Lockable, &left, pSharedHandle);
+		resultLeft = actual  ->CreateRenderTarget(Width, Height, Format, MultiSample, MultisampleQuality, Lockable, &left, pSharedHandle);
 	}
 
 	if( SUCCEEDED(resultLeft) ){
@@ -2860,7 +1949,7 @@ METHOD_IMPL( HRESULT , , D3DProxyDevice , ProxyCreateRenderTarget , UINT , Width
 			if( useEx ){
 				resultRight = actualEx->CreateRenderTargetEx(Width, Height, Format, MultiSample, MultisampleQuality, Lockable, &right, pSharedHandle , Usage );
 			}else{
-				resultRight = actual->CreateRenderTarget  (Width, Height, Format, MultiSample, MultisampleQuality, Lockable, &right, pSharedHandle);
+				resultRight = actual  ->CreateRenderTarget  (Width, Height, Format, MultiSample, MultisampleQuality, Lockable, &right, pSharedHandle);
 			}
 
 			if( FAILED(resultRight) ){
@@ -2899,7 +1988,7 @@ METHOD_IMPL( HRESULT , , D3DProxyDevice , ProxyCreateOffscreenPlainSurface , UIN
 	if( useEx ){
 		result = actualEx->CreateOffscreenPlainSurfaceEx(Width, Height, Format, Pool, &surface, pSharedHandle , Usage );
 	}else{
-		result = actual->CreateOffscreenPlainSurface(Width, Height, Format, Pool, &surface, pSharedHandle );
+		result = actual  ->CreateOffscreenPlainSurface(Width, Height, Format, Pool, &surface, pSharedHandle );
 	}
 
 	if (SUCCEEDED(result)){
@@ -2937,7 +2026,7 @@ METHOD_IMPL( HRESULT , , D3DProxyDevice , ProxyReset , D3DPRESENT_PARAMETERS* , 
 	if( useEx ){
 		hr = actualEx->ResetEx(pPresentationParameters,pFullscreenDisplayMode);
 	}else{
-		hr = actual->Reset(pPresentationParameters);
+		hr = actual  ->Reset(pPresentationParameters);
 	}
 
 	// if the device has been successfully reset we need to recreate any resources we created

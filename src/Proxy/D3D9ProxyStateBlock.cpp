@@ -2,35 +2,44 @@
 #include <assert.h>
 
 
-static void ApplyExistingConstants( std::map< int , D3DXVECTOR4 >& stored , cConstantBuffer& dst ){
-	for( auto p : stored ){
-		dst.set( p.first , p.second , 1 );
+static void ApplyExistingConstants( std::map< int , D3DXVECTOR4 >& map , cConstantBuffer& buf ){
+	for( auto p : map ){
+		buf.set( p.first , p.second , 1 );
 	}
 
-	dst.clearModified();
-	dst.setStereoModified();
+	buf.clearModified();
+	buf.setStereoModified();
 } 
 
 
-static void GetSelectedConstants( std::map< int , D3DXVECTOR4 >& stored , cConstantBuffer& dst ){
-	for( auto& p : stored ){
-		dst.get( p.first , p.second , 1 );
+static void GetSelectedConstants( std::map< int , D3DXVECTOR4 >& map , cConstantBuffer& buf ){
+	for( auto& p : map ){
+		buf.get( p.first , p.second , 1 );
 	}
 } 
 
-template<class T>
-static void CopyMap( std::map<int,T>& src , std::map<int,T>& dst ){
-	for( auto& p : src ){
-		dst[p.first] = p.second;
+
+static void GetAllConstants( std::map<int,D3DXVECTOR4>& map , cConstantBuffer& buf ){
+	map.clear();
+	for( int c=0 ; c<buf.registerCount() ; c++ ){
+		buf.get( c , map[c] , 1 );
 	}
 }
 
 
 
 template<class T>
-static void UpdateExistingFromMap( std::map<int,T>& map , std::map<int,T>& other ){
+static void GetSelected( std::map<int,T>& map , std::map<int,T>& other ){
 	for( auto& p : map ){
-		map[p.first] = other[p.first];
+		p.second = other[p.first];
+	}
+}
+
+
+template<class T>
+static void ApplySelected( std::map<int,T>& map , std::map<int,T>& other ){
+	for( auto& p : map ){
+		other[p.first] = p.second;
 	}
 }
 
@@ -40,8 +49,6 @@ D3D9ProxyStateBlock::D3D9ProxyStateBlock( IDirect3DStateBlock9* pActualStateBloc
 	cBase( pActualStateBlock , pOwningDevice )
 {
 	type				    = 0;
-	sideLeft			    = false;
-	sideRight			    = false;
 	selectAuto			    = false;
 	selectIndexBuffer	    = false;
 	selectViewport		    = false;
@@ -107,21 +114,19 @@ void D3D9ProxyStateBlock::captureViewport( D3DVIEWPORT9 viewport ){
 }
 
 
-void D3D9ProxyStateBlock::captureViewTransform( D3DXMATRIX left , D3DXMATRIX right ){
+void D3D9ProxyStateBlock::captureViewTransform( bool isSet , D3DXMATRIX left , D3DXMATRIX right ){
 	selectViewTransform |= selectAuto;
+	storedViewIsSet      = isSet;
 	storedLeftView       = left;
 	storedRightView      = right;
-
-	updateCaptureSideTracking();
 }
 
 
-void D3D9ProxyStateBlock::captureProjTransform( D3DXMATRIX left , D3DXMATRIX right ){
+void D3D9ProxyStateBlock::captureProjTransform( bool isSet , D3DXMATRIX left , D3DXMATRIX right ){
 	selectProjTransform  |= selectAuto;
+	storedProjIsSet       = isSet;
 	storedLeftProjection  = left;
 	storedRightProjection = right;
-
-	updateCaptureSideTracking();
 }
 
 
@@ -145,8 +150,6 @@ void D3D9ProxyStateBlock::captureVertexDeclaration ( D3D9ProxyVertexDeclaration*
 
 void D3D9ProxyStateBlock::captureTextureSampler( int stage , IDirect3DBaseTexture9* texture ){
 	storedTextures[stage] = texture;
-
-	updateCaptureSideTracking();
 }
 
 
@@ -185,11 +188,13 @@ void D3D9ProxyStateBlock::captureSelected( ){
 	if( selectViewTransform ){
 		storedLeftView  = device->m_leftView;
 		storedRightView = device->m_rightView;
+		storedViewIsSet = device->m_bViewTransformSet;
 	}
 
 	if( selectProjTransform ){
 		storedLeftProjection  = device->m_leftProjection;
 		storedRightProjection = device->m_rightProjection;
+		storedProjIsSet       = device->m_bProjectionTransformSet;
 	}
 
 	if( selectPixelShader ){
@@ -209,29 +214,24 @@ void D3D9ProxyStateBlock::captureSelected( ){
 		storedVertexes = device->activeVertexes;
 	}
 
+	if( type == D3DSBT_ALL || type == D3DSBT_VERTEXSTATE ){
+		GetAllConstants( storedVsConstants , device->vsConstants );
+	}
+
+
+	if( type == D3DSBT_ALL || type == D3DSBT_PIXELSTATE ){
+		GetAllConstants( storedPsConstants , device->psConstants );
+	}
+
+
 	if( type == 0 ){
-		UpdateExistingFromMap( storedTextures , device->activeTextures );
-		UpdateExistingFromMap( storedVertexes , device->activeVertexes );
-	}
+		GetSelected( storedTextures , device->activeTextures );
+		GetSelected( storedVertexes , device->activeVertexes );
 
-	if( type == D3DSBT_ALL || type == D3DSBT_VERTEXSTATE || type == 0 ){
 		GetSelectedConstants( storedVsConstants , device->vsConstants );
-	}
-
-	if( type == D3DSBT_ALL || type == D3DSBT_PIXELSTATE || type == 0 ){
 		GetSelectedConstants( storedPsConstants , device->psConstants );
 	}
-
-
-	if( device->m_currentRenderingSide == vireio::Left ){
-		sideLeft  = true;
-		sideRight = false;
-	}else{
-		sideLeft   = false;
-		sideRight  = true;
-	}
 }
-
 
 
 
@@ -258,20 +258,14 @@ METHOD_IMPL( HRESULT , WINAPI , D3D9ProxyStateBlock , Capture )
 
 
 METHOD_IMPL( HRESULT , WINAPI , D3D9ProxyStateBlock , Apply )
-	if( sideLeft && !sideRight ){
-		device->setDrawingSide( vireio::Left );
-	}else
-	if( sideRight && !sideRight ){
-		device->setDrawingSide( vireio::Right );
-	}
-
 	HRESULT result = actual->Apply();
 	if( FAILED(result) ){
 		return result;
 	}
 
-
-	bool reApplyStereo = sideLeft && sideRight;
+	if( device->stateBlock ){
+		printf("Device state block!\n");
+	}
 
 	if( selectIndexBuffer ){
 		device->activeIndicies = storedIndexBuffer;
@@ -283,12 +277,15 @@ METHOD_IMPL( HRESULT , WINAPI , D3D9ProxyStateBlock , Apply )
 	}
 
 	if( selectViewTransform ){
-		device->SetStereoViewTransform( storedLeftView , storedRightView , reApplyStereo );
-
+		device->m_bViewTransformSet = storedViewIsSet;
+		device->m_leftView          = storedLeftView;
+		device->m_rightView         = storedRightView;
 	}
 
 	if( selectProjTransform ){
-		device->SetStereoProjectionTransform( storedLeftProjection , storedRightProjection , reApplyStereo );
+		device->m_bProjectionTransformSet = storedProjIsSet;
+		device->m_leftProjection          = storedLeftProjection;
+		device->m_rightProjection         = storedRightProjection;
 	}
 
 	if( selectPixelShader ){
@@ -309,46 +306,16 @@ METHOD_IMPL( HRESULT , WINAPI , D3D9ProxyStateBlock , Apply )
 	}
 
 	if( type == 0 ){
-		UpdateExistingFromMap( device->activeVertexes , storedVertexes );
-		UpdateExistingFromMap( device->activeTextures , storedTextures );
-	}
-
-
-	if( reApplyStereo ){
-		for( auto& p : storedTextures ){
-			device->SetTexture( p.first , p.second );
-		}
+		ApplySelected( storedVertexes , device->activeVertexes );
+		ApplySelected( storedTextures , device->activeTextures );
 	}
 
 	ApplyExistingConstants( storedVsConstants , device->vsConstants );
 	ApplyExistingConstants( storedPsConstants , device->psConstants );
 
-	if( reApplyStereo ){
-		device->switchDrawingSide();
-	}
+	device->switchDrawingSide();
 
 	return D3D_OK;
 }
 
-
-
-
-
-
-
-
-void D3D9ProxyStateBlock::updateCaptureSideTracking( ){
-	if( sideLeft && sideRight ){
-		return;
-	}
-
-	
-	if( device->m_currentRenderingSide == vireio::Left ){
-		sideLeft = true;
-	}
-	
-	if( device->m_currentRenderingSide == vireio::Right ){
-		sideRight = true;
-	}
-}
 

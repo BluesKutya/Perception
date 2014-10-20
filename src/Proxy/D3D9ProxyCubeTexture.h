@@ -57,7 +57,7 @@ struct hash_CubeSurfaceKey {
 class D3D9ProxyCubeTexture : public cBase<IDirect3DCubeTexture9> {
 public:
 	D3D9ProxyCubeTexture(IDirect3DCubeTexture9* pActualTextureLeft, IDirect3DCubeTexture9* pActualTextureRight, D3DProxyDevice* pOwningDevice);
-	~D3D9ProxyCubeTexture();	
+	~D3D9ProxyCubeTexture();
 
 	/*** IDirect3DBaseTexture9 methods ***/
 	DWORD                WINAPI GetPriority();

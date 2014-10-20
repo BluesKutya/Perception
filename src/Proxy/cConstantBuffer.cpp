@@ -13,10 +13,8 @@ cConstantBuffer::cConstantBuffer( D3DProxyDevice* d , bool v ){
 
 
 HRESULT cConstantBuffer::set( std::vector<float>& array , int start , const float* ptr , int count ){
-	resize( start + count );
-
 	if( start >= registerCount()  ||  start + count > registerCount() ){
-		printf("Vireio: cConstantBuffer::set out or range\n" );
+		printf("Vireio: cConstantBuffer::set out or range (%d of %d)\n",start+count,registerCount() );
 		return D3DERR_INVALIDCALL;
 	}
 
@@ -149,7 +147,7 @@ void cConstantBuffer::applyStereo( ){
 			modifications = 0;
 		}
 	}else{
-		if( device->activeVertexShader ){
+		if( device->activePixelShader ){
 			modifications = &device->activePixelShader->modifications;
 		}else{
 			modifications = 0;

@@ -30,27 +30,28 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreatePixelShader , CONST DWORD
 
 
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetVertexShader , IDirect3DVertexShader9* , pShader )
-	D3D9ProxyVertexShader* shader = static_cast<D3D9ProxyVertexShader*>(pShader);
+	D3D9ProxyVertexShader* proxy;
+	HRESULT                result;
 
-	HRESULT result;
-
-	if( shader ){
-		result = actual->SetVertexShader( shader->actual );
+	if( pShader ){
+		proxy  = static_cast<D3D9ProxyVertexShader*>(pShader);
+		result = actual->SetVertexShader( proxy->actual );
 	}else{
+		proxy  = 0;
 		result = actual->SetVertexShader( 0 );
 	}
 
 	// Update stored proxy Vertex shader
 	if( SUCCEEDED(result) ){
 		if (stateBlock) {
-			stateBlock->captureVertexShader(shader);
-		}else{
-			activeVertexShader = shader;
+			stateBlock->captureVertexShader(proxy);
 		}
+		
+		activeVertexShader = proxy;
 	}
 
-	if( shader ){
-		if( shader->m_bSquishViewport ){
+	if( proxy ){
+		if( proxy->m_bSquishViewport ){
 			SetGUIViewport();
 		}else{
 			if( m_bViewportIsSquished ){
@@ -60,15 +61,14 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetVertexShader , IDirect3DVert
 		}
 
 		if( config.shaderAnalyzer ){
-			shader->used = true;
+			proxy->used = true;
 
-			if( shader->blink ){
-				shader->hide = ((GetTickCount()%300)>150);
+			if( proxy->blink ){
+				proxy->hide = ((GetTickCount()%300)>150);
 			}
 		}
 	}
 
-	// increase vertex shader call count
 	++m_VertexShaderCount;
 	return result;
 }
@@ -78,33 +78,29 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetVertexShader , IDirect3DVert
 
 
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetPixelShader , IDirect3DPixelShader9* , pShader )
-	D3D9ProxyPixelShader* shader = static_cast<D3D9ProxyPixelShader*>(pShader);
+	D3D9ProxyPixelShader* proxy;
+	HRESULT               result;
 
-	// Update actual pixel shader
-	HRESULT result;
-	if( shader ){
-		result = actual->SetPixelShader( shader->actual );
+	if( pShader ){
+		proxy  = static_cast<D3D9ProxyPixelShader*>(pShader);
+		result = actual->SetPixelShader( proxy->actual );
 	}else{
+		proxy  = 0;
 		result = actual->SetPixelShader(NULL);
-		return result;
 	}
 
-	// Update stored proxy pixel shader
 	if( SUCCEEDED(result) ){
-
-		// If in a Begin-End StateBlock pair update the block state rather than the current proxy device state
 		if (stateBlock) {
-			stateBlock->capturePixelShader( shader );
-		}else{
-			activePixelShader = shader;
+			stateBlock->capturePixelShader( proxy );
 		}
+		activePixelShader = proxy;
 	}
 
-	if( config.shaderAnalyzer && shader ){
-		shader->used = true;
+	if( config.shaderAnalyzer && proxy ){
+		proxy->used = true;
 
-		if( shader->blink ){
-			shader->hide = ((GetTickCount()%300)>150);
+		if( proxy->blink ){
+			proxy->hide = ((GetTickCount()%300)>150);
 		}
 	}
 
@@ -144,11 +140,19 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetPixelShader , IDirect3DPixel
 
 
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetVertexShaderConstantF , UINT , StartRegister , CONST float* , pConstantData , UINT , Vector4fCount )
+	if( stateBlock ){
+		stateBlock->captureVertexShaderConstant( StartRegister , pConstantData , Vector4fCount );
+	}
+
 	return vsConstants.set( StartRegister , pConstantData , Vector4fCount );
 }
 
 
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetPixelShaderConstantF , UINT , StartRegister , CONST float* , pConstantData , UINT , Vector4fCount )
+	if( stateBlock ){
+		stateBlock->capturePixelShaderConstant( StartRegister , pConstantData , Vector4fCount );
+	}
+
 	return psConstants.set( StartRegister , pConstantData , Vector4fCount );
 }
 

@@ -53,6 +53,12 @@ D3D9ProxyCubeTexture::~D3D9ProxyCubeTexture(){
 }
 
 
+
+
+
+
+
+
 /**
 * If proxy surface is already stored on this level, return this one, otherwise create it.
 * To create a new stored surface level, call the method on both (left/right) actual textures.
@@ -85,7 +91,6 @@ HRESULT WINAPI D3D9ProxyCubeTexture::GetCubeMapSurface(D3DCUBEMAP_FACES FaceType
 
 
 		if (SUCCEEDED(leftResult)) {
-
 			D3D9ProxySurface* pWrappedSurfaceLevel = new D3D9ProxySurface(pActualSurfaceLevelLeft, pActualSurfaceLevelRight, device, this);
 
 			if(m_wrappedSurfaceLevels.insert(std::pair<CubeSurfaceKey, D3D9ProxySurface*>(key, pWrappedSurfaceLevel)).second) {

@@ -22,7 +22,6 @@ public:
 	D3DProxyDevice*                    device;
 	IDirect3DVertexShader9*            vs;
 	IDirect3DPixelShader9*             ps;
-	QByteArray                         code;
 	QString                            name;
 	QVector<cShaderConstant>           constants;
 	std::vector<cRegisterModification> modifications;

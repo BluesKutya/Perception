@@ -30,6 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "StereoView.h"
 #include <Streamer.h>
 #include "D3D9ProxySurface.h"
+#include <DxErr.h>
 
 StereoView::StereoView( ){
 	OutputDebugStringA("Created SteroView\n");
@@ -111,6 +112,7 @@ void StereoView::Draw( D3D9ProxySurface* stereoCapableSurface ){
 
 	device->CreateStateBlock( D3DSBT_ALL , &state );
 
+	state->Capture();
 
 
 	device->SetTransform        ( D3DTS_WORLD            , &identity );
@@ -161,6 +163,13 @@ void StereoView::Draw( D3D9ProxySurface* stereoCapableSurface ){
 	device->SetVertexShader     ( 0 );
 	device->SetPixelShader      ( 0 );
 	device->SetVertexDeclaration( 0 );
+	
+	IDirect3DSurface9* rt1 = 0;
+	IDirect3DSurface9* rt2 = 0;
+	IDirect3DSurface9* rt3 = 0;
+	device->GetRenderTarget( 1 , &rt1 );
+	device->GetRenderTarget( 2 , &rt2 );
+	device->GetRenderTarget( 3 , &rt3 );
 
 	device->SetRenderTarget( 1 , 0 );
 	device->SetRenderTarget( 2 , 0 );
@@ -248,6 +257,14 @@ void StereoView::Draw( D3D9ProxySurface* stereoCapableSurface ){
 
 	state->Apply();
 	state->Release();
+
+	device->SetRenderTarget( 1 , rt1 );
+	device->SetRenderTarget( 2 , rt2 );
+	device->SetRenderTarget( 3 , rt3 );
+
+	SAFE_RELEASE( rt1 );
+	SAFE_RELEASE( rt2 );
+	SAFE_RELEASE( rt3 );
 }
 
 
@@ -324,11 +341,11 @@ void StereoView::InitVertexBuffers()
 {
 	OutputDebugStringA("SteroView initVertexBuffers\n");
 
-	HRESULT result = device->CreateVertexBuffer(sizeof(TEXVERTEX) * 4, NULL,
+	HRESULT result = device->CreateVertexBuffer(sizeof(TEXVERTEX) * 4, 0 ,
 		D3DFVF_TEXVERTEX, D3DPOOL_MANAGED , &screenVertexBuffer, NULL);
 
 	if( FAILED(result) ){
-		OutputDebugStringA("SteroView initVertexBuffers failed\n");
+		printf("Vireio: SteroView initVertexBuffers failed %s\n" ,  DXGetErrorString(result) );
 	}
 
 	TEXVERTEX* vertices;

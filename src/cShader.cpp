@@ -21,13 +21,15 @@ cShader::cShader( D3DProxyDevice* d , IDirect3DVertexShader9* avs , IDirect3DPix
 
 	ID3DXConstantTable* table = 0;
 
-	UINT len;
+	UINT len = 0;
+
 	if( vs ){
 		vs->GetFunction( 0 , &len );
 	}else{
 		ps->GetFunction( 0 , &len );			
 	}
 
+	QByteArray code;
 	code.resize( len );
 
 	if( vs ){
@@ -36,11 +38,9 @@ cShader::cShader( D3DProxyDevice* d , IDirect3DVertexShader9* avs , IDirect3DPix
 		ps->GetFunction( code.data() , &len );	
 	}
 
-	
 	name += QCryptographicHash::hash( code , QCryptographicHash::Md5 ).toHex().toUpper();
 
-	D3DXGetShaderConstantTable( reinterpret_cast<DWORD*>(code.data()) , &table );
-
+	D3DXGetShaderConstantTable( (DWORD*)code.data() ,  &table );
 
 	if( table ){
 		D3DXCONSTANTTABLE_DESC tableDesc;
@@ -64,8 +64,6 @@ cShader::cShader( D3DProxyDevice* d , IDirect3DVertexShader9* avs , IDirect3DPix
 
 			for( int i=0 ; i<constantCount ; i++ ){
 				D3DXCONSTANT_DESC& desc = constantDesc[i];
-
-				
 
 				if( desc.RegisterSet != D3DXRS_FLOAT4 ){
 					continue;

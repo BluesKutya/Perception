@@ -42,6 +42,7 @@
     <ClCompile Include="..\src\Proxy\D3D9ProxyVolumeTexture.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDevice.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDeviceAdv.cpp" />
+    <ClCompile Include="..\src\Proxy\D3DProxyDevice_draw.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDevice_rules.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDevice_shaders.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDevice_view.cpp" />
@@ -102,9 +103,6 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\src\notes.txt" />
-  </ItemGroup>
-  <ItemGroup>
-    <Library Include="C:\Dev\NVAPI\x86\nvapi.lib" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{F0290832-C81F-4165-BA92-2A31FB20D7CD}</ProjectGuid>

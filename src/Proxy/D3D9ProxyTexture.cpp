@@ -58,30 +58,14 @@ D3D9ProxyTexture::~D3D9ProxyTexture()
 		right->Release();
 }
 
-#define IF_GUID(riid,a,b,c,d,e,f,g) if ((riid.Data1==a)&&(riid.Data2==b)&&(riid.Data3==c)&&(riid.Data4[0]==d)&&(riid.Data4[1]==e)&&(riid.Data4[2]==f)&&(riid.Data4[3]==g))
-/**
-* Ensures Skyrim works (and maybe other games).
-* Skyrim sometimes calls QueryInterface() to get the underlying surface instead of GetSurfaceLevel().
-* It even calls it to query the texture class.
-* @return (this) in case of query texture interface, GetSurfaceLevel() in case of query surface.
-***/
-HRESULT WINAPI D3D9ProxyTexture::QueryInterface(REFIID riid, LPVOID* ppv)
-{
-	/* IID_IDirect3DTexture9 */
-	/* {85C31227-3DE5-4f00-9B3A-F11AC38C18B5} */
-	IF_GUID(riid,0x85c31227,0x3de5,0x4f00,0x9b,0x3a,0xf1,0x1a)
-	{	
-		*ppv=(LPVOID)this;
-		this->AddRef();
-		return S_OK;
+
+
+HRESULT WINAPI D3D9ProxyTexture::QueryInterface( REFIID riid , LPVOID* ppv ){
+	if( riid == IID_IDirect3DSurface9 ){
+		return GetSurfaceLevel( 0 , (IDirect3DSurface9**)ppv );
 	}
 
-	/* IID_IDirect3DSurface9 */
-	/* {0CFBAF3A-9FF6-429a-99B3-A2796AF8B89B} */
-	IF_GUID(riid,0x0cfbaf3a,0x9ff6,0x429a,0x99,0xb3,0xa2,0x79)
-		return this->GetSurfaceLevel(0,(IDirect3DSurface9**)ppv);
-	
-	return actual->QueryInterface(riid, ppv);
+	return cBase::QueryInterface( riid , ppv );
 }
 
 /**
@@ -118,7 +102,6 @@ HRESULT WINAPI D3D9ProxyTexture::GetSurfaceLevel(UINT Level, IDirect3DSurface9**
 
 
 		if (SUCCEEDED(leftResult)) {
-
 			D3D9ProxySurface* pWrappedSurfaceLevel = new D3D9ProxySurface(pActualSurfaceLevelLeft, pActualSurfaceLevelRight, device, this);
 
 			if(m_wrappedSurfaceLevels.insert(std::pair<ULONG, D3D9ProxySurface*>(Level, pWrappedSurfaceLevel)).second) {

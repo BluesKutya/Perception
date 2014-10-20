@@ -153,6 +153,9 @@
     <ClCompile Include="..\src\cRule.cpp">
       <Filter>Common</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\Proxy\D3DProxyDevice_draw.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\Proxy\D3D9ProxyIndexBuffer.h">
@@ -279,8 +282,5 @@
     <Text Include="..\src\notes.txt">
       <Filter>Common</Filter>
     </Text>
-  </ItemGroup>
-  <ItemGroup>
-    <Library Include="C:\Dev\NVAPI\x86\nvapi.lib" />
   </ItemGroup>
 </Project>

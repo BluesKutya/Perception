@@ -1,10 +1,10 @@
 #pragma once
 
-template<class T>
+template<class T,class S=T>
 class cBase : public T{
 public:
 
-	cBase( T* a , D3DProxyDevice* d , IUnknown* c=0 ){
+	cBase( S* a , D3DProxyDevice* d , IUnknown* c=0 ){
 		actual    = a;
 		device    = d;
 		refCount  = 1;
@@ -29,7 +29,7 @@ public:
 		}
 	}
 
-	T*              actual;
+	S*              actual;
 
 	/** 
 	* Device that created this surface.
@@ -63,8 +63,86 @@ public:
 	IUnknown*       container;
 
 
+	template<class C>
+	bool GetInterface( IUnknown* ptr , REFIID riid , LPVOID* ppv ){
+		if( ptr && riid == __uuidof(C) ){
+			C* r = dynamic_cast<C*>(ptr);
+			if( r ){
+				*ppv = r;
+				r->AddRef();
+				return true;
+			}
+		}
+		return false;
+	}
+
+
 	HRESULT WINAPI QueryInterface( REFIID riid , LPVOID* ppv ){
-		return actual->QueryInterface( riid , ppv );
+
+		if( GetInterface<IUnknown>( this , riid , ppv ) ){
+			return S_OK;
+		}
+
+		if( GetInterface<IDirect3DResource9>( this , riid , ppv ) ){
+			return S_OK;
+		}
+
+		if( GetInterface<IDirect3DBaseTexture9>( this , riid , ppv ) ){
+			return S_OK;
+		}
+
+		if( GetInterface<IDirect3DTexture9>( this , riid , ppv ) ){
+			return S_OK;
+		}
+
+		if( GetInterface<IDirect3DCubeTexture9>( this , riid , ppv ) ){
+			return S_OK;
+		}
+
+		if( GetInterface<IDirect3DVolumeTexture9>( this , riid , ppv ) ){
+			return S_OK;
+		}
+
+		if( GetInterface<IDirect3DSurface9>( this , riid , ppv ) ){
+			return S_OK;
+		}
+
+		if( GetInterface<IDirect3DVertexBuffer9>( this , riid , ppv ) ){
+			return S_OK;
+		}
+
+		if( GetInterface<IDirect3DIndexBuffer9>( this , riid , ppv ) ){
+			return S_OK;
+		}
+
+		if( GetInterface<IDirect3DTexture9>( container , riid , ppv ) ){
+			return S_OK;
+		}
+
+		if( GetInterface<IDirect3DCubeTexture9>( container , riid , ppv ) ){
+			return S_OK;
+		}
+
+		if( GetInterface<IDirect3DVolumeTexture9>( container , riid , ppv ) ){
+			return S_OK;
+		}
+		
+
+		if( device ){
+			if( GetInterface<IDirect3DDevice9>( device , riid , ppv ) ){
+				return S_OK;
+			}
+
+			if( device->actualEx ){
+				if( GetInterface<IDirect3DDevice9Ex>( device , riid , ppv ) ){
+					return S_OK;
+				}
+			}
+		}
+		
+
+		//printf( "Vireio: query interface %d\n" , riid.Data1 );
+		return E_NOINTERFACE;
 	}
 
 

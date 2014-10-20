@@ -32,10 +32,8 @@ public:
 
 
 	int                                  type;
-	bool                                 sideLeft;
-	bool                                 sideRight;
 	bool                                 selectAuto;
-
+	
 	bool                                 selectIndexBuffer;
 	bool                                 selectViewport;
 	bool                                 selectViewTransform;
@@ -43,7 +41,6 @@ public:
 	bool                                 selectPixelShader;
 	bool                                 selectVertexShader;
 	bool                                 selectVertexDeclaration;
-	bool                                 selectVertexBuffers;
 
 	std::map< int , D3DXVECTOR4 >        storedVsConstants;
 	std::map< int , D3DXVECTOR4 >        storedPsConstants;
@@ -57,14 +54,16 @@ public:
 	D3DVIEWPORT9                                  storedViewport;
 	D3DXMATRIX                                    storedLeftView;
 	D3DXMATRIX                                    storedRightView;
+	bool                                          storedViewIsSet;
 	D3DXMATRIX                                    storedLeftProjection;
 	D3DXMATRIX                                    storedRightProjection;
+	bool                                          storedProjIsSet;
 
 	void captureSelected( );
 	void captureIndexBuffer           ( D3D9ProxyIndexBuffer* ib );
 	void captureViewport              ( D3DVIEWPORT9 viewport );
-	void captureViewTransform         ( D3DXMATRIX left , D3DXMATRIX right );
-	void captureProjTransform         ( D3DXMATRIX left , D3DXMATRIX right );
+	void captureViewTransform         ( bool isSet , D3DXMATRIX left , D3DXMATRIX right );
+	void captureProjTransform         ( bool isSet , D3DXMATRIX left , D3DXMATRIX right );
 	void captureVertexShader          ( D3D9ProxyVertexShader* shader );
 	void capturePixelShader           ( D3D9ProxyPixelShader* shader );
 	void captureVertexDeclaration     ( D3D9ProxyVertexDeclaration* decl );
@@ -72,8 +71,4 @@ public:
 	void captureVertexStream          ( int stream , D3D9ProxyVertexBuffer* buffer );
 	void captureVertexShaderConstant  ( int index , const float* data , int count );
 	void capturePixelShaderConstant   ( int index , const float* data , int count );
-	
-	void updateCaptureSideTracking();
-
-
 };

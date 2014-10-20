@@ -14,6 +14,7 @@
 #include "cMenu.h"
 #include "cShader.h"
 #include "cConstantBuffer.h"
+#include "cBase.h"
 
 
 class StereoView;
@@ -22,9 +23,8 @@ class ShaderRegisters;
 class GameHandler;
 
 
-class D3DProxyDevice : public IDirect3DDevice9Ex {
+class D3DProxyDevice : public cBase<IDirect3DDevice9Ex,IDirect3DDevice9> {
 public:
-
 
 
 	enum GameTypes{
@@ -113,7 +113,6 @@ public:
 	D3DXMATRIX*                     m_pCurrentView;
 	D3DXMATRIX*                     m_pCurrentProjection;
 	int                             screenshot;
-	IDirect3DDevice9*               actual;
 	IDirect3DDevice9Ex*             actualEx;
 	D3D9ProxyDirect3D*              m_pCreatedBy;
 	ULONG                           m_nRefCount;
@@ -248,9 +247,8 @@ public:
 
 
 	D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDeviceEx, D3D9ProxyDirect3D* pCreatedBy );
-	virtual ~D3DProxyDevice();
+	~D3DProxyDevice();
 
-	friend class D3D9ProxyStateBlock;
 
 	void    ProxyPresent( D3D9ProxySwapChain* swapChain );
 	HRESULT ProxyReset( D3DPRESENT_PARAMETERS* pPresentationParameters , D3DDISPLAYMODEEX* pFullscreenDisplayMode , bool useEx );
@@ -258,8 +256,6 @@ public:
 	HRESULT ProxyCreateRenderTarget         (UINT Width , UINT Height , D3DFORMAT Format , D3DMULTISAMPLE_TYPE MultiSample , DWORD MultisampleQuality , BOOL Lockable , IDirect3DSurface9** ppSurface , HANDLE* pSharedHandle , DWORD Usage , bool isSwapChainBackBuffer , bool useEx );
 	HRESULT ProxyCreateDepthStencilSurface  (UINT Width , UINT Height , D3DFORMAT Format , D3DMULTISAMPLE_TYPE MultiSample , DWORD MultisampleQuality , BOOL Discard , IDirect3DSurface9** ppSurface , HANDLE* pSharedHandle ,  DWORD Usage , bool useEx );
 
-	/*** BaseDirect3DDevice9 methods ***/
-	IDirect3DDevice9* getActual();
 
 	/*** D3DProxyDevice public methods ***/
 	
@@ -306,24 +302,6 @@ public:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	/*** IUnknown methods ***/
-	HRESULT WINAPI QueryInterface(REFIID riid, LPVOID* ppv);
-	ULONG   WINAPI AddRef();
-	ULONG   WINAPI Release();
 
 	/*** IDirect3DDevice9 methods ***/
 	HRESULT WINAPI TestCooperativeLevel();
