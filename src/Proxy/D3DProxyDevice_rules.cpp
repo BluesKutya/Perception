@@ -66,8 +66,6 @@ void D3DProxyDevice::rulesDelete( cRule& r ){
 
 
 void D3DProxyDevice::rulesUpdate( ){
-
-
 	if( config.shaderAnalyzer ){
 		for( cRule& r : config.rules ){
 			if( r.item ){
@@ -199,7 +197,6 @@ void D3DProxyDevice::rulesUpdate( ){
 			i->callback = [this,&r](){
 				menu.goToMenu( rulesMenu );
 				rulesDelete( r );
-				rulesUpdate();
 			};
 		}
 	}
@@ -270,6 +267,7 @@ void D3DProxyDevice::rulesApply( ){
 	psConstants.applyStereo();
 }
 
+
 void D3DProxyDevice::rulesPreDraw( ){
 	if( (activePixelShader && activePixelShader->doDisableZ) ||
 		(activeVertexShader && activeVertexShader->doDisableZ)
@@ -282,6 +280,7 @@ void D3DProxyDevice::rulesPreDraw( ){
 		rulesZDisable = false;
 	}
 }
+
 
 void D3DProxyDevice::rulesPostDraw( ){
 	if( rulesZDisable ){

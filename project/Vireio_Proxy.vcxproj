@@ -47,7 +47,6 @@
     <ClCompile Include="..\src\Proxy\D3DProxyDevice_shaders.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDevice_view.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDevice_vrboost.cpp" />
-    <ClCompile Include="..\src\StereoBackbuffer.cpp" />
     <ClCompile Include="..\src\StereoView.cpp" />
     <ClCompile Include="..\src\Streaming\Streamer-enc-ffmpeg.cpp" />
     <ClCompile Include="..\src\Streaming\Streamer-net-udp.cpp" />
@@ -89,7 +88,6 @@
     <ClInclude Include="..\src\Proxy\D3D9ProxyVolumeTexture.h" />
     <ClInclude Include="..\src\Proxy\D3DProxyDevice.h" />
     <ClInclude Include="..\src\Proxy\D3DProxyDeviceAdv.h" />
-    <ClInclude Include="..\src\StereoBackbuffer.h" />
     <ClInclude Include="..\src\StereoView.h" />
     <ClInclude Include="..\src\Streaming\inttypes.h" />
     <ClInclude Include="..\src\Streaming\Streamer.h" />
@@ -144,6 +142,7 @@
     <PreBuildEvent>
       <Command>del "$(TargetPath)"</Command>
     </PreBuildEvent>
+    <ClCompile />
     <ClCompile />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">

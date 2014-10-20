@@ -96,9 +96,6 @@
     <ClCompile Include="..\src\Tracking\SharedMemoryTracker.cpp">
       <Filter>Tracking</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\StereoBackbuffer.cpp">
-      <Filter>Common</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\StereoView.cpp">
       <Filter>Common</Filter>
     </ClCompile>
@@ -208,9 +205,6 @@
     </ClInclude>
     <ClInclude Include="..\src\Streaming\inttypes.h">
       <Filter>Streaming</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\StereoBackbuffer.h">
-      <Filter>Common</Filter>
     </ClInclude>
     <ClInclude Include="..\src\StereoView.h">
       <Filter>Common</Filter>

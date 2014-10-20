@@ -52,18 +52,22 @@ public:
 	cPtr<D3D9ProxyPixelShader>                    storedPixelShader;
 	cPtr<D3D9ProxyVertexDeclaration>              storedVertexDeclaration;
 	D3DVIEWPORT9                                  storedViewport;
-	D3DXMATRIX                                    storedLeftView;
-	D3DXMATRIX                                    storedRightView;
-	bool                                          storedViewIsSet;
-	D3DXMATRIX                                    storedLeftProjection;
-	D3DXMATRIX                                    storedRightProjection;
-	bool                                          storedProjIsSet;
+
+	bool                                          storedViewSet;
+	D3DXMATRIX                                    storedViewOriginal;
+	D3DXMATRIX                                    storedViewLeft;
+	D3DXMATRIX                                    storedViewRight;
+
+	bool                                          storedProjSet;
+	D3DXMATRIX                                    storedProjLeft;
+	D3DXMATRIX                                    storedProjRight;
+	D3DXMATRIX                                    storedProjOriginal;
 
 	void captureSelected( );
 	void captureIndexBuffer           ( D3D9ProxyIndexBuffer* ib );
 	void captureViewport              ( D3DVIEWPORT9 viewport );
-	void captureViewTransform         ( bool isSet , D3DXMATRIX left , D3DXMATRIX right );
-	void captureProjTransform         ( bool isSet , D3DXMATRIX left , D3DXMATRIX right );
+	void captureViewTransform         ( );
+	void captureProjTransform         ( );
 	void captureVertexShader          ( D3D9ProxyVertexShader* shader );
 	void capturePixelShader           ( D3D9ProxyPixelShader* shader );
 	void captureVertexDeclaration     ( D3D9ProxyVertexDeclaration* decl );

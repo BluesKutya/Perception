@@ -22,7 +22,9 @@ public:
 	}
 
 	~cBase( ){
-		actual->Release();
+		if( actual ){
+			actual->Release();
+		}
 
 		if( !container ){
 			device->Release();

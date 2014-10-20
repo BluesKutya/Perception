@@ -1,5 +1,6 @@
 #include "cMenu.h"
 #include "D3DProxyDevice.h"
+#include "D3D9ProxySurface.h"
 
 
 cHotkey::cHotkey(){
@@ -308,29 +309,6 @@ void cMenu::render( ){
 		return;
 	}
 
-	if( config.showVRMouse ){
-		POINT pt;   
-		GetCursorPos(&pt);
-		
-		ScreenToClient( device->windowHandle , &pt );
-
-		D3DRECT rec2;	
-		rec2.x1 = pt.x - 5;
-		rec2.x2 = rec2.x1 + 10; 
-		rec2.y1 = pt.y - 5;
-		rec2.y2 = rec2.y1 + 10; 	
-		
-		device->Clear( 1 , &rec2 , D3DCLEAR_TARGET , D3DCOLOR_ARGB(255,255,255,255) , 0 , 0 );
-
-		rec2.x1 += 2;
-		rec2.x2 -= 2;
-		rec2.y1 += 2;
-		rec2.y2 -= 2;
-
-		device->Clear( 1 , &rec2 , D3DCLEAR_TARGET , D3DCOLOR_ARGB(255,0,0,0) , 0 , 0 );
-	}
-
-
 	newKeyDown = false;
 	
 	updateSelected();
@@ -382,7 +360,6 @@ void cMenu::render( ){
 				menu = menu->parent;
 			}else{
 				show = false;
-				return;
 			}
 		}
 	}
@@ -497,167 +474,194 @@ void cMenu::render( ){
 		}
 	}*/
 
-	if( messageText.isEmpty() && !show ){
+	if( messageText.isEmpty() && !show && !config.showVRMouse ){
 		return;
 	}
 
+	auto prevRt = device->storeAndClearRenderTargets();
 
-	sprite->Begin( D3DXSPRITE_ALPHABLEND );
+	if( config.showVRMouse ){
+		POINT pt;   
+		GetCursorPos(&pt);
+		
+		ScreenToClient( device->windowHandle , &pt );
 
-	D3DXMATRIX matScale;
-	D3DXMatrixScaling( &matScale , viewportWidth / 1920.0 , viewportHeight / 1080.0 , 1.0 );
-	sprite->SetTransform( &matScale );
+		D3DRECT rec2;	
+		rec2.x1 = pt.x - 5;
+		rec2.x2 = rec2.x1 + 10; 
+		rec2.y1 = pt.y - 5;
+		rec2.y2 = rec2.y1 + 10; 	
+		
+		device->Clear( 1 , &rec2 , D3DCLEAR_TARGET , D3DCOLOR_ARGB(255,255,255,255) , 0 , 0 );
 
-	if( show ){
-		if( menu->children.isEmpty() ){
-			scrollY = 0;
-		}
+		rec2.x1 += 2;
+		rec2.x2 -= 2;
+		rec2.y1 += 2;
+		rec2.y2 -= 2;
 
-		posY = 300 - scrollY;
-
-		if( hotkeyState ){
-			drawText( menu->selected->name , ALIGN_CENTER );
-		}else{
-			drawText( menu->name , ALIGN_CENTER );
-		}
-	
-		posY += 40;
-		drawRect( 0 , posY , 1920 , posY+3 , D3DCOLOR_ARGB(255,255,128,128)  );
+		device->Clear( 1 , &rec2 , D3DCLEAR_TARGET , D3DCOLOR_ARGB(255,0,0,0) , 0 , 0 );
 	}
 
-	if( show && hotkeyState ){
-		QString s = "Key combination: ";
-		if( hotkeyNew.valid() ){
-			s += hotkeyNew.toString() ;
-		}else{
-			s += "<wait to clear hotkey>";
+	if( show || !messageText.isEmpty() ){
+		sprite->Begin( D3DXSPRITE_ALPHABLEND );
+
+		D3DXMATRIX matScale;
+		D3DXMatrixScaling( &matScale , viewportWidth / 1920.0 , viewportHeight / 1080.0 , 1.0 );
+		sprite->SetTransform( &matScale );
+
+		if( show ){
+			if( menu->children.isEmpty() ){
+				scrollY = 0;
+			}
+
+			posY = 300 - scrollY;
+
+			if( hotkeyState ){
+				drawText( menu->selected->name , ALIGN_CENTER );
+			}else{
+				drawText( menu->name , ALIGN_CENTER );
+			}
+	
+			posY += 40;
+			drawRect( 0 , posY , 1920 , posY+3 , D3DCOLOR_ARGB(255,255,128,128)  );
 		}
-		drawText( s , ALIGN_LEFT_COLUMN );
-	}
+
+		if( show && hotkeyState ){
+			QString s = "Key combination: ";
+			if( hotkeyNew.valid() ){
+				s += hotkeyNew.toString() ;
+			}else{
+				s += "<wait to clear hotkey>";
+			}
+			drawText( s , ALIGN_LEFT_COLUMN );
+		}
 
 
-	if( show && !hotkeyState ){
+		if( show && !hotkeyState ){
 
 	
-		for( cMenuItem* i : menu->children ){
-			if( !i->visible ){
-				continue;
-			}
-
-			if( i == menu->selected ){
-				drawRect( 0 , posY+2 , 1920 , posY + 4 , D3DCOLOR_ARGB(255,128,255,128)  );
-
-				if( posY > 800 ){
-					scrollY += posY - 800;
+			for( cMenuItem* i : menu->children ){
+				if( !i->visible ){
+					continue;
 				}
 
-				if( posY < 300 ){
-					scrollY += posY - 300;
-				}
-			}
+				if( i == menu->selected ){
+					drawRect( 0 , posY+2 , 1920 , posY + 4 , D3DCOLOR_ARGB(255,128,255,128)  );
 
-
-			if( i->hotkey.valid() ){
-				drawText( i->hotkey.toString() , ALIGN_HOTKEY_COLUMN );
-			}
-
-			if( posY > -64 && posY < 1144 ){
-				drawText( i->name , ALIGN_LEFT_COLUMN );
-
-				if( i->type == cMenuItem::CHECKBOX ){
-					drawText( (*i->checkVar) ? i->checkOn : i->checkOff , ALIGN_RIGHT_COLUMN );
-				}else
-				if( i->type == cMenuItem::SPINNER ){
-					char s[256];
-
-					int decimals = -floor(log10(i->spinStep));
-					if( decimals < 0){
-						decimals = 0;
+					if( posY > 800 ){
+						scrollY += posY - 800;
 					}
 
-					sprintf_s( s , "%.*f" , decimals , *i->spinVar );
+					if( posY < 300 ){
+						scrollY += posY - 300;
+					}
+				}
+
+
+				if( i->hotkey.valid() ){
+					drawText( i->hotkey.toString() , ALIGN_HOTKEY_COLUMN );
+				}
+
+				if( posY > -64 && posY < 1144 ){
+					drawText( i->name , ALIGN_LEFT_COLUMN );
+
+					if( i->type == cMenuItem::CHECKBOX ){
+						drawText( (*i->checkVar) ? i->checkOn : i->checkOff , ALIGN_RIGHT_COLUMN );
+					}else
+					if( i->type == cMenuItem::SPINNER ){
+						char s[256];
+
+						int decimals = -floor(log10(i->spinStep));
+						if( decimals < 0){
+							decimals = 0;
+						}
+
+						sprintf_s( s , "%.*f" , decimals , *i->spinVar );
 				
-					drawText( s , ALIGN_RIGHT_COLUMN );
-				}else
-				if( i->type == cMenuItem::SELECT ){
-					drawText( i->selectVariants[ *i->selectVar ] , ALIGN_RIGHT_COLUMN );
-				}else
-				if( i->type == cMenuItem::TEXT ){
-					drawText( *i->textVar , ALIGN_RIGHT_COLUMN );
+						drawText( s , ALIGN_RIGHT_COLUMN );
+					}else
+					if( i->type == cMenuItem::SELECT ){
+						drawText( i->selectVariants[ *i->selectVar ] , ALIGN_RIGHT_COLUMN );
+					}else
+					if( i->type == cMenuItem::TEXT ){
+						drawText( *i->textVar , ALIGN_RIGHT_COLUMN );
+					}
+				}
+
+				posY += 40;
+
+				if( i == menu->selected ){
+					drawRect( 0 , posY-2 , 1920 , posY + 2 , D3DCOLOR_ARGB(255,128,255,128)  );
 				}
 			}
+		}
 
-			posY += 40;
+		if( !hotkeyState && menu->showCalibrator ){
+			D3DRECT rect;
+			rect.x1 = viewportWidth / 2 - 1;
+			rect.x2 = viewportWidth / 2 + 1;
+			rect.y1 = 0;
+			rect.y2 = viewportHeight;
+			device->Clear( 1 , &rect , D3DCLEAR_TARGET , D3DCOLOR_ARGB(255,255,255,255) , 0 , 0 );
 
-			if( i == menu->selected ){
-				drawRect( 0 , posY-2 , 1920 , posY + 2 , D3DCOLOR_ARGB(255,128,255,128)  );
+			rect.x1 = viewportWidth  / 2 - 0.06*viewportWidth;
+			rect.x2 = viewportWidth  / 2 + 0.06*viewportWidth;
+			rect.y1 = viewportHeight / 2 - 1;
+			rect.y2 = viewportHeight / 2 + 1;
+			device->Clear( 1 , &rect , D3DCLEAR_TARGET , D3DCOLOR_ARGB(255,255,255,255) , 0 , 0 );
+
+			rect.x1 = viewportWidth  / 2 - 0.06*viewportWidth - 1;
+			rect.x2 = viewportWidth  / 2 - 0.06*viewportWidth + 1;
+			rect.y1 = viewportHeight / 2 - 32;
+			rect.y2 = viewportHeight / 2 + 32;
+			device->Clear( 1 , &rect , D3DCLEAR_TARGET , D3DCOLOR_ARGB(255,255,255,255) , 0 , 0 );
+
+			rect.x1 = viewportWidth  / 2 + 0.06*viewportWidth - 1;
+			rect.x2 = viewportWidth  / 2 + 0.06*viewportWidth + 1;
+			rect.y1 = viewportHeight / 2 - 32;
+			rect.y2 = viewportHeight / 2 + 32;
+			device->Clear( 1 , &rect , D3DCLEAR_TARGET , D3DCOLOR_ARGB(255,255,255,255) , 0 , 0 );
+
+
+			drawText(
+				"1) Walk up as close as possible\n"
+				"   to a 90 degree vertical object\n"
+				"   (wall cornet, table, square post)\n"
+				"2) Close left eye\n"
+				"3) Open  right eye\n"
+				"4) Align long vertical line with edge\n"
+				"   with mouse or head tracker\n"
+				"5) Close right eye\n"
+				"6) Open  left  eye\n"
+				"7) Adjust \"Separation\" until the same\n"
+				"   edge is aligned with small vertical\n"
+				"   line in left eye view\n"
+				"8) Repeat 2..7 until edge is aligned on both\n"
+				"   long line in right eye view and short right\n"
+				"   line in left eye view. Separation now configured.\n"
+				"9) Open both eyes\n"
+				"10) Walk somewhere where there are objects nearby\n"
+				"    and far away on screen on same time.\n"
+				"11) Adjust \"Covergence\" to a comfort level.\n"
+				"    (currently no precise method available)"
+				, ALIGN_RIGHT_COLUMN
+			);
+		}
+
+		if( !messageText.isEmpty() ){
+			if( messageTimeout.elapsed() > 5000 ){
+				messageText.clear();
+			}else{
+				posY = 600;
+				drawText( messageText , ALIGN_CENTER );
 			}
 		}
+
+
+		sprite->End( );
 	}
 
-	if( !hotkeyState && menu->showCalibrator ){
-		D3DRECT rect;
-		rect.x1 = viewportWidth / 2 - 1;
-		rect.x2 = viewportWidth / 2 + 1;
-		rect.y1 = 0;
-		rect.y2 = viewportHeight;
-		device->Clear( 1 , &rect , D3DCLEAR_TARGET , D3DCOLOR_ARGB(255,255,255,255) , 0 , 0 );
-
-		rect.x1 = viewportWidth  / 2 - 0.06*viewportWidth;
-		rect.x2 = viewportWidth  / 2 + 0.06*viewportWidth;
-		rect.y1 = viewportHeight / 2 - 1;
-		rect.y2 = viewportHeight / 2 + 1;
-		device->Clear( 1 , &rect , D3DCLEAR_TARGET , D3DCOLOR_ARGB(255,255,255,255) , 0 , 0 );
-
-		rect.x1 = viewportWidth  / 2 - 0.06*viewportWidth - 1;
-		rect.x2 = viewportWidth  / 2 - 0.06*viewportWidth + 1;
-		rect.y1 = viewportHeight / 2 - 32;
-		rect.y2 = viewportHeight / 2 + 32;
-		device->Clear( 1 , &rect , D3DCLEAR_TARGET , D3DCOLOR_ARGB(255,255,255,255) , 0 , 0 );
-
-		rect.x1 = viewportWidth  / 2 + 0.06*viewportWidth - 1;
-		rect.x2 = viewportWidth  / 2 + 0.06*viewportWidth + 1;
-		rect.y1 = viewportHeight / 2 - 32;
-		rect.y2 = viewportHeight / 2 + 32;
-		device->Clear( 1 , &rect , D3DCLEAR_TARGET , D3DCOLOR_ARGB(255,255,255,255) , 0 , 0 );
-
-
-		drawText(
-			"1) Walk up as close as possible\n"
-			"   to a 90 degree vertical object\n"
-			"   (wall cornet, table, square post)\n"
-			"2) Close left eye\n"
-			"3) Open  right eye\n"
-			"4) Align long vertical line with edge\n"
-			"   with mouse or head tracker\n"
-			"5) Close right eye\n"
-			"6) Open  left  eye\n"
-			"7) Adjust \"Separation\" until the same\n"
-			"   edge is aligned with small vertical\n"
-			"   line in left eye view\n"
-			"8) Repeat 2..7 until edge is aligned on both\n"
-			"   long line in right eye view and short right\n"
-			"   line in left eye view. Separation now configured.\n"
-			"9) Open both eyes\n"
-			"10) Walk somewhere where there are objects nearby\n"
-			"    and far away on screen on same time.\n"
-			"11) Adjust \"Covergence\" to a comfort level.\n"
-			"    (currently no precise method available)"
-			, ALIGN_RIGHT_COLUMN
-		);
-	}
-
-	if( !messageText.isEmpty() ){
-		if( messageTimeout.elapsed() > 5000 ){
-			messageText.clear();
-		}else{
-			posY = 600;
-			drawText( messageText , ALIGN_CENTER );
-		}
-	}
-
-
-	sprite->End( );
+	device->restoreRenderTargets( prevRt );
 }
 
 

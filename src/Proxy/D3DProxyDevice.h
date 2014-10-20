@@ -80,8 +80,8 @@ public:
 	cPtr<D3D9ProxySurface>                    activeStereoDepthStencil;
 	cPtr<D3D9ProxyIndexBuffer>                activeIndicies;
 	cPtr<D3D9ProxyVertexDeclaration>          activeVertexDeclaration;
-	QVector<cPtr<D3D9ProxySwapChain>>         activeSwapChains;
-	std::map<int,cPtr<D3D9ProxySurface>>      activeRenderTargets;	
+	std::vector<cPtr<D3D9ProxySwapChain>>     activeSwapChains;
+	std::vector<cPtr<D3D9ProxySurface>>       activeRenderTargets;	
 	std::map<int,cPtr<IDirect3DBaseTexture9>> activeTextures;
 	std::map<int,cPtr<D3D9ProxyVertexBuffer>> activeVertexes;
 	cPtr<D3D9ProxyVertexShader>               activeVertexShader;
@@ -100,18 +100,18 @@ public:
 	UINT                            m_VertexShaderCountLastFrame;
 	float                           fps;
 	
-
-	
-
 	bool                            m_bInBeginEndStateBlock;
-	bool                            m_bViewTransformSet;
-	bool                            m_bProjectionTransformSet;
-	D3DXMATRIX                      m_leftView;
-	D3DXMATRIX                      m_rightView;
-	D3DXMATRIX                      m_leftProjection;
-	D3DXMATRIX                      m_rightProjection;
-	D3DXMATRIX*                     m_pCurrentView;
-	D3DXMATRIX*                     m_pCurrentProjection;
+
+	bool                            transformViewSet;
+	D3DXMATRIX                      transformViewOriginal;
+	D3DXMATRIX                      transformViewLeft;
+	D3DXMATRIX                      transformViewRight;
+
+	bool                            transformProjSet;
+	D3DXMATRIX                      transformProjLeft;
+	D3DXMATRIX                      transformProjRight;
+	D3DXMATRIX                      transformProjOriginal;
+
 	int                             screenshot;
 	IDirect3DDevice9Ex*             actualEx;
 	D3D9ProxyDirect3D*              m_pCreatedBy;
@@ -242,6 +242,9 @@ public:
 
 
 
+
+	std::vector<cPtr<D3D9ProxySurface>>  storeAndClearRenderTargets();
+	void                                 restoreRenderTargets( std::vector<cPtr<D3D9ProxySurface>>& list );
 
 
 

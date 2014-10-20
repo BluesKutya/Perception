@@ -25,9 +25,9 @@ public:
 	~StereoView( );
 
 	/*** StereoView public methods ***/
-	virtual void Init(IDirect3DDevice9* pActualDevice);
+	virtual void Init(D3DProxyDevice* d);
 	virtual void ReleaseEverything();
-	virtual void Draw(D3D9ProxySurface* stereoCapableSurface);
+	virtual void Draw(D3D9ProxySwapChain* chain);
 	virtual void SaveScreen();
 	virtual void PostReset();
 
@@ -36,7 +36,8 @@ public:
 
 
 	D3DVIEWPORT9      viewport;
-	IDirect3DDevice9* device;
+	IDirect3DDevice9* actual;
+	D3DProxyDevice*   proxy;
 	bool initialized;
 	float HeadYOffset;	
 	float XOffset;	

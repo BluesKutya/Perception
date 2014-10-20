@@ -114,19 +114,21 @@ void D3D9ProxyStateBlock::captureViewport( D3DVIEWPORT9 viewport ){
 }
 
 
-void D3D9ProxyStateBlock::captureViewTransform( bool isSet , D3DXMATRIX left , D3DXMATRIX right ){
+void D3D9ProxyStateBlock::captureViewTransform( ){
 	selectViewTransform |= selectAuto;
-	storedViewIsSet      = isSet;
-	storedLeftView       = left;
-	storedRightView      = right;
+	storedViewSet        = device->transformViewSet;
+	storedViewOriginal   = device->transformViewOriginal;
+	storedViewLeft       = device->transformViewLeft;
+	storedViewRight      = device->transformViewRight;
 }
 
 
-void D3D9ProxyStateBlock::captureProjTransform( bool isSet , D3DXMATRIX left , D3DXMATRIX right ){
+void D3D9ProxyStateBlock::captureProjTransform( ){
 	selectProjTransform  |= selectAuto;
-	storedProjIsSet       = isSet;
-	storedLeftProjection  = left;
-	storedRightProjection = right;
+	storedProjSet         = device->transformProjSet;
+	storedProjOriginal    = device->transformProjOriginal;
+	storedProjLeft        = device->transformProjLeft;
+	storedProjRight       = device->transformProjRight;
 }
 
 
@@ -186,15 +188,11 @@ void D3D9ProxyStateBlock::captureSelected( ){
 	}
 
 	if( selectViewTransform ){
-		storedLeftView  = device->m_leftView;
-		storedRightView = device->m_rightView;
-		storedViewIsSet = device->m_bViewTransformSet;
+		captureViewTransform();
 	}
 
 	if( selectProjTransform ){
-		storedLeftProjection  = device->m_leftProjection;
-		storedRightProjection = device->m_rightProjection;
-		storedProjIsSet       = device->m_bProjectionTransformSet;
+		captureProjTransform();
 	}
 
 	if( selectPixelShader ){
@@ -277,15 +275,17 @@ METHOD_IMPL( HRESULT , WINAPI , D3D9ProxyStateBlock , Apply )
 	}
 
 	if( selectViewTransform ){
-		device->m_bViewTransformSet = storedViewIsSet;
-		device->m_leftView          = storedLeftView;
-		device->m_rightView         = storedRightView;
+		device->transformViewSet      = storedViewSet;
+		device->transformViewOriginal = storedViewOriginal;
+		device->transformViewLeft     = storedViewLeft;
+		device->transformViewRight    = storedViewRight;
 	}
 
 	if( selectProjTransform ){
-		device->m_bProjectionTransformSet = storedProjIsSet;
-		device->m_leftProjection          = storedLeftProjection;
-		device->m_rightProjection         = storedRightProjection;
+		device->transformProjSet      = storedProjSet;
+		device->transformProjOriginal = storedProjOriginal;
+		device->transformProjLeft     = storedProjLeft;
+		device->transformProjRight    = storedProjRight;
 	}
 
 	if( selectPixelShader ){

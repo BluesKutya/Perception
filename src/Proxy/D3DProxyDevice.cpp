@@ -9,7 +9,6 @@
 #include "D3D9ProxyIndexBuffer.h"
 #include "D3D9ProxyStateBlock.h" 
 #include "D3D9ProxyQuery.h"
-#include "StereoBackBuffer.h"
 #include "StereoView.h"
 #include <stdio.h>
 #include <iostream>
@@ -24,17 +23,8 @@
 #include <DxErr.h>
 #include <qdir.h>
 
-#define SMALL_FLOAT 0.001f
-#define	SLIGHTLY_LESS_THAN_ONE 0.999f
-
-#define OUTPUT_HRESULT(hr) { _com_error err(hr); LPCTSTR errMsg = err.ErrorMessage(); OutputDebugStringA(errMsg); }
 
 
-
-
-/**
-* Constructor : creates game handler and sets various states.
-***/
 D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDeviceEx, D3D9ProxyDirect3D* pCreatedBy ):
 	cBase( pDevice , this , 0 ) ,
 	actualEx( pDeviceEx ),
@@ -60,6 +50,10 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	D3DCAPS9 capabilities;
 	actual->GetDeviceCaps(&capabilities);
 
+	activeRenderTargets.resize( capabilities.NumSimultaneousRTs );
+
+	
+
 	vsConstants.resize( capabilities.MaxVertexShaderConst );
 
 	switch( D3DSHADER_VERSION_MAJOR(capabilities.PixelShaderVersion) ){
@@ -78,17 +72,21 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	}
 
 
+	transformViewSet = false;
+	transformProjSet = false;
 
-	D3DXMatrixIdentity(&m_leftView);
-	D3DXMatrixIdentity(&m_rightView);
-	D3DXMatrixIdentity(&m_leftProjection);
-	D3DXMatrixIdentity(&m_rightProjection);	
+	D3DXMatrixIdentity( &transformProjOriginal );
+	D3DXMatrixIdentity( &transformProjLeft     );
+	D3DXMatrixIdentity( &transformProjRight    );
 
+	D3DXMatrixIdentity( &transformViewOriginal );
+	D3DXMatrixIdentity( &transformViewLeft     );
+	D3DXMatrixIdentity( &transformViewRight    );
 	
+	
+
 	m_bActiveViewportIsDefault = true;
 	m_bViewportIsSquished = false;
-	m_bViewTransformSet = false;
-	m_bProjectionTransformSet = false;
 	m_bInBeginEndStateBlock = false;
 	stateBlock = NULL;
 	m_isFirstBeginSceneOfFrame = true;
@@ -357,14 +355,33 @@ D3DProxyDevice::~D3DProxyDevice(){
 	ReleaseEverything();
 
 	vrbFree();
+}
 
-	// always do this last
-	for( cPtr<D3D9ProxySwapChain>& ptr : activeSwapChains ){
-		ptr.releaseAndDelete();
+
+
+std::vector<cPtr<D3D9ProxySurface>> D3DProxyDevice::storeAndClearRenderTargets(){
+	auto r = activeRenderTargets;
+
+	for( int c=1 ; c<activeRenderTargets.size() ; c++ ){
+		SetRenderTarget( c , 0 );
 	}
 
-	SAFE_RELEASE(actual);
+	return r;
 }
+
+void D3DProxyDevice::restoreRenderTargets( std::vector<cPtr<D3D9ProxySurface>>& list ){
+	for( int c=0 ; c< list.size() ; c++ ){
+		SetRenderTarget( c , list[c] );
+	}
+}
+
+
+
+
+
+
+
+
 
 
 
@@ -379,7 +396,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetDirect3D , IDirect3D9** , pp
 }
 
 
-// Calls SetCursorProperties() using the actual left surface from the proxy of pCursorBitmap.
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetCursorProperties , UINT , XHotSpot , UINT , YHotSpot , IDirect3DSurface9* , pCursorBitmap )
 	if (!pCursorBitmap){
 		return actual->SetCursorProperties(XHotSpot, YHotSpot, NULL);
@@ -388,10 +405,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetCursorProperties , UINT , XH
 }
 
 
-/**
-* Creates a proxy (or wrapped) swap chain.
-* @param pSwapChain [in, out] Proxy (wrapped) swap chain to be returned.
-***/
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateAdditionalSwapChain , D3DPRESENT_PARAMETERS* , pPresentationParameters , IDirect3DSwapChain9** , pSwapChain )
 	IDirect3DSwapChain9* pActualSwapChain;
 	HRESULT result = actual->CreateAdditionalSwapChain(pPresentationParameters, &pActualSwapChain);
@@ -399,7 +413,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateAdditionalSwapChain , D3D
 	if (SUCCEEDED(result)) {
 		D3D9ProxySwapChain* wrappedSwapChain = new D3D9ProxySwapChain(pActualSwapChain, this, true);
 		*pSwapChain = wrappedSwapChain;
-		activeSwapChains += wrappedSwapChain;
+		activeSwapChains.push_back( wrappedSwapChain );
 		
 		//since ref added in cPtr of activeSwapChains list
 		wrappedSwapChain->Release();
@@ -408,13 +422,10 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateAdditionalSwapChain , D3D
 	return result;
 }
 
-/**
-* Provides the swap chain from the intern vector of active proxy (wrapped) swap chains.
-* @param pSwapChain [in, out] The proxy (wrapped) swap chain to be returned.
-* @see D3D9ProxySwapChain
-***/
+
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetSwapChain , UINT , iSwapChain , IDirect3DSwapChain9** , pSwapChain )
-	if( iSwapChain >= activeSwapChains.count() ){
+	if( iSwapChain >= activeSwapChains.size() ){
 		return D3DERR_INVALIDCALL;
 	}
 
@@ -425,14 +436,8 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetSwapChain , UINT , iSwapChai
 
 
 
-
-
-
-/**
-* Calls the backbuffer using the stored active proxy (wrapped) swap chain.
-***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetBackBuffer , UINT , iSwapChain, UINT , iBackBuffer , D3DBACKBUFFER_TYPE , Type , IDirect3DSurface9** , ppBackBuffer )
-	if( iSwapChain >= activeSwapChains.count() ){
+	if( iSwapChain >= activeSwapChains.size() ){
 		return D3DERR_INVALIDCALL;
 	}
 
@@ -440,12 +445,8 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetBackBuffer , UINT , iSwapCha
 }
 
 
-/**
-* Creates a proxy (or wrapped) texture (D3DProxyTexture).
-* Texture to be created only gets both stereo textures if game handler agrees.
-* @see D3DProxyTexture
-* @see GameHandler::ShouldDuplicateTexture()
-***/
+
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateTexture , UINT , Width , UINT , Height , UINT , Levels , DWORD , Usage , D3DFORMAT , Format , D3DPOOL , Pool , IDirect3DTexture9** , ppTexture , HANDLE* , pSharedHandle )
 	HRESULT creationResult;
 	IDirect3DTexture9* pLeftTexture = NULL;
@@ -471,12 +472,12 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateTexture , UINT , Width , 
 	return creationResult;
 }
 
-/**
-* Creates a a proxy (or wrapped) volume texture (D3D9ProxyVolumeTexture).
-* Volumes can't be used as render targets and therefore don't need to be stereo (in DX9).
-* @see D3D9ProxyVolumeTexture
-***/	
+
+
+
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateVolumeTexture , UINT , Width , UINT , Height , UINT , Depth , UINT , Levels , DWORD , Usage , D3DFORMAT , Format , D3DPOOL , Pool , IDirect3DVolumeTexture9** , ppVolumeTexture , HANDLE* , pSharedHandle )
+
 	IDirect3DVolumeTexture9* pActualTexture = NULL;
 	HRESULT creationResult = actual->CreateVolumeTexture(Width, Height, Depth, Levels, Usage, Format, Pool, &pActualTexture, pSharedHandle);
 
@@ -486,20 +487,20 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateVolumeTexture , UINT , Wi
 	return creationResult;
 }
 
-/**
-* Creates a proxy (or wrapped) cube texture (D3D9ProxyCubeTexture).
-* Texture to be created only gets both stereo textures if game handler agrees.
-* @see D3D9ProxyCubeTexture
-* @see GameHandler::ShouldDuplicateCubeTexture() 
-***/
+
+
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateCubeTexture , UINT , EdgeLength , UINT , Levels , DWORD , Usage , D3DFORMAT , Format, D3DPOOL , Pool , IDirect3DCubeTexture9** , ppCubeTexture , HANDLE* , pSharedHandle )
+
 	HRESULT creationResult;
 	IDirect3DCubeTexture9* pLeftCubeTexture = NULL;
 	IDirect3DCubeTexture9* pRightCubeTexture = NULL;	
 
+	printf("create cube %d %d %d %d %d\n",EdgeLength, Levels, Usage, Format, Pool);
+
 	// try and create left
 	if (SUCCEEDED(creationResult = actual->CreateCubeTexture(EdgeLength, Levels, Usage, Format, Pool, &pLeftCubeTexture, pSharedHandle))) {
-
+		
 		// Does this Texture need duplicating?
 		if( Vireio_shouldDuplicate( config.duplicateCubeTexture , 0 , 0 , Usage , false ) ){
 			if (FAILED(actual->CreateCubeTexture(EdgeLength, Levels, Usage, Format, Pool, &pRightCubeTexture, pSharedHandle))) {
@@ -518,10 +519,11 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateCubeTexture , UINT , Edge
 	return creationResult;
 }
 
-/**
-* Creates base vertex buffer pointer (D3D9ProxyVertexBuffer).
-* @see D3D9ProxyVertexBuffer
-***/
+
+
+
+
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateVertexBuffer , UINT , Length , DWORD , Usage , DWORD , FVF , D3DPOOL , Pool, IDirect3DVertexBuffer9** , ppVertexBuffer , HANDLE* , pSharedHandle )
 	IDirect3DVertexBuffer9* pActualBuffer = NULL;
 	HRESULT creationResult = actual->CreateVertexBuffer(Length, Usage, FVF, Pool, &pActualBuffer, pSharedHandle);
@@ -532,10 +534,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateVertexBuffer , UINT , Len
 	return creationResult;
 }
 
-/**
-* * Creates base index buffer pointer (D3D9ProxyIndexBuffer).
-* @see D3D9ProxyIndexBuffer
-***/
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateIndexBuffer , UINT , Length , DWORD , Usage , D3DFORMAT , Format , D3DPOOL , Pool , IDirect3DIndexBuffer9** , ppIndexBuffer , HANDLE* , pSharedHandle )
 	IDirect3DIndexBuffer9* pActualBuffer = NULL;
 	HRESULT creationResult = actual->CreateIndexBuffer(Length, Usage, Format, Pool, &pActualBuffer, pSharedHandle);
@@ -547,10 +546,6 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , CreateIndexBuffer , UINT , Leng
 }
 
 
-/**
-* Copies rectangular subsets of pixels from one proxy (wrapped) surface to another.
-* @see D3D9ProxySurface
-***/
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , UpdateSurface , IDirect3DSurface9* , pSourceSurface , CONST RECT* , pSourceRect , IDirect3DSurface9* , pDestinationSurface , CONST POINT* , pDestPoint )
 	if (!pSourceSurface || !pDestinationSurface)
 		return D3DERR_INVALIDCALL;
@@ -583,11 +578,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , UpdateSurface , IDirect3DSurfac
 	return result;
 }
 
-/**
-* Calls a helper function to unwrap the textures and calls the super method for both sides.
-* The super method updates the dirty portions of a texture.
-* @see vireio::UnWrapTexture()
-***/
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , UpdateTexture , IDirect3DBaseTexture9* , pSourceTexture , IDirect3DBaseTexture9* , pDestinationTexture )
 	if (!pSourceTexture || !pDestinationTexture)
 		return D3DERR_INVALIDCALL;
@@ -624,9 +615,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , UpdateTexture , IDirect3DBaseTe
 	return result;
 }
 
-/**
-* Copies the render-target data from proxy (wrapped) source surface to proxy (wrapped) destination surface.
-***/
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetRenderTargetData , IDirect3DSurface9* , pRenderTarget , IDirect3DSurface9* , pDestSurface )
 	if ((pDestSurface == NULL) || (pRenderTarget == NULL))
 		return D3DERR_INVALIDCALL;
@@ -662,22 +651,18 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetRenderTargetData , IDirect3D
 	return result;
 }
 
-/**
-* Gets the front buffer data from the internal stored active proxy (or wrapped) swap chain.
-* @see D3D9ProxySwapChain
-***/
+
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetFrontBufferData , UINT , iSwapChain , IDirect3DSurface9* , pDestSurface )
-	if( iSwapChain >= activeSwapChains.count() ){
+	if( iSwapChain >= activeSwapChains.size() ){
 		return D3DERR_INVALIDCALL;
 	}
 
 	return activeSwapChains[iSwapChain]->GetFrontBufferData(pDestSurface);
 }
 
-/**
-* Copy the contents of the source proxy (wrapped) surface rectangles to the destination proxy (wrapped) surface rectangles.
-* @see D3D9ProxySurface
-***/
+
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , StretchRect , IDirect3DSurface9* , pSourceSurface , CONST RECT* , pSourceRect , IDirect3DSurface9* , pDestSurface , CONST RECT* , pDestRect , D3DTEXTUREFILTERTYPE , Filter )
 	if (!pSourceSurface || !pDestSurface)
 		return D3DERR_INVALIDCALL;
@@ -713,10 +698,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , StretchRect , IDirect3DSurface9
 	return result;
 }
 
-/**
-* Fills the rectangle for both stereo sides if switchDrawingSide() agrees and sets the render target accordingly.
-* @see switchDrawingSide()
-***/
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , ColorFill, IDirect3DSurface9* , pSurface , CONST RECT* , pRect , D3DCOLOR , color )
 	HRESULT result;
 
@@ -751,7 +733,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetRenderTarget , DWORD , Rende
 	}else{
 		proxy = static_cast<D3D9ProxySurface*>(pRenderTarget);
 
-		if (m_currentRenderingSide == vireio::Left) {
+		if( m_currentRenderingSide == vireio::Left || !proxy->right ){
 			result = actual->SetRenderTarget( RenderTargetIndex , proxy->actual );
 		}else{
 			result = actual->SetRenderTarget( RenderTargetIndex , proxy->right );
@@ -795,7 +777,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetDepthStencilSurface , IDirec
 	if( pNewZStencil ) {
 		proxy = static_cast<D3D9ProxySurface*>( pNewZStencil );
 
-		if( m_currentRenderingSide == vireio::Left ){
+		if( m_currentRenderingSide == vireio::Left || !proxy->right ){
 			result = actual->SetDepthStencilSurface( proxy->actual );
 		}else{
 			result = actual->SetDepthStencilSurface( proxy->right );
@@ -824,11 +806,9 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetDepthStencilSurface , IDirec
 	return D3D_OK;
 }
 
-/**
-* Updates tracker if device says it should.  Handles controls if this is the first scene of the frame.
-* Because input for this frame would already have been handled here so injection of any mouse 
-* manipulation ?
-***/
+
+
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , BeginScene )
 	if (tracker){
 		tracker->beginFrame();
@@ -937,55 +917,85 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetTransform , D3DTRANSFORMSTAT
 		}
 	}
 
+
 	if( State == D3DTS_VIEW ){
 		if( isSet ){
 			left  = sourceMatrix * viewMatTransformLeft;
 			right = sourceMatrix * viewMatTransformRight;
 		}
 
-		m_bViewTransformSet = isSet;
-		m_leftView          = left;
-		m_rightView         = right;
+		transformViewSet      = isSet;
+		transformViewOriginal = sourceMatrix;
+		transformViewLeft     = left;
+		transformViewRight    = right;
 
-		if( m_currentRenderingSide == vireio::Left ){
-			m_pCurrentView = &m_leftView;
-		}else{
-			m_pCurrentView = &m_rightView;
-		}
-		
 		if( stateBlock ){
-			stateBlock->captureViewTransform( isSet , left , right );
+			stateBlock->captureViewTransform( );
 		}	
-
-		return actual->SetTransform( State , m_pCurrentView );
-	}
-
-
+	}else
 	if( State == D3DTS_PROJECTION ){
 		if( isSet ){
 			left  = sourceMatrix;
 			right = sourceMatrix;
 		}
 
-		m_bProjectionTransformSet = isSet;
-		m_leftProjection          = left;
-		m_rightProjection         = right;
-
-		if (m_currentRenderingSide == vireio::Left) {
-			m_pCurrentProjection = &m_leftProjection;
-		}else{
-			m_pCurrentProjection = &m_rightProjection;
-		}
+		transformProjSet      = isSet;
+		transformProjOriginal = sourceMatrix;
+		transformProjLeft     = left;
+		transformProjRight    = right;
 
 		if( stateBlock ){
-			stateBlock->captureProjTransform( isSet , left , right );
+			stateBlock->captureProjTransform( );
 		}
-
-		return actual->SetTransform( State , m_pCurrentProjection );
 	}
 
-	return actual->SetTransform( State , pMatrix );
+	if( !isSet ){
+		actual->SetTransform( State , &left ); //identity
+	}
+
+	return D3D_OK;
 }
+
+
+
+METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetTransform , D3DTRANSFORMSTATETYPE , State , D3DMATRIX* , pMatrix )
+	if( State == D3DTS_VIEW ){
+		*pMatrix = transformViewOriginal;
+		return D3D_OK;
+	}
+
+	if( State == D3DTS_PROJECTION ){
+		*pMatrix = transformProjOriginal;
+		return D3D_OK;
+	}
+
+	return D3DERR_INVALIDCALL;
+}
+
+
+METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , MultiplyTransform , D3DTRANSFORMSTATETYPE , State , CONST D3DMATRIX* , pMatrix );
+	D3DXMATRIX& m = *(D3DXMATRIX*)pMatrix;
+
+	if( State == D3DTS_VIEW ){
+		transformViewOriginal *= m;
+		transformViewLeft     *= m;
+		transformViewRight    *= m;
+	}else
+	if( State == D3DTS_PROJECTION ){
+		transformProjOriginal *= m;
+		transformProjLeft     *= m;
+		transformProjRight    *= m;
+	}
+
+	return D3D_OK;
+}
+
+
+
+
+
+
+
 
 
 
@@ -1043,6 +1053,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , BeginStateBlock )
 }
 
 
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , EndStateBlock , IDirect3DStateBlock9** , ppSB )
 	IDirect3DStateBlock9* pActualStateBlock = NULL;
 	HRESULT creationResult = actual->EndStateBlock( &pActualStateBlock );
@@ -1054,7 +1065,6 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , EndStateBlock , IDirect3DStateB
 		stateBlock->Release();
 		if (stateBlock) delete stateBlock;
 	}
-
 	stateBlock              = 0;
 	m_bInBeginEndStateBlock = false;
 
@@ -1063,10 +1073,8 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , EndStateBlock , IDirect3DStateB
 
 
 
-/**
-* Provides texture from stored active (mono) texture stages.
-* @see D3D9ProxyTexture
-***/
+
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetTexture , DWORD , Stage , IDirect3DBaseTexture9** , ppTexture )
 	if( !activeTextures.count(Stage) ){
 		return D3DERR_INVALIDCALL;
@@ -1080,12 +1088,8 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , GetTexture , DWORD , Stage , ID
 	return D3D_OK;
 }
 
-/**
-* Calls a helper function to unwrap the textures and calls the super method for both sides.
-* Update stored active (mono) texture stages if new texture was successfully set.
-*
-* @see vireio::UnWrapTexture() 
-***/
+
+
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , SetTexture , DWORD , Stage , IDirect3DBaseTexture9* , pTexture )
 	HRESULT result;
 	if (pTexture) {
@@ -1125,18 +1129,15 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , ProcessVertices , UINT , SrcSta
 		return D3DERR_INVALIDCALL;
 	}
 
-	D3D9ProxyVertexBuffer* proxy = static_cast<D3D9ProxyVertexBuffer*>(pDestBuffer);
+	D3D9ProxyVertexBuffer*      proxy = static_cast<D3D9ProxyVertexBuffer*>(pDestBuffer);
 
 	rulesApply();
 
-	if( !pVertexDecl ) {
-		return actual->ProcessVertices( SrcStartIndex , DestIndex , VertexCount , proxy->actual , NULL , Flags );
+	if( pVertexDecl ) {
+		pVertexDecl = static_cast<D3D9ProxyVertexDeclaration*>(pVertexDecl)->actual;
 	}
 
-
-	D3D9ProxyVertexDeclaration* decl  = static_cast<D3D9ProxyVertexDeclaration*>(pVertexDecl);
-
-	return actual->ProcessVertices( SrcStartIndex , DestIndex , VertexCount , proxy->actual , decl->actual , Flags );
+	return actual->ProcessVertices( SrcStartIndex , DestIndex , VertexCount , proxy->actual , pVertexDecl , Flags );
 }
 
 
@@ -1464,8 +1465,6 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 METHOD_IMPL( void , , D3DProxyDevice , OnCreateOrRestore )	
 	m_currentRenderingSide     = vireio::Left;
 	m_pCurrentMatViewTransform = &viewMatViewProjTransformLeft;
-	m_pCurrentView             = &m_leftView;
-	m_pCurrentProjection       = &m_leftProjection;
 
 	// Wrap the swap chain
 	IDirect3DSwapChain9* pActualPrimarySwapChain;
@@ -1476,7 +1475,7 @@ METHOD_IMPL( void , , D3DProxyDevice , OnCreateOrRestore )
 
 	activeSwapChains.clear();
 
-	activeSwapChains += new D3D9ProxySwapChain(pActualPrimarySwapChain, this, false);
+	activeSwapChains.push_back( new D3D9ProxySwapChain(pActualPrimarySwapChain, this, false) );
 
 	// Set the primary rendertarget to the first stereo backbuffer
 	IDirect3DSurface9* pWrappedBackBuffer;
@@ -1504,7 +1503,7 @@ METHOD_IMPL( void , , D3DProxyDevice , OnCreateOrRestore )
 
 	menu.createResources();
 
-	stereoView->Init( actual );
+	stereoView->Init( this );
 
 	viewUpdateProjectionMatrices( );
 	viewComputeTransforms       ( );
@@ -1546,15 +1545,16 @@ METHOD_IMPL( bool , , D3DProxyDevice , setDrawingSide , vireio::RenderPosition ,
 
 	HRESULT result;
 
-	for( auto& p : activeRenderTargets ){
-		if( p.second ){
-			if( side == vireio::Left ){
-				result = actual->SetRenderTarget( p.first , p.second->actual ); 
+	for( int c=0 ; c<activeRenderTargets.size() ; c++ ){
+		auto rt = activeRenderTargets[c];
+		if( rt ){
+			if( side == vireio::Left || !rt->right ){
+				result = actual->SetRenderTarget( c , rt->actual ); 
 			}else{
-				result = actual->SetRenderTarget( p.first , p.second->right );
+				result = actual->SetRenderTarget( c , rt->right );
 			}
 		}else{
-			result = actual->SetRenderTarget( p.first , 0 ); 
+			result = actual->SetRenderTarget( c , 0 ); 
 		}
 
 		if( FAILED(result) ){
@@ -1578,7 +1578,7 @@ METHOD_IMPL( bool , , D3DProxyDevice , setDrawingSide , vireio::RenderPosition ,
 
 
 	if( activeStereoDepthStencil ) { 
-		if( side == vireio::Left ){
+		if( side == vireio::Left || !activeStereoDepthStencil->right ){
 			result = actual->SetDepthStencilSurface( activeStereoDepthStencil->actual ); 
 		}else{
 			result = actual->SetDepthStencilSurface( activeStereoDepthStencil->right );
@@ -1597,44 +1597,36 @@ METHOD_IMPL( bool , , D3DProxyDevice , setDrawingSide , vireio::RenderPosition ,
 
 			vireio::UnWrapTexture( p.second  , &left , &right );
 
-			if( right ){ 
-				if( side == vireio::Left ){
-					result = actual->SetTexture( p.first , left ); 
-				}else{
-					result = actual->SetTexture( p.first , right );
-				}
+			if( side == vireio::Left || !right ){
+				result = actual->SetTexture( p.first , left ); 
+			}else{
+				result = actual->SetTexture( p.first , right );
+			}
 
-				if( FAILED(result) ){
-					printf("Vireio: SetTexture in setDrawingSide failed\n");
-				}
+			if( FAILED(result) ){
+				printf("Vireio: SetTexture in setDrawingSide failed\n");
 			}
 		}
 
 	}
 
 
-	// update view transform for new side 
-	if( m_bViewTransformSet ){
-		if (side == vireio::Left) {
-			m_pCurrentView = &m_leftView;
-		}else{
-			m_pCurrentView = &m_rightView;
-		}
 
-		actual->SetTransform( D3DTS_VIEW , m_pCurrentView );
+	if( transformViewSet ){
+		if( side == vireio::Left ){
+			actual->SetTransform( D3DTS_VIEW , &transformViewLeft );
+		}else{
+			actual->SetTransform( D3DTS_VIEW , &transformViewRight );
+		}
 	}
 
 
-
-	// update projection transform for new side 
-	if( m_bProjectionTransformSet ){
+	if( transformProjSet ){
 		if( side == vireio::Left ){
-			m_pCurrentProjection = &m_leftProjection;
+			actual->SetTransform( D3DTS_PROJECTION , &transformProjLeft );
 		}else{
-			m_pCurrentProjection = &m_rightProjection;
+			actual->SetTransform( D3DTS_PROJECTION , &transformProjRight );
 		}
-
-		actual->SetTransform( D3DTS_PROJECTION , m_pCurrentProjection );
 	}
 
 
@@ -1668,7 +1660,7 @@ METHOD_IMPL( bool , , D3DProxyDevice , switchDrawingSide )
 	}
 
 	if( !switched ){
-		printf( "Vireio: switch failed\n" );
+		//printf( "Vireio: switch failed\n" );
 	}
 
 
@@ -1729,6 +1721,13 @@ METHOD_IMPL( void , , D3DProxyDevice , ReleaseEverything )
 
 	SAFE_RELEASE( stateBlock );
 
+
+	for( cPtr<D3D9ProxySwapChain>& ptr : activeSwapChains ){
+		ptr.releaseAndDelete();
+	}
+
+	activeSwapChains.clear();
+
 	// one of these will still have a count of 1 until the backbuffer is released
 	activeRenderTargets.clear();
 	activeTextures     .clear();
@@ -1752,7 +1751,7 @@ METHOD_IMPL( bool , , D3DProxyDevice , isViewportDefaultForMainRT , CONST D3DVIE
 	pPrimaryRenderTarget->GetDesc(&pRTDesc);
 
 	return  ((pViewport->Height == pRTDesc.Height) && (pViewport->Width == pRTDesc.Width) &&
-		(pViewport->MinZ <= SMALL_FLOAT) && (pViewport->MaxZ >= SLIGHTLY_LESS_THAN_ONE));
+		(pViewport->MinZ <= 0.00001) && (pViewport->MaxZ >= 0.99999));
 }
 
 
@@ -1835,13 +1834,6 @@ METHOD_IMPL( float , , D3DProxyDevice , RoundBrassaValue , float , val )
 
 
 
-
-
-
-  /**
-* Here the chosen stereoviews draw function is called to render to wrapped back buffer.
-* All other final screen output is also done here.
-***/
 void D3DProxyDevice::ProxyPresent( D3D9ProxySwapChain* swapChain ){
 	fps = CalcFPS();
 
@@ -1853,15 +1845,9 @@ void D3DProxyDevice::ProxyPresent( D3D9ProxySwapChain* swapChain ){
 		menu.render();
 	}
 
-
- 	IDirect3DSurface9* backBuffer;
-	swapChain->GetBackBuffer( 0 , D3DBACKBUFFER_TYPE_MONO , &backBuffer );
-
 	if( stereoView->initialized ){
-		stereoView->Draw( static_cast<D3D9ProxySurface*>(backBuffer) );
+		stereoView->Draw( swapChain );
 	}
-
-	backBuffer->Release();
 
 	m_isFirstBeginSceneOfFrame = true; 
  }
@@ -1958,16 +1944,8 @@ METHOD_IMPL( HRESULT , , D3DProxyDevice , ProxyCreateRenderTarget , UINT , Width
 			}
 		}
 
-		if (!isSwapChainBackBuffer){
-			*ppSurface = new D3D9ProxySurface(left, right, this, NULL);
-		}else{
-			*ppSurface = new StereoBackBuffer(left, right, this);
-		}
+		*ppSurface = new D3D9ProxySurface(left, right, this, NULL);
 	}
-	else {
-		OutputDebugStringA("Failed to create render target\n"); 
-	}
-
 
 	return resultLeft;
 }
@@ -2015,13 +1993,6 @@ METHOD_IMPL( HRESULT , , D3DProxyDevice , ProxyReset , D3DPRESENT_PARAMETERS* , 
 
 	m_bInBeginEndStateBlock = false;
 
-	for( cPtr<D3D9ProxySwapChain>& ptr : activeSwapChains ){
-		ptr.releaseAndDelete();
-	}
-	activeSwapChains.clear();
-
-
-
 	HRESULT hr;
 	if( useEx ){
 		hr = actualEx->ResetEx(pPresentationParameters,pFullscreenDisplayMode);
@@ -2050,7 +2021,7 @@ METHOD_IMPL( HRESULT , , D3DProxyDevice , ProxyReset , D3DPRESENT_PARAMETERS* , 
 // IDirect3DDevice9 / IDirect3DDevice9Ex similar methods
 
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , Present , CONST RECT* , pSourceRect , CONST RECT* , pDestRect , HWND , hDestWindowOverride , CONST RGNDATA* , pDirtyRegion )
-	if( activeSwapChains.isEmpty() ){
+	if( activeSwapChains.empty() ){
 		printf( "Present: No primary swap chain found. (Present probably called before device has been reset)\n" );
 	}else{
 		ProxyPresent( activeSwapChains[0] );
@@ -2060,7 +2031,7 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , Present , CONST RECT* , pSource
 }
 
 METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , PresentEx , CONST RECT* , pSourceRect , CONST RECT* , pDestRect , HWND , hDestWindowOverride , CONST RGNDATA* , pDirtyRegion , DWORD , dwFlags )
-	if( activeSwapChains.isEmpty() ){
+	if( activeSwapChains.empty() ){
 		printf( "Present: No primary swap chain found. (Present probably called before device has been reset)\n" );
 	}else{
 		ProxyPresent( activeSwapChains[0] );
@@ -2138,8 +2109,6 @@ METHOD_THRU( HRESULT , WINAPI , D3DProxyDevice , GetRasterStatus , UINT , iSwapC
 METHOD_THRU( HRESULT , WINAPI , D3DProxyDevice , SetDialogBoxMode , BOOL , bEnableDialogs )
 METHOD_THRU( void    , WINAPI , D3DProxyDevice , SetGammaRamp     , UINT , iSwapChain , DWORD , Flags , CONST D3DGAMMARAMP* , pRamp )
 METHOD_THRU( void    , WINAPI , D3DProxyDevice , GetGammaRamp     , UINT , iSwapChain , D3DGAMMARAMP* , pRamp )
-METHOD_THRU( HRESULT , WINAPI , D3DProxyDevice , GetTransform , D3DTRANSFORMSTATETYPE , State , D3DMATRIX* , pMatrix )
-METHOD_THRU( HRESULT , WINAPI , D3DProxyDevice , MultiplyTransform , D3DTRANSFORMSTATETYPE , State , CONST D3DMATRIX* , pMatrix );
 METHOD_THRU( HRESULT , WINAPI , D3DProxyDevice , GetViewport , D3DVIEWPORT9* , pViewport )
 METHOD_THRU( HRESULT , WINAPI , D3DProxyDevice , SetMaterial , CONST D3DMATERIAL9* , pMaterial )
 METHOD_THRU( HRESULT , WINAPI , D3DProxyDevice , GetMaterial , D3DMATERIAL9* , pMaterial )

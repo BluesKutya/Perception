@@ -1,35 +1,7 @@
-/********************************************************************
-Vireio Perception: Open-Source Stereoscopic 3D Driver
-Copyright (C) 2012 Andres Hernandez
-
-File <StereoView.cpp> and
-Class <StereoView> :
-Copyright (C) 2012 Andres Hernandez
-
-Vireio Perception Version History:
-v1.0.0 2012 by Andres Hernandez
-v1.0.X 2013 by John Hicks, Neil Schneider
-v1.1.x 2013 by Primary Coding Author: Chris Drain
-Team Support: John Hicks, Phil Larkson, Neil Schneider
-v2.0.x 2013 by Denis Reischl, Neil Schneider, Joshua Brown
-
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Lesser General Public License for more details.
-
-You should have received a copy of the GNU Lesser General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
-********************************************************************/
-
 #include "StereoView.h"
 #include <Streamer.h>
 #include "D3D9ProxySurface.h"
+#include "D3D9ProxySwapChain.h"
 #include <DxErr.h>
 
 StereoView::StereoView( ){
@@ -38,7 +10,8 @@ StereoView::StereoView( ){
 	XOffset = 0;
 
 	// set all member pointers to NULL to prevent uninitialized objects being used
-	device = NULL;
+	actual = NULL;
+	proxy = 0;
 	leftTexture = NULL;
 	rightTexture = NULL;
 
@@ -57,15 +30,16 @@ StereoView::~StereoView(){
 }
 
 
-void StereoView::Init(IDirect3DDevice9* pActualDevice){
+void StereoView::Init(D3DProxyDevice* d){
 	if( initialized ){
 		return;
 	}
 
-	device = pActualDevice;
+	actual = d->actual;
+	proxy  = d;
 
 
-	if( FAILED(D3DXCreateEffectFromFileA(device, config.getShaderPath().toLocal8Bit(), NULL, NULL, D3DXFX_DONOTSAVESTATE, NULL, &viewEffect, NULL))) {
+	if( FAILED(D3DXCreateEffectFromFileA(actual, config.getShaderPath().toLocal8Bit(), NULL, NULL, D3DXFX_DONOTSAVESTATE, NULL, &viewEffect, NULL))) {
 		printf( "Vireio: Effect creation failed\n" );
 	}
 
@@ -96,105 +70,98 @@ void StereoView::ReleaseEverything(){
 
 
 
-void StereoView::Draw( D3D9ProxySurface* stereoCapableSurface ){
+void StereoView::Draw( D3D9ProxySwapChain* chain ){
+ 	D3D9ProxySurface* backStereo = chain->backBuffers[0];
 
-	IDirect3DSurface9*    leftImage  = stereoCapableSurface->actual;
-	IDirect3DSurface9*    rightImage = stereoCapableSurface->right;
+	IDirect3DSurface9*    leftImage  = backStereo->actual;
+	IDirect3DSurface9*    rightImage = backStereo->right;
 	D3DXMATRIX	          identity;
 	IDirect3DStateBlock9* state;
 	float                 resolution[2];
 	UINT                  numPasses;
 
-	device->StretchRect( leftImage                           , 0 , leftSurface  , 0 , D3DTEXF_NONE );
-	device->StretchRect( rightImage ? rightImage : leftImage , 0 , rightSurface , 0 , D3DTEXF_NONE );
+	actual->StretchRect( leftImage                           , 0 , leftSurface  , 0 , D3DTEXF_NONE );
+	actual->StretchRect( rightImage ? rightImage : leftImage , 0 , rightSurface , 0 , D3DTEXF_NONE );
 
 	D3DXMatrixIdentity( &identity );
 
-	device->CreateStateBlock( D3DSBT_ALL , &state );
-
-	state->Capture();
+	actual->CreateStateBlock( D3DSBT_ALL , &state );
 
 
-	device->SetTransform        ( D3DTS_WORLD            , &identity );
-	device->SetTransform        ( D3DTS_VIEW             , &identity);
-	device->SetTransform        ( D3DTS_PROJECTION       , &identity);
-	device->SetRenderState      ( D3DRS_LIGHTING         , FALSE);
-	device->SetRenderState      ( D3DRS_CULLMODE         , D3DCULL_NONE);
-	device->SetRenderState      ( D3DRS_ZENABLE          , FALSE);
-	device->SetRenderState      ( D3DRS_ZWRITEENABLE     , FALSE);
-	device->SetRenderState      ( D3DRS_ALPHABLENDENABLE , FALSE);
-	device->SetRenderState      ( D3DRS_ALPHATESTENABLE  , FALSE);
-	device->SetRenderState      ( D3DRS_STENCILENABLE    , FALSE); 
 
-	device->SetTextureStageState( 0 , D3DTSS_COLOROP   , D3DTOP_SELECTARG1 );
-	device->SetTextureStageState( 0 , D3DTSS_COLORARG1 , D3DTA_TEXTURE     );
-	device->SetTextureStageState( 0 , D3DTSS_ALPHAOP   , D3DTOP_SELECTARG1 );
-	device->SetTextureStageState( 0 , D3DTSS_ALPHAARG1 , D3DTA_CONSTANT    );
-	device->SetTextureStageState( 0 , D3DTSS_CONSTANT  , 0xffffffff        );
+	actual->SetTransform        ( D3DTS_WORLD            , &identity );
+	actual->SetTransform        ( D3DTS_VIEW             , &identity);
+	actual->SetTransform        ( D3DTS_PROJECTION       , &identity);
+	actual->SetRenderState      ( D3DRS_LIGHTING         , FALSE);
+	actual->SetRenderState      ( D3DRS_CULLMODE         , D3DCULL_NONE);
+	actual->SetRenderState      ( D3DRS_ZENABLE          , FALSE);
+	actual->SetRenderState      ( D3DRS_ZWRITEENABLE     , FALSE);
+	actual->SetRenderState      ( D3DRS_ALPHABLENDENABLE , FALSE);
+	actual->SetRenderState      ( D3DRS_ALPHATESTENABLE  , FALSE);
+	actual->SetRenderState      ( D3DRS_STENCILENABLE    , FALSE); 
 
-	device->SetRenderState( D3DRS_ALPHABLENDENABLE , FALSE );
-	device->SetRenderState( D3DRS_ZENABLE          , D3DZB_FALSE );
-	device->SetRenderState( D3DRS_ZWRITEENABLE     , FALSE );
-	device->SetRenderState( D3DRS_ALPHATESTENABLE  , FALSE );  
+	actual->SetTextureStageState( 0 , D3DTSS_COLOROP   , D3DTOP_SELECTARG1 );
+	actual->SetTextureStageState( 0 , D3DTSS_COLORARG1 , D3DTA_TEXTURE     );
+	actual->SetTextureStageState( 0 , D3DTSS_ALPHAOP   , D3DTOP_SELECTARG1 );
+	actual->SetTextureStageState( 0 , D3DTSS_ALPHAARG1 , D3DTA_CONSTANT    );
+	actual->SetTextureStageState( 0 , D3DTSS_CONSTANT  , 0xffffffff        );
+
+	actual->SetRenderState( D3DRS_ALPHABLENDENABLE , FALSE );
+	actual->SetRenderState( D3DRS_ZENABLE          , D3DZB_FALSE );
+	actual->SetRenderState( D3DRS_ZWRITEENABLE     , FALSE );
+	actual->SetRenderState( D3DRS_ALPHATESTENABLE  , FALSE );  
 
 	//gamma stuff. maybe keep it?
-	device->SetRenderState ( D3DRS_SRGBWRITEENABLE , 0 );  // will cause visual errors in HL2
-	device->SetSamplerState( 0 , D3DSAMP_SRGBTEXTURE, 0 );
-	device->SetSamplerState( 1 , D3DSAMP_SRGBTEXTURE, 0 );
+	actual->SetRenderState ( D3DRS_SRGBWRITEENABLE , 0 );  // will cause visual errors in HL2
+	actual->SetSamplerState( 0 , D3DSAMP_SRGBTEXTURE, 0 );
+	actual->SetSamplerState( 1 , D3DSAMP_SRGBTEXTURE, 0 );
 
-	device->SetSamplerState( 0 , D3DSAMP_ADDRESSU , D3DTADDRESS_CLAMP );
-	device->SetSamplerState( 0 , D3DSAMP_ADDRESSV , D3DTADDRESS_CLAMP );
-	device->SetSamplerState( 0 , D3DSAMP_ADDRESSW , D3DTADDRESS_CLAMP );
-	device->SetSamplerState( 1 , D3DSAMP_ADDRESSU , D3DTADDRESS_CLAMP );
-	device->SetSamplerState( 1 , D3DSAMP_ADDRESSV , D3DTADDRESS_CLAMP );
-	device->SetSamplerState( 1 , D3DSAMP_ADDRESSW , D3DTADDRESS_CLAMP );
+	actual->SetSamplerState( 0 , D3DSAMP_ADDRESSU , D3DTADDRESS_CLAMP );
+	actual->SetSamplerState( 0 , D3DSAMP_ADDRESSV , D3DTADDRESS_CLAMP );
+	actual->SetSamplerState( 0 , D3DSAMP_ADDRESSW , D3DTADDRESS_CLAMP );
+	actual->SetSamplerState( 1 , D3DSAMP_ADDRESSU , D3DTADDRESS_CLAMP );
+	actual->SetSamplerState( 1 , D3DSAMP_ADDRESSV , D3DTADDRESS_CLAMP );
+	actual->SetSamplerState( 1 , D3DSAMP_ADDRESSW , D3DTADDRESS_CLAMP );
 
 	// TODO Need to check device capabilities if we want a prefered order of fallback rather than 
 	// whatever the default is being used when a mode isn't supported.
 	// Example - GeForce 660 doesn't appear to support D3DTEXF_ANISOTROPIC on the MAGFILTER (at least
 	// according to the spam of error messages when running with the directx debug runtime)
-	device->SetSamplerState( 0 , D3DSAMP_MAGFILTER , D3DTEXF_ANISOTROPIC );
-	device->SetSamplerState( 1 , D3DSAMP_MAGFILTER , D3DTEXF_ANISOTROPIC );
-	device->SetSamplerState( 0 , D3DSAMP_MINFILTER , D3DTEXF_ANISOTROPIC );
-	device->SetSamplerState( 1 , D3DSAMP_MINFILTER , D3DTEXF_ANISOTROPIC );
-	device->SetSamplerState( 0 , D3DSAMP_MIPFILTER , D3DTEXF_NONE );
-	device->SetSamplerState( 1 , D3DSAMP_MIPFILTER , D3DTEXF_NONE );
+	actual->SetSamplerState( 0 , D3DSAMP_MAGFILTER , D3DTEXF_ANISOTROPIC );
+	actual->SetSamplerState( 1 , D3DSAMP_MAGFILTER , D3DTEXF_ANISOTROPIC );
+	actual->SetSamplerState( 0 , D3DSAMP_MINFILTER , D3DTEXF_ANISOTROPIC );
+	actual->SetSamplerState( 1 , D3DSAMP_MINFILTER , D3DTEXF_ANISOTROPIC );
+	actual->SetSamplerState( 0 , D3DSAMP_MIPFILTER , D3DTEXF_NONE );
+	actual->SetSamplerState( 1 , D3DSAMP_MIPFILTER , D3DTEXF_NONE );
 
-	device->SetVertexShader     ( 0 );
-	device->SetPixelShader      ( 0 );
-	device->SetVertexDeclaration( 0 );
+	actual->SetVertexShader     ( 0 );
+	actual->SetPixelShader      ( 0 );
+	actual->SetVertexDeclaration( 0 );
 	
-	IDirect3DSurface9* rt1 = 0;
-	IDirect3DSurface9* rt2 = 0;
-	IDirect3DSurface9* rt3 = 0;
-	device->GetRenderTarget( 1 , &rt1 );
-	device->GetRenderTarget( 2 , &rt2 );
-	device->GetRenderTarget( 3 , &rt3 );
+	actual->SetFVF( D3DFVF_TEXVERTEX );
 
-	device->SetRenderTarget( 1 , 0 );
-	device->SetRenderTarget( 2 , 0 );
-	device->SetRenderTarget( 3 , 0 );
+	auto prevRt = proxy->storeAndClearRenderTargets();
 
-	device->SetFVF( D3DFVF_TEXVERTEX );
+	IDirect3DSurface9* actualBack = 0;
 
-
+	chain->actual->GetBackBuffer( 0 , D3DBACKBUFFER_TYPE_MONO , &actualBack );
 
 
 
 
 	if( config.swap_eyes ){
-		device->SetTexture( 0 , leftTexture  );
-		device->SetTexture( 1 , rightTexture );
+		actual->SetTexture( 0 , leftTexture  );
+		actual->SetTexture( 1 , rightTexture );
 	}else{
-		device->SetTexture( 0 , rightTexture );
-		device->SetTexture( 1 , leftTexture  );
+		actual->SetTexture( 0 , rightTexture );
+		actual->SetTexture( 1 , leftTexture  );
 	}
 
-	if( FAILED(device->SetRenderTarget( 0 , backBuffer )) ) {
+	if( FAILED(actual->SetRenderTarget( 0 , actualBack )) ) {
 		printf( "Virieo: SetRenderTarget backbuffer failed\n" );
 	}
 
-	if( FAILED(device->SetStreamSource( 0 , screenVertexBuffer , 0 , sizeof(TEXVERTEX) )) ){
+	if( FAILED(actual->SetStreamSource( 0 , screenVertexBuffer , 0 , sizeof(TEXVERTEX) )) ){
 		printf( "Virieo: SetStreamSource failed\n");
 	}
 
@@ -239,7 +206,7 @@ void StereoView::Draw( D3D9ProxySurface* stereoCapableSurface ){
 			printf( "Vireio: Beginpass failed\n");
 		}
 
-		if (FAILED(device->DrawPrimitive( D3DPT_TRIANGLEFAN , 0 , 2 ))) {
+		if (FAILED(actual->DrawPrimitive( D3DPT_TRIANGLEFAN , 0 , 2 ))) {
 			printf( "Vireio: Draw failed\n");
 		}
 
@@ -252,19 +219,15 @@ void StereoView::Draw( D3D9ProxySurface* stereoCapableSurface ){
 		printf( "Vireio: End failed\n");
 	}
 
-	m_pStreamer->send( device );
+	m_pStreamer->send( actual );
 
 
 	state->Apply();
 	state->Release();
 
-	device->SetRenderTarget( 1 , rt1 );
-	device->SetRenderTarget( 2 , rt2 );
-	device->SetRenderTarget( 3 , rt3 );
+	proxy->restoreRenderTargets( prevRt );
 
-	SAFE_RELEASE( rt1 );
-	SAFE_RELEASE( rt2 );
-	SAFE_RELEASE( rt3 );
+	actualBack->Release();
 }
 
 
@@ -307,9 +270,9 @@ void StereoView::PostReset()
 ***/
 void StereoView::InitTextureBuffers()
 {
-	device->GetViewport(&viewport);
+	actual->GetViewport(&viewport);
 	D3DSURFACE_DESC pDesc = D3DSURFACE_DESC();
-	device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backBuffer);
+	actual->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backBuffer);
 	backBuffer->GetDesc(&pDesc);
 
 #ifdef _DEBUG
@@ -327,10 +290,10 @@ void StereoView::InitTextureBuffers()
 	OutputDebugStringA("\n");
 #endif
 
-	device->CreateTexture(pDesc.Width, pDesc.Height, 0, D3DUSAGE_RENDERTARGET, pDesc.Format, D3DPOOL_DEFAULT, &leftTexture, NULL);
+	actual->CreateTexture(pDesc.Width, pDesc.Height, 0, D3DUSAGE_RENDERTARGET, pDesc.Format, D3DPOOL_DEFAULT, &leftTexture, NULL);
 	leftTexture->GetSurfaceLevel(0, &leftSurface);
 
-	device->CreateTexture(pDesc.Width, pDesc.Height, 0, D3DUSAGE_RENDERTARGET, pDesc.Format, D3DPOOL_DEFAULT, &rightTexture, NULL);
+	actual->CreateTexture(pDesc.Width, pDesc.Height, 0, D3DUSAGE_RENDERTARGET, pDesc.Format, D3DPOOL_DEFAULT, &rightTexture, NULL);
 	rightTexture->GetSurfaceLevel(0, &rightSurface);
 }
 
@@ -341,7 +304,7 @@ void StereoView::InitVertexBuffers()
 {
 	OutputDebugStringA("SteroView initVertexBuffers\n");
 
-	HRESULT result = device->CreateVertexBuffer(sizeof(TEXVERTEX) * 4, 0 ,
+	HRESULT result = actual->CreateVertexBuffer(sizeof(TEXVERTEX) * 4, 0 ,
 		D3DFVF_TEXVERTEX, D3DPOOL_MANAGED , &screenVertexBuffer, NULL);
 
 	if( FAILED(result) ){
