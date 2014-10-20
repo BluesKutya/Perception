@@ -180,35 +180,68 @@ METHOD_IMPL( HRESULT  , WINAPI , D3D9ProxyDirect3D , ProxyCreateDevice , UINT , 
 
 
 
+
+
+METHOD_IMPL( UINT , WINAPI , D3D9ProxyDirect3D , GetAdapterCount)
+	if( config.displayAdapter == -1 ){
+		return actual->GetAdapterCount();
+	}
+
+	return 1;
+}
+
+
+#define MODIFY_ADAPTER(rv)                                   \
+		if( config.displayAdapter != 0 ){                    \
+			if( Adapter != 0 ){				                 \
+				return rv;	                                 \
+			}								                 \
+			Adapter = config.displayAdapter - 1;             \
+		}
+
+
+#define METHOD_ADAPTER(ret,spec,base,name,act,rv,...)        \
+	ret spec base::name( METHOD_EXPAND_ALL(__VA_ARGS__) ){ 	 \
+		MODIFY_ADAPTER(rv)                                   \
+		return act->name( METHOD_EXPAND_NAME(__VA_ARGS__) ); \
+	}
+
+
+
+
 METHOD_IMPL( HRESULT  , WINAPI , D3D9ProxyDirect3D , CreateDevice , UINT , Adapter , D3DDEVTYPE , DeviceType , HWND , hFocusWindow , DWORD , BehaviorFlags , D3DPRESENT_PARAMETERS* , pPresentationParameters , IDirect3DDevice9** , ppReturnedDeviceInterface )
+	MODIFY_ADAPTER(D3DERR_INVALIDCALL);
 	return ProxyCreateDevice( Adapter , DeviceType , hFocusWindow , BehaviorFlags , pPresentationParameters, 0 , ppReturnedDeviceInterface , 0 );
 }
 
+
 METHOD_IMPL( HRESULT  , WINAPI , D3D9ProxyDirect3D , CreateDeviceEx , UINT , Adapter , D3DDEVTYPE , DeviceType , HWND , hFocusWindow , DWORD , BehaviorFlags , D3DPRESENT_PARAMETERS* , pPresentationParameters , D3DDISPLAYMODEEX* , pFullscreenDisplayMode , IDirect3DDevice9Ex** , ppReturnedDeviceInterface )
+	MODIFY_ADAPTER(D3DERR_INVALIDCALL);
 	return ProxyCreateDevice( Adapter , DeviceType , hFocusWindow , BehaviorFlags , pPresentationParameters, pFullscreenDisplayMode , 0 ,  ppReturnedDeviceInterface );
 }
+
+
+METHOD_ADAPTER( HRESULT  , WINAPI , D3D9ProxyDirect3D , GetAdapterIdentifier        , actual   , D3DERR_INVALIDCALL , UINT , Adapter , DWORD , Flags , D3DADAPTER_IDENTIFIER9* , pIdentifier)
+METHOD_ADAPTER( UINT     , WINAPI , D3D9ProxyDirect3D , GetAdapterModeCount         , actual   , 0                  , UINT , Adapter , D3DFORMAT , Format)
+METHOD_ADAPTER( HRESULT  , WINAPI , D3D9ProxyDirect3D , EnumAdapterModes            , actual   , D3DERR_INVALIDCALL , UINT , Adapter , D3DFORMAT , Format , UINT , Mode , D3DDISPLAYMODE* , pMode)
+METHOD_ADAPTER( HRESULT  , WINAPI , D3D9ProxyDirect3D , GetAdapterDisplayMode       , actual   , D3DERR_INVALIDCALL , UINT , Adapter , D3DDISPLAYMODE* , pMode)
+METHOD_ADAPTER( HRESULT  , WINAPI , D3D9ProxyDirect3D , CheckDeviceType             , actual   , D3DERR_INVALIDCALL , UINT , Adapter , D3DDEVTYPE , DevType , D3DFORMAT , AdapterFormat , D3DFORMAT , BackBufferFormat , BOOL , bWindowed)
+METHOD_ADAPTER( HRESULT  , WINAPI , D3D9ProxyDirect3D , CheckDeviceFormat           , actual   , D3DERR_INVALIDCALL , UINT , Adapter , D3DDEVTYPE , DeviceType , D3DFORMAT , AdapterFormat , DWORD , Usage , D3DRESOURCETYPE , RType , D3DFORMAT , CheckFormat)
+METHOD_ADAPTER( HRESULT  , WINAPI , D3D9ProxyDirect3D , CheckDeviceMultiSampleType  , actual   , D3DERR_INVALIDCALL , UINT , Adapter , D3DDEVTYPE , DeviceType , D3DFORMAT , SurfaceFormat , BOOL , Windowed , D3DMULTISAMPLE_TYPE , MultiSampleType , DWORD* , pQualityLevels)
+METHOD_ADAPTER( HRESULT  , WINAPI , D3D9ProxyDirect3D , CheckDepthStencilMatch      , actual   , D3DERR_INVALIDCALL , UINT , Adapter , D3DDEVTYPE , DeviceType , D3DFORMAT , AdapterFormat , D3DFORMAT , RenderTargetFormat , D3DFORMAT , DepthStencilFormat)
+METHOD_ADAPTER( HRESULT  , WINAPI , D3D9ProxyDirect3D , CheckDeviceFormatConversion , actual   , D3DERR_INVALIDCALL , UINT , Adapter , D3DDEVTYPE , DeviceType , D3DFORMAT , SourceFormat , D3DFORMAT , TargetFormat )
+METHOD_ADAPTER( HRESULT  , WINAPI , D3D9ProxyDirect3D , GetDeviceCaps               , actual   , D3DERR_INVALIDCALL , UINT , Adapter , D3DDEVTYPE , DeviceType , D3DCAPS9* , pCaps)
+METHOD_ADAPTER( HMONITOR , WINAPI , D3D9ProxyDirect3D , GetAdapterMonitor           , actual   , 0                  , UINT , Adapter )
+METHOD_ADAPTER( UINT     , WINAPI , D3D9ProxyDirect3D , GetAdapterModeCountEx       , actualEx , 0                  , UINT , Adapter , CONST D3DDISPLAYMODEFILTER* , pFilter )
+METHOD_ADAPTER( HRESULT  , WINAPI , D3D9ProxyDirect3D , EnumAdapterModesEx          , actualEx , D3DERR_INVALIDCALL , UINT , Adapter , CONST D3DDISPLAYMODEFILTER* , pFilter , UINT , Mode , D3DDISPLAYMODEEX* , pMode)
+METHOD_ADAPTER( HRESULT  , WINAPI , D3D9ProxyDirect3D , GetAdapterDisplayModeEx     , actualEx , D3DERR_INVALIDCALL , UINT , Adapter , D3DDISPLAYMODEEX* , pMode , D3DDISPLAYROTATION* , pRotation)
+METHOD_ADAPTER( HRESULT  , WINAPI , D3D9ProxyDirect3D , GetAdapterLUID              , actualEx , D3DERR_INVALIDCALL , UINT , Adapter , LUID* , pLUID )
 
 
 
 
 METHOD_THRU   ( HRESULT  , WINAPI , D3D9ProxyDirect3D , RegisterSoftwareDevice , void* , pInitializeFunction)
-METHOD_THRU   ( UINT     , WINAPI , D3D9ProxyDirect3D , GetAdapterCount)
-METHOD_THRU   ( HRESULT  , WINAPI , D3D9ProxyDirect3D , GetAdapterIdentifier , UINT , Adapter , DWORD , Flags , D3DADAPTER_IDENTIFIER9* , pIdentifier)
-METHOD_THRU   ( UINT     , WINAPI , D3D9ProxyDirect3D , GetAdapterModeCount , UINT , Adapter , D3DFORMAT , Format)
-METHOD_THRU   ( HRESULT  , WINAPI , D3D9ProxyDirect3D , EnumAdapterModes , UINT , Adapter , D3DFORMAT , Format , UINT , Mode , D3DDISPLAYMODE* , pMode)
-METHOD_THRU   ( HRESULT  , WINAPI , D3D9ProxyDirect3D , GetAdapterDisplayMode , UINT , Adapter , D3DDISPLAYMODE* , pMode)
-METHOD_THRU   ( HRESULT  , WINAPI , D3D9ProxyDirect3D , CheckDeviceType , UINT , Adapter , D3DDEVTYPE , DevType , D3DFORMAT , AdapterFormat , D3DFORMAT , BackBufferFormat , BOOL , bWindowed)
-METHOD_THRU   ( HRESULT  , WINAPI , D3D9ProxyDirect3D , CheckDeviceFormat , UINT , Adapter , D3DDEVTYPE , DeviceType , D3DFORMAT , AdapterFormat , DWORD , Usage , D3DRESOURCETYPE , RType , D3DFORMAT , CheckFormat)
-METHOD_THRU   ( HRESULT  , WINAPI , D3D9ProxyDirect3D , CheckDeviceMultiSampleType , UINT , Adapter , D3DDEVTYPE , DeviceType , D3DFORMAT , SurfaceFormat , BOOL , Windowed , D3DMULTISAMPLE_TYPE , MultiSampleType , DWORD* , pQualityLevels)
-METHOD_THRU   ( HRESULT  , WINAPI , D3D9ProxyDirect3D , CheckDepthStencilMatch , UINT , Adapter , D3DDEVTYPE , DeviceType , D3DFORMAT , AdapterFormat , D3DFORMAT , RenderTargetFormat , D3DFORMAT , DepthStencilFormat)
-METHOD_THRU   ( HRESULT  , WINAPI , D3D9ProxyDirect3D , CheckDeviceFormatConversion , UINT , Adapter , D3DDEVTYPE , DeviceType , D3DFORMAT , SourceFormat , D3DFORMAT , TargetFormat)
-METHOD_THRU   ( HRESULT  , WINAPI , D3D9ProxyDirect3D , GetDeviceCaps , UINT , Adapter , D3DDEVTYPE , DeviceType , D3DCAPS9* , pCaps)
-METHOD_THRU   ( HMONITOR , WINAPI , D3D9ProxyDirect3D , GetAdapterMonitor , UINT , Adapter)
-METHOD_THRU_EX( UINT     , WINAPI , D3D9ProxyDirect3D , GetAdapterModeCountEx , UINT , Adapter , CONST D3DDISPLAYMODEFILTER* , pFilter )
-METHOD_THRU_EX( HRESULT  , WINAPI , D3D9ProxyDirect3D , EnumAdapterModesEx , UINT , Adapter , CONST D3DDISPLAYMODEFILTER* , pFilter , UINT , Mode , D3DDISPLAYMODEEX* , pMode)
-METHOD_THRU_EX( HRESULT  , WINAPI , D3D9ProxyDirect3D , GetAdapterDisplayModeEx , UINT , Adapter , D3DDISPLAYMODEEX* , pMode , D3DDISPLAYROTATION* , pRotation)
 
-METHOD_THRU_EX( HRESULT  , WINAPI , D3D9ProxyDirect3D , GetAdapterLUID , UINT , Adapter , LUID* , pLUID)
 
 /*
 

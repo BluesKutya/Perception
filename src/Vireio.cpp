@@ -180,3 +180,41 @@ bool  Vireio_shouldDuplicate( int mode , int width , int height , int usage , bo
 	return true;
 }
 
+
+QStringList Vireio_getDisplayAdapters(){
+	//QueryDisplayConfig only available for Windows7+, so maybe this way is better fo compatibility?
+
+	QStringList ret;
+
+	ret += "<game-controlled>";
+
+	IDirect3D9* d3d = Direct3DCreate9( D3D_SDK_VERSION );
+	if( d3d ){
+		UINT count = d3d->GetAdapterCount();
+
+		for( UINT c=0 ; c<count ; c++ ){
+			D3DADAPTER_IDENTIFIER9 id;
+			d3d->GetAdapterIdentifier( c , 0 , &id );
+			ret += QString("#%1: %2 (%3)").arg(c+1).arg(id.DeviceName).arg(id.Description);
+		}
+
+		d3d->Release();
+	}
+
+	return ret;
+}
+
+
+
+
+static BOOL CALLBACK MonitorEnumProc( HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData ){
+	((std::vector<RECT>*)(dwData))->push_back( *lprcMonitor );
+	return TRUE;
+}
+
+
+std::vector<RECT> Vireio_getDesktops(){
+	std::vector<RECT> r;
+	EnumDisplayMonitors( 0 , 0 , MonitorEnumProc , (LPARAM)&r );
+	return r;
+}

@@ -31,6 +31,15 @@ enum{
 	SAVE_STATE_DONT_SAVE         = 3 ,
 };
 
+
+enum{
+	MIRROR_DISABLE = 0 ,
+	MIRROR_LEFT    = 1 ,
+	MIRROR_RIGHT   = 2 ,
+	MIRROR_STEREO  = 3 ,
+};
+
+
 QStringList Vireio_enum_duplicate();
 QStringList Vireio_enum_when     ();
 QStringList Vireio_enum_saveState();
@@ -79,5 +88,10 @@ public:
 	QString     getShaderRulesPath  ( );
 	QString     getShaderPath   ( );
 	QString     getRulesPath    ( );
+
+
+	static QStringList getDisplayAdapters();
+
+
 };
 

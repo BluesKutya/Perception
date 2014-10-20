@@ -221,6 +221,7 @@ void StereoView::Draw( D3D9ProxySwapChain* chain ){
 
 	m_pStreamer->send( actual );
 
+	proxy->mirrorUpdate( );
 
 	state->Apply();
 	state->Release();

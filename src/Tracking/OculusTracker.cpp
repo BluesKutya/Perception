@@ -11,6 +11,7 @@ public:
 	char                trackerDescription[256];
 	QString             name;
 	ovrFrameTiming      FrameRef;
+	UINT                frameId;
 
 
 	cTracker_ovr( ){
@@ -33,6 +34,8 @@ public:
 
 
 	bool open( ) override{
+		frameId = 0;
+
 		ovrBool res = ovr_Initialize(); // start LibOVR
 
 		if( !ovr_Initialize() ){
@@ -79,7 +82,7 @@ public:
 		//Force OVR positional reset
 		ovrHmd_RecenterPose(hmd);
 
-		ovrTrackingState ts = ovrHmd_GetTrackingState(hmd,FrameRef.ScanoutMidpointSeconds);
+		ovrTrackingState ts = ovrHmd_GetTrackingState( hmd , ovr_GetTimeInSeconds() );
 	
 		if (ts.StatusFlags & ovrStatus_OrientationTracked)
 		{
@@ -106,14 +109,15 @@ public:
 			return false;
 		}
 
-		ovrTrackingState ts = ovrHmd_GetTrackingState( hmd , FrameRef.ScanoutMidpointSeconds );
+		ovrTrackingState ts = ovrHmd_GetTrackingState( hmd , (config.trackerTimewarp ? FrameRef.ScanoutMidpointSeconds : ovr_GetTimeInSeconds()) );
 
 		if( ts.StatusFlags & ovrStatus_OrientationTracked ){
 			Quatf hmdOrient=ts.HeadPose.ThePose.Orientation;
 			hmdOrient.GetEulerAngles<Axis_Y,Axis_X,Axis_Z>(&currentYaw, &currentPitch, &currentRoll);
-			currentYaw   =  (currentYaw   - offsetYaw  );
-			currentPitch =  (currentPitch - offsetPitch);
-			currentRoll  = -(currentRoll  - offsetRoll );
+			
+			currentYaw   =  currentYaw - offsetYaw;
+			currentPitch =  currentPitch;
+			currentRoll  = -currentRoll ;
 		}
 
 		if( ts.StatusFlags & ovrStatus_PositionConnected ){
@@ -138,15 +142,15 @@ public:
 
 
 	void beginFrame(){
-		if( hmd ){
-			FrameRef = ovrHmd_BeginFrameTiming(hmd,0);
+		if( hmd && config.trackerTimewarp ){
+			FrameRef = ovrHmd_BeginFrameTiming( hmd , frameId++ );
 		}
 	}
 
 
 
 	void endFrame(){
-		if( hmd ){
+		if( hmd && config.trackerTimewarp ){
 			ovrHmd_EndFrameTiming(hmd);
 		}
 	}

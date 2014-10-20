@@ -27,7 +27,7 @@ cMainWindow::cMainWindow( ){
 	ui.trackerMode->addItem( "OculusTrack"           , 40 );
 	ui.trackerMode->addItem( "UDP android tracker"   , 50 );
 
-
+	ui.display->addItems( cConfig::getDisplayAdapters() );
 
 	ui.stereoMode      ->setCurrentIndex( ui.stereoMode ->findText(config.stereoDevice)  );
 	ui.trackerMode     ->setCurrentIndex( ui.trackerMode->findData(config.trackerMode) );
@@ -42,7 +42,7 @@ cMainWindow::cMainWindow( ){
 	ui.streamingCodec  ->setCurrentText ( config.streamingCodec    );
 	ui.streamingBitrate->setValue       ( config.streamingBitrate  );
 	ui.shaderAnalyzer  ->setChecked     ( config.shaderAnalyzer    );
-	
+	ui.display         ->setCurrentIndex( config.displayAdapter    );
 	
 
 	LoadGames();
@@ -78,7 +78,8 @@ void cMainWindow::on_saveSettings_clicked(){
 	config.streamingPort     = ui.streamingPort    ->value();
 	config.streamingCodec    = ui.streamingCodec   ->currentText();
 	config.streamingBitrate  = ui.streamingBitrate ->value();
-	config.shaderAnalyzer    = ui.shaderAnalyzer     ->isChecked();
+	config.shaderAnalyzer    = ui.shaderAnalyzer   ->isChecked();
+	config.displayAdapter    = ui.display          ->currentIndex();
 
 	config.save( config.getMainConfigFile() , QList<int>()<<cConfig::SAVE_GENERAL );
 }

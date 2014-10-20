@@ -20,6 +20,10 @@ P( int     , streamingPort			, )
 P( QString , streamingCodec			, )
 P( int     , streamingBitrate		, )
 P( bool    , showNotifications		, )
+P( int     , displayAdapter         , )
+P( int     , mirrorScreen           , )
+P( int     , mirrorMode             , )
+P( bool    , mirrorFullscreen		, )
 
 P( bool    , shaderAnalyzer			         , )
 P( bool    , shaderAnalyzerTranspose         , )
@@ -52,6 +56,7 @@ P( int     , whenRenderMenu        , )
 P( int     , whenUpdateTracker     , )
 P( int     , saveStateMethod       , )
 
+P( bool    , trackerTimewarp         , )
 
 P( float   , trackerYawMultiplier		, )
 P( float   , trackerPitchMultiplier	    , )

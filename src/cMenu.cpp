@@ -153,7 +153,8 @@ cMenuItem* cMenuItem::addSpinner ( const QString& n , float* variable , float mi
 	i->spinMin   = min;
 	i->spinMax   = max;
 	i->spinStep  = step;
-	i->spinVar   = variable;
+	i->spinVarFlt= variable;
+	i->spinVarInt= 0;
 	return i;
 
 }
@@ -162,11 +163,24 @@ cMenuItem* cMenuItem::addSpinner ( const QString& n , float* variable , float st
 	cMenuItem* i = add( n , SPINNER );
 	i->spinLimit = false;
 	i->spinStep  = step;
-	i->spinVar   = variable;
+	i->spinVarFlt   = variable;
+	i->spinVarInt= 0;
 	return i;
 
 }
 
+
+cMenuItem* cMenuItem::addSpinner ( const QString& n , int*     variable , int min , int max , int step ){
+	cMenuItem* i = add( n , SPINNER );
+	i->spinLimit  = true;
+	i->spinMin    = min;
+	i->spinMax    = max;
+	i->spinStep   = step;
+	i->spinVarInt = variable;
+	i->spinVarFlt = 0;
+	return i;
+
+}
 
 cMenuItem* cMenuItem::addCheckbox( const QString& n , bool*  variable , const QString& on_text , const QString& off_text ){
 	cMenuItem* i = add( n , CHECKBOX );
@@ -216,15 +230,27 @@ void cMenuItem::trigger( float k ){
 
 	case SPINNER:
 		if( !readOnly ){
-			*spinVar += spinStep * k;
+			if( spinVarFlt ){
+				*spinVarFlt += spinStep * k;
+			}
 
 			if( spinLimit ){
-				if( *spinVar > spinMax ){
-					*spinVar = spinMax;
-				}
+				if( spinVarFlt ){
+					if( *spinVarFlt > spinMax ){
+						*spinVarFlt = spinMax;
+					}
 
-				if( *spinVar < spinMin ){
-					*spinVar = spinMin;
+					if( *spinVarFlt < spinMin ){
+						*spinVarFlt = spinMin;
+					}
+				}else{
+					if( *spinVarInt > spinMax ){
+						*spinVarInt = spinMax;
+					}
+
+					if( *spinVarInt < spinMin ){
+						*spinVarInt = spinMin;
+					}
 				}
 			}
 		}
@@ -576,7 +602,11 @@ void cMenu::render( ){
 							decimals = 0;
 						}
 
-						sprintf_s( s , "%.*f" , decimals , *i->spinVar );
+						if( i->spinVarFlt ){
+							sprintf_s( s , "%.*f" , decimals , *i->spinVarFlt );
+						}else{
+							sprintf_s( s , "%d" , *i->spinVarInt );
+						}
 				
 						drawText( s , ALIGN_RIGHT_COLUMN );
 					}else

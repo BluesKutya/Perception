@@ -153,6 +153,9 @@
     <ClCompile Include="..\src\Proxy\D3DProxyDevice_draw.cpp">
       <Filter>Proxy</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\Proxy\D3DProxyDevice_mirror.cpp">
+      <Filter>Proxy</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\Proxy\D3D9ProxyIndexBuffer.h">

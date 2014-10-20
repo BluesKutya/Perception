@@ -215,6 +215,20 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 		menu.show = false;
 	};
 
+	i = m->addSelect  ( "Mirror mode"       , &config.mirrorMode      , QStringList()<<"disable"<<"left eye"<<"right eye"<<"stereo" );
+	i->callback = [this](){
+		mirrorFree();
+	};
+
+	i = m->addCheckbox( "Mirror fullscreen" , &config.mirrorFullscreen );
+	i->callback = [this](){
+		mirrorFree();
+	};
+
+	i = m->addSpinner ( "Mirror monitor"    , &config.mirrorScreen    , 0 , 0xFFFF , 1 );
+	i->callback = [this](){
+		mirrorFree();
+	};
 
 
 
@@ -242,6 +256,9 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 		viewComputeGui();
 	};
 
+	i = m->addCheckbox( "Floating menu"            , &m_bfloatingMenu );
+
+	i = m->addCheckbox( "Floating screen"          , &m_bfloatingScreen );
 
 
 	auto StoreVRBoostValues = [this](){
@@ -885,9 +902,6 @@ METHOD_IMPL( HRESULT , WINAPI , D3DProxyDevice , EndScene )
 		menu.render();
 	}
 
-	if( tracker ){
-		tracker->endFrame();
-	}
 
 	return actual->EndScene();
 }
@@ -1847,6 +1861,10 @@ void D3DProxyDevice::ProxyPresent( D3D9ProxySwapChain* swapChain ){
 
 	if( stereoView->initialized ){
 		stereoView->Draw( swapChain );
+	}
+
+	if( tracker ){
+		tracker->endFrame();
 	}
 
 	m_isFirstBeginSceneOfFrame = true; 

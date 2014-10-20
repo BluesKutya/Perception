@@ -43,6 +43,7 @@
     <ClCompile Include="..\src\Proxy\D3DProxyDevice.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDeviceAdv.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDevice_draw.cpp" />
+    <ClCompile Include="..\src\Proxy\D3DProxyDevice_mirror.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDevice_rules.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDevice_shaders.cpp" />
     <ClCompile Include="..\src\Proxy\D3DProxyDevice_view.cpp" />
@@ -137,7 +138,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Link>
       <SubSystem>Windows</SubSystem>
-      <AdditionalDependencies>dbghelp.lib;psapi.lib;d3dx9.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>dbghelp.lib;psapi.lib;d3dx9.lib;d3d9.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>del "$(TargetPath)"</Command>

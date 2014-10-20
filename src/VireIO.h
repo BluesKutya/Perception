@@ -117,6 +117,11 @@ public:
 		return p;
 	}
 
+	T** clearAndGetPtr(){
+		clear();
+		return &p;
+	}
+
 
 	void operator = ( T* ptr ){
 		if( ptr ){
@@ -226,6 +231,8 @@ cTracker* Vireio_Create_Tracker_SharedMemory();
 cTracker* Vireio_Create_Tracker_Oculus();
 
 
+QStringList       Vireio_getDisplayAdapters();
+std::vector<RECT> Vireio_getDesktops();
 
 
 

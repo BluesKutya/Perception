@@ -35,8 +35,8 @@ public:
 	bool visible;
 	bool readOnly;
 
-	bool internalBool;
-	int  internalInt;
+	bool  internalBool;
+	int   internalInt;
 
 	std::function<void()> callback;
 
@@ -44,6 +44,7 @@ public:
 	cMenuItem* addAction  ( const QString& name );
 	cMenuItem* addSpinner ( const QString& name , float*   variable , float min , float max , float step );
 	cMenuItem* addSpinner ( const QString& name , float*   variable , float step );
+	cMenuItem* addSpinner ( const QString& name , int*     variable , int min , int max , int step );
 	cMenuItem* addCheckbox( const QString& name , bool*    variable , const QString& on_text="true" , const QString& off_text="false" );
 	cMenuItem* addSelect  ( const QString& name , int*     variable , const QStringList& variants );
 	cMenuItem* addText    ( const QString& name , QString* variable );
@@ -70,7 +71,8 @@ private:
 	float                 spinMin;
 	float                 spinMax;
 	float                 spinStep;
-	float*                spinVar;
+	float*                spinVarFlt;
+	int*                  spinVarInt;
 	bool*                 checkVar;
 	int*                  selectVar;
 	QStringList           selectVariants;

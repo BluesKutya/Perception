@@ -118,8 +118,10 @@ public:
 	ULONG                           m_nRefCount;
 
 
-
-
+	HWND                      mirrorWindow;
+	cPtr<IDirect3DSwapChain9> mirrorSwap;
+	void mirrorUpdate();
+	void mirrorFree();
 	
 	HWND                          windowHandle;
 	D3D9ProxyStateBlock*          stateBlock;
@@ -220,11 +222,6 @@ public:
 	void        viewUpdateRotation          ( float pitch , float yaw , float roll );
 	void        viewUpdatePosition          ( float pitch , float yaw , float roll , float x , float y , float z );
 	void        viewComputeGui              ( );
-
-
-
-
-
 
 	
 	
