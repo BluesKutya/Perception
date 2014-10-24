@@ -67,6 +67,7 @@ public:
 	bool           m_bfloatingScreen;
 	float          m_fFloatingScreenPitch;
 	float          m_fFloatingScreenYaw;
+	float          m_fFloatingScreenZ;
 
 	InputControls  controls;
 	DirectInput    dinput;

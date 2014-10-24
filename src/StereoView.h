@@ -40,6 +40,7 @@ public:
 	D3DProxyDevice*   proxy;
 	bool initialized;
 	float HeadYOffset;	
+	float HeadZOffset;
 	float XOffset;	
 	float LensCenter[2];
 	float ViewportXOffset;

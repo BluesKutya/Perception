@@ -122,6 +122,9 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 
 	m_bfloatingMenu = false;
 	m_bfloatingScreen = false;
+	m_fFloatingScreenPitch = 0;
+	m_fFloatingScreenYaw   = 0;
+	m_fFloatingScreenZ     = 0;
 
 	// first time configuration
 	stereoView                 = new StereoView();
@@ -331,6 +334,16 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 			tracker->reset();
 		}
 	};
+
+	i = m->addAction( "Center floating view"   );
+	i->callback = [this](){
+		if( tracker ){
+			m_fFloatingScreenPitch = tracker->currentPitch;
+			m_fFloatingScreenYaw   = tracker->currentYaw;
+			m_fFloatingScreenZ     = tracker->currentZ;
+		}
+	};
+	
 
 
 	m = menu.root.addSubmenu( "Game-specific settings" );
@@ -1455,7 +1468,22 @@ METHOD_IMPL( void , , D3DProxyDevice , HandleTracking )
 			tracker->currentZ * config.trackerZMultiplier * config.stereoScale
 		);
 	}
-		
+	
+
+	if( m_bfloatingScreen ){
+		float screenFloatMultiplierY = 0.75;
+		float screenFloatMultiplierX = 0.5;
+		float screenFloatMultiplierZ = 1.5;
+
+		this->stereoView->HeadYOffset = (m_fFloatingScreenPitch - tracker->currentPitch) * screenFloatMultiplierY;
+		this->stereoView->XOffset     = (m_fFloatingScreenYaw   - tracker->currentYaw  ) * screenFloatMultiplierX;
+		this->stereoView->HeadZOffset = (m_fFloatingScreenZ     - tracker->currentZ    ) * screenFloatMultiplierZ;
+		this->stereoView->PostReset();
+
+		//m_ViewportIfSquished.X = (int)(vOut.x+centerX-(((m_fFloatingYaw - tracker->primaryYaw) * floatMultiplier) * (180 / PI)));
+		//m_ViewportIfSquished.Y = (int)(vOut.y+centerY-(((m_fFloatingPitch - tracker->primaryPitch) * floatMultiplier) * (180 / PI)));
+	}
+
 	viewComputeTransforms();
 
 	vrbUpdate();
