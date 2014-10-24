@@ -88,10 +88,5 @@ public:
 	QString     getShaderRulesPath  ( );
 	QString     getShaderPath   ( );
 	QString     getRulesPath    ( );
-
-
-	static QStringList getDisplayAdapters();
-
-
 };
 

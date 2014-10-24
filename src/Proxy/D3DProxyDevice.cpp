@@ -130,6 +130,8 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 	viewInit();
 	viewComputeTransforms();
 
+	mirrorInit();
+
 	vrbLoadValues();
 
 	OnCreateOrRestore();
@@ -220,12 +222,17 @@ D3DProxyDevice::D3DProxyDevice(IDirect3DDevice9* pDevice,IDirect3DDevice9Ex* pDe
 		mirrorFree();
 	};
 
-	i = m->addCheckbox( "Mirror fullscreen" , &config.mirrorFullscreen );
+	i = m->addCheckbox( "Mirror window enable" , &config.mirrorWindowEnable );
 	i->callback = [this](){
 		mirrorFree();
 	};
 
-	i = m->addSpinner ( "Mirror monitor"    , &config.mirrorScreen    , 0 , 0xFFFF , 1 );
+	i = m->addCheckbox( "Mirror window fullscreen" , &config.mirrorWindowFullscreen );
+	i->callback = [this](){
+		mirrorFree();
+	};
+
+	i = m->addSpinner ( "Mirror window desktop"    , &config.mirrorWindowDesktop    , 0 , 0xFFFF , 1 );
 	i->callback = [this](){
 		mirrorFree();
 	};

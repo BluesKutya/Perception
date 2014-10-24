@@ -21,9 +21,11 @@ P( QString , streamingCodec			, )
 P( int     , streamingBitrate		, )
 P( bool    , showNotifications		, )
 P( int     , displayAdapter         , )
-P( int     , mirrorScreen           , )
+
 P( int     , mirrorMode             , )
-P( bool    , mirrorFullscreen		, )
+P( bool    , mirrorWindowEnable     , )
+P( int     , mirrorWindowDesktop    , )
+P( bool    , mirrorWindowFullscreen	, )
 
 P( bool    , shaderAnalyzer			         , )
 P( bool    , shaderAnalyzerTranspose         , )

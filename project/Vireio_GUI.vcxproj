@@ -20,6 +20,7 @@
     <ClCompile Include="..\src\GUI\cProfileSelectDialog.cpp" />
     <ClCompile Include="..\src\Hijack\hijack_hook.cpp" />
     <ClCompile Include="..\src\Hijack\hijack_launch.cpp" />
+    <ClCompile Include="..\src\Vireio.cpp" />
   </ItemGroup>
   <ItemGroup>
     <QT_MOC Include="..\src\GUI\cMainWindow.h" />

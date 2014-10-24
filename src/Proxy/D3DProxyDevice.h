@@ -120,6 +120,7 @@ public:
 
 	HWND                      mirrorWindow;
 	cPtr<IDirect3DSwapChain9> mirrorSwap;
+	void mirrorInit();
 	void mirrorUpdate();
 	void mirrorFree();
 	

@@ -27,7 +27,18 @@ cMainWindow::cMainWindow( ){
 	ui.trackerMode->addItem( "OculusTrack"           , 40 );
 	ui.trackerMode->addItem( "UDP android tracker"   , 50 );
 
-	ui.display->addItems( cConfig::getDisplayAdapters() );
+	ui.display->addItems( Vireio_getDisplayAdapters() );
+
+	for( RECT& rc : Vireio_getDesktops() ){
+		ui.mirrorWindowDesktop->addItem( QString("Desktop #%1  (%2x%3)").arg(ui.mirrorWindowDesktop->count()+1).arg(rc.right-rc.left).arg(rc.bottom-rc.top) );
+	}
+
+	
+	ui.mirrorMode             ->setCurrentIndex( config.mirrorMode );
+	ui.mirrorWindowEnable     ->setChecked     ( config.mirrorWindowEnable );
+	ui.mirrorWindowDesktop    ->setCurrentIndex( config.mirrorWindowDesktop );
+	ui.mirrorWindowFullscreen ->setChecked     ( config.mirrorWindowFullscreen );
+	
 
 	ui.stereoMode      ->setCurrentIndex( ui.stereoMode ->findText(config.stereoDevice)  );
 	ui.trackerMode     ->setCurrentIndex( ui.trackerMode->findData(config.trackerMode) );
@@ -80,7 +91,10 @@ void cMainWindow::on_saveSettings_clicked(){
 	config.streamingBitrate  = ui.streamingBitrate ->value();
 	config.shaderAnalyzer    = ui.shaderAnalyzer   ->isChecked();
 	config.displayAdapter    = ui.display          ->currentIndex();
-
+	config.mirrorMode        = ui.mirrorMode       ->currentIndex();
+	config.mirrorWindowEnable     = ui.mirrorWindowEnable     ->isChecked();
+	config.mirrorWindowDesktop    = ui.mirrorWindowDesktop    ->currentIndex();
+	config.mirrorWindowFullscreen = ui.mirrorWindowFullscreen ->isChecked();
 	config.save( config.getMainConfigFile() , QList<int>()<<cConfig::SAVE_GENERAL );
 }
 
