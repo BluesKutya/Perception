@@ -1,17 +1,22 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Label="UserMacros">
-    <DXSDK_DIR>C:\Dev\DXSDK</DXSDK_DIR>
-    <FFMPEG>C:\Dev\ffmpeg</FFMPEG>
-    <FREESPACE>C:\Dev\libfreespace</FREESPACE>
-    <LIBOVR>C:\Dev\OculusSDK\LibOVR</LIBOVR>
-    <WIN_DDK_DIR>D:\Dev\WDK</WIN_DDK_DIR>
-    <QTDIR>C:\Dev\Qt\5.3\msvc2012_opengl</QTDIR>
+    <!-- <DXSDK_DIR>C:\Dev\DXSDK</DXSDK_DIR> -->
+    <!--<WIN_DDK_DIR>D:\Dev\WDK</WIN_DDK_DIR> -->
+    <FFMPEG>c:\Users\Administrator\source\repos\Perception\3rd\ffmpeg</FFMPEG>
+    <FREESPACE>c:\Users\Administrator\source\repos\Perception\3rd\libfreespace</FREESPACE>
+    <LIBOVR>c:\Users\Administrator\source\repos\OculusSDK\LibOVR</LIBOVR>
+    <QTDIR>c:\Qt\5.13.0\msvc2017</QTDIR>
   </PropertyGroup>
   <ItemGroup>
+<!--  
     <BuildMacro Include="DXSDK_DIR">
       <Value>$(DXSDK_DIR)</Value>
     </BuildMacro>
+    <BuildMacro Include="WIN_DDK_DIR">
+      <Value>$(WIN_DDK_DIR)</Value>
+    </BuildMacro>
+-->	
     <BuildMacro Include="FFMPEG">
       <Value>$(FFMPEG)</Value>
     </BuildMacro>
@@ -20,9 +25,6 @@
     </BuildMacro>
     <BuildMacro Include="LIBOVR">
       <Value>$(LIBOVR)</Value>
-    </BuildMacro>
-    <BuildMacro Include="WIN_DDK_DIR">
-      <Value>$(WIN_DDK_DIR)</Value>
     </BuildMacro>
     <BuildMacro Include="QTDIR">
       <Value>$(QTDIR)</Value>
