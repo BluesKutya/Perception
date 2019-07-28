@@ -73,6 +73,7 @@ DocProject/Help/html
 publish
 
 # Others
+project/
 TestResults
 *.Cache
 ClientBin
