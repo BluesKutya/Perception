@@ -50,6 +50,7 @@ ipch/
 *.sdf
 
 # Visual Studio profiler
+.vs/
 *.psess
 *.vsp
 
