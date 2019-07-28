@@ -1,4 +1,5 @@
 #include <Ui_cProfileSelectDialog.h>
+#include <QObject>
 
 class cProfileSelectDialog : public QDialog {
 Q_OBJECT

@@ -1,5 +1,7 @@
 #include "cProfileSelectDialog.h"
 #include <Vireio.h>
+#include <QWidget>
+#include <QDialog>
 
 
 cProfileSelectDialog::cProfileSelectDialog( QWidget* parent ) : QDialog(parent) {

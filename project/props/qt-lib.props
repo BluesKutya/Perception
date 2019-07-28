@@ -13,14 +13,14 @@
 			<RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
 		</ClCompile>
 		<Link>
-			<AdditionalDependencies>Qt5Cored.lib;Qt5Guid.lib;Qt5Networkd.lib;Qt5Opengld.lib;Qt5PrintSupportd.lib;Qt5Xmld.lib;Qt5Webkitd.lib;Qt5WebKitWidgetsd.lib;Qt5Widgetsd.lib;Qt5Testd.lib;Qt5SerialPortd.lib;qtmaind.lib;%(AdditionalDependencies)</AdditionalDependencies>
+			<AdditionalDependencies>Qt5Cored.lib;Qt5Guid.lib;Qt5Networkd.lib;Qt5Opengld.lib;Qt5PrintSupportd.lib;Qt5Xmld.lib;Qt5Widgetsd.lib;Qt5Testd.lib;Qt5SerialPortd.lib;qtmaind.lib;%(AdditionalDependencies)</AdditionalDependencies>
 			<GenerateDebugInformation>true</GenerateDebugInformation>
 		</Link>
 	</ItemDefinitionGroup>
 
 	<ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
 		<Link>
-			<AdditionalDependencies>Qt5Core.lib;Qt5Gui.lib;Qt5Network.lib;Qt5Opengl.lib;Qt5PrintSupport.lib;Qt5Xml.lib;Qt5Webkit.lib;Qt5WebKitWidgets.lib;Qt5Widgets.lib;Qt5Test.lib;Qt5SerialPort.lib;qtmain.lib;%(AdditionalDependencies)</AdditionalDependencies>
+			<AdditionalDependencies>Qt5Core.lib;Qt5Gui.lib;Qt5Network.lib;Qt5Opengl.lib;Qt5PrintSupport.lib;Qt5Xml.lib;Qt5Widgets.lib;Qt5Test.lib;Qt5SerialPort.lib;qtmain.lib;%(AdditionalDependencies)</AdditionalDependencies>
 		</Link>
 	</ItemDefinitionGroup>
 </Project>
