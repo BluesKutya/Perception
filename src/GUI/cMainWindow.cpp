@@ -144,7 +144,7 @@ void cMainWindow::on_games_customContextMenuRequested( const QPoint& pos ){
 void cMainWindow::LoadGames(){
 	ui.games->clear();
 
-	for( QFileInfo& info : QDir(config.vireioDir+"games").entryInfoList(QDir::Files) ){
+	for( QFileInfo& info : QDir(config.vireioDir + "/games").entryInfoList(QDir::Files) ){
 		cConfig cfg;
 		if( cfg.load( info.absoluteFilePath() ) ){
 			QTreeWidgetItem* item = new QTreeWidgetItem;
